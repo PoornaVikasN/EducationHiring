@@ -1,6 +1,7 @@
-import axios, { InternalAxiosRequestConfig } from 'axios';
+import axios, { InternalAxiosRequestConfig } from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api";
 
 // In-memory access token — never persisted to localStorage/sessionStorage
 let currentToken: string | null = null;
@@ -13,7 +14,7 @@ export function setAccessToken(token: string | null): void {
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { "Content-Type": "application/json" },
   timeout: 15_000,
   withCredentials: true, // send refresh cookie on every request
 });
@@ -32,25 +33,30 @@ apiClient.interceptors.response.use(
   async (error: unknown) => {
     if (!axios.isAxiosError(error)) return Promise.reject(error);
 
-    const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const original = error.config as
+      | (InternalAxiosRequestConfig & { _retry?: boolean })
+      | undefined;
     if (!original || error.response?.status !== 401 || original._retry) {
       return Promise.reject(error);
     }
 
     // Skip refresh loop for the refresh endpoint itself
-    if (original.url?.includes('/auth/refresh') || original.url?.includes('/auth/logout')) {
+    if (
+      original.url?.includes("/auth/refresh") ||
+      original.url?.includes("/auth/logout")
+    ) {
       return Promise.reject(error);
     }
 
     if (isRefreshing) {
-      return new Promise<string | null>((resolve) => refreshQueue.push(resolve)).then(
-        (token) => {
-          if (!token) return Promise.reject(error);
-          original.headers.Authorization = `Bearer ${token}`;
-          original._retry = true;
-          return apiClient(original);
-        },
-      );
+      return new Promise<string | null>((resolve) =>
+        refreshQueue.push(resolve),
+      ).then((token) => {
+        if (!token) return Promise.reject(error);
+        original.headers.Authorization = `Bearer ${token}`;
+        original._retry = true;
+        return apiClient(original);
+      });
     }
 
     original._retry = true;
@@ -71,8 +77,8 @@ apiClient.interceptors.response.use(
       setAccessToken(null);
       refreshQueue.forEach((cb) => cb(null));
       refreshQueue = [];
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
       }
       return Promise.reject(error);
     } finally {
