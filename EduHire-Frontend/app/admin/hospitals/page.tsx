@@ -1,0 +1,307 @@
+'use client';
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Building2, CheckCircle, Filter, XCircle } from 'lucide-react';
+import { Suspense, useState } from 'react';
+import { adminApi, type AdminHospital } from '../../../lib/api/admin';
+import { AdminHospitalDetailDialog } from '../../../common-components/admin-hospital-detail-dialog';
+import AdminTablePagination from '../../../common-components/admin-table-pagination';
+import AdminExportButton from '../../../common-components/admin-export-button';
+import { SearchBar } from '../../../common-components/search-bar';
+import { LocationAutocomplete } from '../../../common-components/location-autocomplete';
+import { Button } from '../../../common-components/ui/button';
+import { ConfirmDialog } from '../../../common-components/ui/confirm-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../common-components/ui/dialog';
+import { Input } from '../../../common-components/ui/input';
+import { Label } from '../../../common-components/ui/label';
+import { DatePicker } from '../../../common-components/ui/date-picker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../common-components/ui/select';
+import { useToast } from '../../../hooks/use-toast';
+import { useDebouncedValue } from '../../../hooks/use-debounced-value';
+import { downloadCsv } from '../../../lib/utils/export-csv';
+
+type VerificationFilter = 'ALL' | 'VERIFIED' | 'PENDING' | 'REJECTED';
+
+interface Filters {
+  verification: VerificationFilter;
+  city: string;
+  registeredFrom: string;
+  registeredTo: string;
+}
+
+const DEFAULT_FILTERS: Filters = { verification: 'ALL', city: '', registeredFrom: '', registeredTo: '' };
+
+function activeCount(f: Filters) {
+  let n = 0;
+  if (f.verification !== 'ALL') n++;
+  if (f.city) n++;
+  if (f.registeredFrom || f.registeredTo) n++;
+  return n;
+}
+
+function HospitalRow({
+  hospital,
+  onVerify,
+  onReject,
+  onViewDetail,
+}: {
+  hospital: AdminHospital;
+  onVerify: (id: string) => void;
+  onReject: (id: string) => void;
+  onViewDetail: (h: AdminHospital) => void;
+}) {
+  const verified = hospital.isVerified;
+  return (
+    <tr
+      className="border-b border-border-default hover:bg-bg-page transition-colors cursor-pointer"
+      onClick={() => onViewDetail(hospital)}
+    >
+      <td className="px-4 py-3">
+        <div>
+          <p className="text-sm font-medium text-text-primary">{hospital.name}</p>
+          <p className="text-xs text-text-muted">{hospital.city}, {hospital.state}</p>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-xs text-text-muted">{hospital.contactPhone ?? hospital.phone}</td>
+      <td className="px-4 py-3 text-xs text-text-muted">{hospital.contactEmail ?? hospital.email}</td>
+      <td className="px-4 py-3">
+        {verified ? (
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Verified</span>
+        ) : hospital.verificationStatus === 'REJECTED' ? (
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">Rejected</span>
+        ) : (
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Pending</span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-xs text-text-muted">
+        {new Date(hospital.createdAt).toLocaleDateString('en-IN')}
+      </td>
+      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2">
+          {!verified && (
+            <Button size="sm" onClick={() => onVerify(hospital._id)}>
+              <CheckCircle className="w-3.5 h-3.5 mr-1" /> Verify
+            </Button>
+          )}
+          {!verified && hospital.verificationStatus !== 'REJECTED' && (
+            <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => onReject(hospital._id)}>
+              <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
+            </Button>
+          )}
+          {verified && (
+            <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => onReject(hospital._id)}>
+              <XCircle className="w-3.5 h-3.5 mr-1" /> Revoke
+            </Button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function HospitalsContent() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [draft, setDraft] = useState<Filters>(DEFAULT_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<AdminHospital | null>(null);
+  const [detailHospital, setDetailHospital] = useState<AdminHospital | null>(null);
+  const debouncedSearch = useDebouncedValue(search, 400);
+
+  const verifiedParam =
+    filters.verification === 'VERIFIED' ? true :
+    filters.verification === 'PENDING' || filters.verification === 'REJECTED' ? false :
+    undefined;
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-hospitals', page, debouncedSearch, filters],
+    queryFn: () => adminApi.listHospitals(
+      page, 10,
+      verifiedParam,
+      debouncedSearch || undefined,
+      filters.registeredFrom || undefined,
+      filters.registeredTo || undefined,
+    ).then((r) => r.data),
+  });
+
+  // Client-side refine for REJECTED vs PENDING (single verified boolean can't distinguish)
+  const rows = (data?.data ?? []).filter((h) => {
+    if (filters.verification === 'REJECTED' && h.verificationStatus !== 'REJECTED') return false;
+    if (filters.verification === 'PENDING' && (h.isVerified || h.verificationStatus === 'REJECTED')) return false;
+    if (filters.city && !h.city.toLowerCase().includes(filters.city.toLowerCase())) return false;
+    return true;
+  });
+
+  const badgeCount = activeCount(filters);
+
+  const verifyMutation = useMutation({
+    mutationFn: (id: string) => adminApi.verifyHospital(id),
+    onSuccess: () => { toast({ title: 'School verified' }); qc.invalidateQueries({ queryKey: ['admin-hospitals'] }); qc.invalidateQueries({ queryKey: ['admin-stats'] }); },
+    onError: () => toast({ title: 'Action failed', variant: 'destructive' }),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (id: string) => adminApi.rejectHospital(id),
+    onSuccess: () => { toast({ title: 'School rejected' }); setRejectTarget(null); qc.invalidateQueries({ queryKey: ['admin-hospitals'] }); },
+    onError: () => toast({ title: 'Action failed', variant: 'destructive' }),
+  });
+
+  const openFilter = () => { setDraft({ ...filters }); setFilterOpen(true); };
+  const applyFilter = () => { setFilters(draft); setPage(1); setFilterOpen(false); };
+  const clearFilter = () => { setDraft(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS); setPage(1); setFilterOpen(false); };
+
+  const handleExport = () => {
+    downloadCsv('admin-hospitals', rows, [
+      { header: 'Name', key: 'name' },
+      { header: 'City', key: 'city' },
+      { header: 'State', key: 'state' },
+      { header: 'Phone', key: (h) => h.contactPhone ?? h.phone },
+      { header: 'Email', key: (h) => h.contactEmail ?? h.email },
+      { header: 'Status', key: (h) => h.isVerified ? 'Verified' : (h.verificationStatus ?? 'Pending') },
+      { header: 'Registered', key: (h) => new Date(h.createdAt).toLocaleDateString('en-IN') },
+    ]);
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-text-primary flex items-center gap-2"><Building2 className="w-5 h-5" /> Schools</h1>
+          <p className="text-sm text-text-muted mt-0.5">{data?.meta.total ?? 0} total schools</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <SearchBar
+            placeholder="Search school name…"
+            onSearch={(v) => { setSearch(v); setPage(1); }}
+            className="w-52"
+          />
+          <Button variant="outline" size="sm" className="gap-2 relative" onClick={openFilter}>
+            <Filter className="w-3.5 h-3.5" />
+            Filters
+            {badgeCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-brand-primary text-white text-[10px] flex items-center justify-center font-bold">
+                {badgeCount}
+              </span>
+            )}
+          </Button>
+          <AdminExportButton onExport={handleExport} disabled={!rows.length} />
+        </div>
+      </div>
+
+      <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden">
+        {isLoading ? (
+          <div className="p-8 flex justify-center"><div className="w-6 h-6 rounded-full border-2 border-brand-primary border-t-transparent animate-spin" /></div>
+        ) : !rows.length ? (
+          <div className="p-10 text-center">
+            <Building2 className="w-8 h-8 text-text-muted mx-auto mb-2 opacity-40" />
+            <p className="text-sm text-text-muted">No schools found.</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px]">
+                <thead className="bg-bg-page border-b border-border-default">
+                  <tr>
+                    {['School', 'Phone', 'Email', 'Status', 'Joined', 'Actions'].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((h) => (
+                    <HospitalRow
+                      key={h._id}
+                      hospital={h}
+                      onVerify={(id) => verifyMutation.mutate(id)}
+                      onReject={(id) => setRejectTarget(data!.data.find((x) => x._id === id) ?? null)}
+                      onViewDetail={setDetailHospital}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <AdminTablePagination
+              page={page}
+              totalPages={data?.meta.totalPages ?? 1}
+              onPageChange={setPage}
+              totalItems={data?.meta.total}
+              pageSize={10}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Filter Dialog */}
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Filter Schools</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Verification Status</Label>
+              <Select value={draft.verification} onValueChange={(v) => setDraft((p) => ({ ...p, verification: v as VerificationFilter }))}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All</SelectItem>
+                  <SelectItem value="VERIFIED">Verified</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="REJECTED">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">City</Label>
+              <LocationAutocomplete
+                defaultValue={draft.city}
+                placeholder="e.g. Mumbai"
+                onSelect={({ city }) => setDraft((p) => ({ ...p, city }))}
+                onClear={() => setDraft((p) => ({ ...p, city: '' }))}
+                inputClassName="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Registration Date Range</Label>
+              <DatePicker
+                mode="range"
+                value={draft.registeredFrom && draft.registeredTo ? `${draft.registeredFrom} - ${draft.registeredTo}` : ''}
+                onSelectionChange={(val) => {
+                  const [from = '', to = ''] = val ? val.split(' - ') : [];
+                  setDraft((p) => ({ ...p, registeredFrom: from, registeredTo: to }));
+                }}
+                inputPlaceholder="Select date range"
+                inputClassName="h-9 text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" size="sm" onClick={clearFilter} className="flex-1">Clear</Button>
+            <Button size="sm" onClick={applyFilter} className="flex-1">Apply</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AdminHospitalDetailDialog
+        hospital={detailHospital}
+        onOpenChange={(open) => { if (!open) setDetailHospital(null); }}
+      />
+
+      <ConfirmDialog
+        open={!!rejectTarget}
+        onOpenChange={(open) => { if (!open) setRejectTarget(null); }}
+        title="Reject School"
+        description={`Are you sure you want to reject "${rejectTarget?.name}"? The school will be notified.`}
+        confirmLabel="Reject"
+        onConfirm={() => { if (rejectTarget) rejectMutation.mutate(rejectTarget._id); }}
+        loading={rejectMutation.isPending}
+      />
+    </div>
+  );
+}
+
+export default function AdminHospitalsPage() {
+  return <Suspense><HospitalsContent /></Suspense>;
+}

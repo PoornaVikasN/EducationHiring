@@ -1,0 +1,157 @@
+// Mirrored from rxjobs4u-backend/src/shared/enums/index.ts — BE is source of truth
+
+export enum Role {
+  JOB_SEEKER = 'JOB_SEEKER',
+  RECRUITER = 'RECRUITER',
+  ADMIN = 'ADMIN',
+}
+
+export enum UserStatus {
+  ACTIVE = 'ACTIVE',
+  SUSPENDED = 'SUSPENDED',
+  PENDING_VERIFICATION = 'PENDING_VERIFICATION',
+}
+
+export enum Gender {
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+  OTHER = 'OTHER',
+  PREFER_NOT_TO_SAY = 'PREFER_NOT_TO_SAY',
+}
+
+export enum Availability {
+  IMMEDIATE = 'IMMEDIATE',
+  WITHIN_2_WEEKS = 'WITHIN_2_WEEKS',
+  WITHIN_1_MONTH = 'WITHIN_1_MONTH',
+  READY_TO_SERVE_NOTICE = 'READY_TO_SERVE_NOTICE',
+  NOT_LOOKING = 'NOT_LOOKING',
+}
+
+export enum JobType {
+  SOS = 'SOS',
+  FULL_TIME = 'FULL_TIME',
+}
+
+export enum JobStatus {
+  PENDING_PAYMENT = 'PENDING_PAYMENT',
+  PENDING_SUBSCRIPTION = 'PENDING_SUBSCRIPTION',
+  ACTIVE = 'ACTIVE',
+  FILLED = 'FILLED',
+  EXPIRED = 'EXPIRED',
+  AUTO_DISABLED = 'AUTO_DISABLED',
+  DISABLED_BY_ADMIN = 'DISABLED_BY_ADMIN',
+}
+
+export enum ApplicationState {
+  INTERESTED = 'INTERESTED',
+  SHORTLISTED = 'SHORTLISTED',
+  PAID = 'PAID',
+  WON = 'WON',
+  CLOSED = 'CLOSED',
+}
+
+export enum PaymentKind {
+  JOB_POST = 'JOB_POST',
+  APPLICATION = 'APPLICATION',
+  SUBSCRIPTION = 'SUBSCRIPTION',
+  SEEKER_SOS_SUBSCRIPTION = 'SEEKER_SOS_SUBSCRIPTION',
+  BOOST = 'BOOST',
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED',
+}
+
+export enum SubscriptionStatus {
+  ACTIVE = 'ACTIVE',
+  CANCELLED = 'CANCELLED',
+  EXPIRED = 'EXPIRED',
+  PAYMENT_FAILED = 'PAYMENT_FAILED',
+}
+
+export enum VerificationStatus {
+  PENDING = 'PENDING',
+  VERIFIED = 'VERIFIED',
+  REJECTED = 'REJECTED',
+}
+
+export enum NotificationKind {
+  APPLICATION_SHORTLISTED = 'APPLICATION_SHORTLISTED',
+  APPLICATION_WON = 'APPLICATION_WON',
+  APPLICATION_CLOSED = 'APPLICATION_CLOSED',
+  PAYMENT_SUCCESS = 'PAYMENT_SUCCESS',
+  PAYMENT_FAILED = 'PAYMENT_FAILED',
+  NEW_JOB_IN_LOCATION = 'NEW_JOB_IN_LOCATION',
+  NEW_INTEREST = 'NEW_INTEREST',
+  APPLICANT_PAID = 'APPLICANT_PAID',
+  JOB_FILLED = 'JOB_FILLED',
+  JOB_EXPIRING_SOON = 'JOB_EXPIRING_SOON',
+  JOB_AUTO_DISABLED = 'JOB_AUTO_DISABLED',
+  SUB_RENEWED = 'SUB_RENEWED',
+  SUB_RENEWAL_FAILED = 'SUB_RENEWAL_FAILED',
+  HOSPITAL_VERIFIED = 'HOSPITAL_VERIFIED',
+  HOSPITAL_REGISTERED = 'HOSPITAL_REGISTERED',
+  SYSTEM_ALERT = 'SYSTEM_ALERT',
+}
+
+export enum UploadKind {
+  RESUME = 'resume',
+  LOGO = 'logo',
+  CERTIFICATE = 'certificate',
+  DOCUMENT = 'document',
+  HOSPITAL_PHOTO = 'hospital_photo',
+}
+
+export enum MaritalStatus {
+  SINGLE = 'SINGLE',
+  MARRIED = 'MARRIED',
+  DIVORCED = 'DIVORCED',
+  WIDOWED = 'WIDOWED',
+  PREFER_NOT_TO_SAY = 'PREFER_NOT_TO_SAY',
+}
+
+export enum TypeOfPractice {
+  FREELANCE = 'FREELANCE',
+  REGULAR_JOB = 'REGULAR_JOB',
+  PRIVATE = 'PRIVATE',
+}
+
+export enum Academics {
+  INTERNSHIP          = 'INTERNSHIP',
+  GRADUATE            = 'GRADUATE',
+  POST_GRADUATE       = 'POST_GRADUATE',
+  ASST_PROFESSOR      = 'ASST_PROFESSOR',
+  ASSOCIATE_PROFESSOR = 'ASSOCIATE_PROFESSOR',
+  PROFESSOR           = 'PROFESSOR',
+}
+
+export enum SalaryRange {
+  BELOW_25K     = 'BELOW_25K',
+  RANGE_25_50K  = 'RANGE_25_50K',
+  RANGE_50K_1L  = 'RANGE_50K_1L',
+  RANGE_1L_1_5L = 'RANGE_1L_1_5L',
+  RANGE_1_5L_2L = 'RANGE_1_5L_2L',
+  ABOVE_2L      = 'ABOVE_2L',
+}
+
+export enum HospitalDepartment {
+  LAB               = 'LAB',
+  PHARMACY          = 'PHARMACY',
+  RADIOLOGY         = 'RADIOLOGY',
+  OPERATION_THEATRE = 'OPERATION_THEATRE',
+  ICU               = 'ICU',
+  EMERGENCY         = 'EMERGENCY',
+  CANTEEN           = 'CANTEEN',
+  HOSTEL            = 'HOSTEL',
+}
+
+export enum AvailableTimings {
+  TWENTY_FOUR_SEVEN = '24_7',
+  MORNING = 'MORNING',
+  NIGHT = 'NIGHT',
+  NINE_TO_FIVE = '9_TO_5',
+  EVENING = 'EVENING',
+}

@@ -1,0 +1,69 @@
+/* Date Picker - Orange Theme */
+
+/* Selected day - Orange theme */
+.rdp-day_button[data-selected="true"] {
+  background-color: #0a6e4f !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+/* Hover states for days */
+.rdp-day_button:hover:not([data-selected="true"]):not([data-disabled="true"]) {
+  background-color: #e6f4f0 !important;
+  color: #0a6e4f !important;
+}
+
+/* Today indicator - Orange theme */
+.rdp-day_button[data-today="true"]:not([data-selected="true"]) {
+  background-color: #e6f4f0 !important;
+  font-weight: 600 !important;
+  border: 2px solid #0a6e4f !important;
+  color: #0a6e4f !important;
+}
+
+/* Navigation button hover - Orange theme */
+button[name="previous-month"]:hover,
+button[name="next-month"]:hover {
+  background-color: #e6f4f0 !important;
+}
+
+button[name="previous-month"]:hover svg,
+button[name="next-month"]:hover svg {
+  color: #0a6e4f !important;
+}
+
+/* Focus outline - Orange theme */
+.rdp-day_button:focus-visible {
+  outline: 2px solid #0a6e4f !important;
+  outline-offset: 2px;
+}
+
+/* Range selection - Orange theme */
+.rdp-day_button[data-range-start="true"],
+.rdp-day_button[data-range-end="true"] {
+  background-color: #0a6e4f !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+.rdp-day_button[data-range-middle="true"] {
+  background-color: #e6f4f0 !important;
+  color: #0a6e4f !important;
+}
+
+/* Dropdown styling - Orange theme */
+.rdp-dropdown:focus {
+  border-color: #0a6e4f !important;
+  ring-color: #0a6e4f !important;
+}
+
+/* Disabled states */
+.rdp-day_button[data-disabled="true"] {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+.rdp-day_button[data-disabled="true"]:hover {
+  background-color: transparent !important;
+  color: inherit !important;
+}
