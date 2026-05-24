@@ -129,7 +129,7 @@ export default function TeacherChatPage() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               {messages.map((msg) => {
-                const isMine = msg.senderId === user?.sub;
+                const isMine = msg.senderId === user?.id;
                 return (
                   <div key={msg._id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-xs rounded-2xl px-3.5 py-2.5 text-sm ${isMine ? 'bg-brand-primary text-white' : 'bg-bg-page border border-border-default text-text-primary'}`}>

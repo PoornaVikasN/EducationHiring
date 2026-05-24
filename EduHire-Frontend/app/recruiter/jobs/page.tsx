@@ -11,7 +11,7 @@ import { useToast } from '../../../hooks/use-toast';
 import { JobStatus } from '../../../lib/shared/enums';
 import { useRazorpay } from '../../../hooks/use-razorpay';
 import { usePublicPricing, formatRupees } from '../../../hooks/use-public-pricing';
-import { RECRUITER_MONTHLY_PAISE, BOOST_PAISE, JOB_STATUS_BADGE } from '../../../lib/shared/constants';
+import { RECRUITER_MONTHLY_PAISE, JOB_STATUS_BADGE } from '../../../lib/shared/constants';
 import { PaymentKind } from '../../../lib/shared/enums';
 
 function timeAgo(dateStr: string): string {
@@ -84,7 +84,7 @@ function JobRow({ job, onDelete, onPay, onBoost, ftPostLabel, boostLabel }: {
 export default function RecruiterJobsPage() {
   const { pricing } = usePublicPricing();
   const ftPost = pricing.RECRUITER_MONTHLY_PAISE ?? RECRUITER_MONTHLY_PAISE;
-  const boost  = pricing.BOOST_PAISE           ?? BOOST_PAISE;
+  const boost  = pricing.BOOST_PAISE           ?? 0;
   const { toast } = useToast();
   const { pay } = useRazorpay();
   const qc = useQueryClient();

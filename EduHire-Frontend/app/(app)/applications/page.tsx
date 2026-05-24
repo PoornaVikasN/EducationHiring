@@ -130,8 +130,8 @@ function HospitalRevealCard({ hospital }: { hospital: NonNullable<Application['h
         )}
 
         {/* School stats */}
-        {(hospital.noOfOperationTheatres != null || hospital.noOfCabinsAndBeds != null || hospital.noOfBeds != null) && (
-          <div className="grid grid-cols-3 gap-2">
+        {(hospital.noOfOperationTheatres != null || hospital.noOfCabinsAndBeds != null) && (
+          <div className="grid grid-cols-2 gap-2">
             {hospital.noOfOperationTheatres != null && (
               <div className="bg-bg-page rounded-xl px-2.5 py-2 text-center">
                 <p className="text-[10px] text-text-muted mb-0.5">Classrooms</p>
@@ -142,12 +142,6 @@ function HospitalRevealCard({ hospital }: { hospital: NonNullable<Application['h
               <div className="bg-bg-page rounded-xl px-2.5 py-2 text-center">
                 <p className="text-[10px] text-text-muted mb-0.5">Labs</p>
                 <p className="font-semibold text-text-primary">{hospital.noOfCabinsAndBeds}</p>
-              </div>
-            )}
-            {hospital.noOfBeds != null && (
-              <div className="bg-bg-page rounded-xl px-2.5 py-2 text-center">
-                <p className="text-[10px] text-text-muted mb-0.5">Students</p>
-                <p className="font-semibold text-text-primary">{hospital.noOfBeds}</p>
               </div>
             )}
           </div>
