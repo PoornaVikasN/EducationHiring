@@ -18,7 +18,7 @@ async function bootstrap() {
     .filter(Boolean);
 
   app.enableCors({
-    origin: corsOrigins.length ? corsOrigins : ['http://localhost:3003'],
+    origin: corsOrigins.length ? corsOrigins : ['http://localhost:3005'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
