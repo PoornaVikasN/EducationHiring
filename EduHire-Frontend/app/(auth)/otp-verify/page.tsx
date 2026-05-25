@@ -28,12 +28,14 @@ function OtpVerifyForm() {
 
   const prefillEmail = searchParams.get('email') ?? '';
   const alreadySent = searchParams.get('sent') === '1';
+  const prefillDevOtp = searchParams.get('devOtp') ?? '';
 
   // Step 1 = collect email; step 2 = enter OTP code
   const [step, setStep] = useState<1 | 2>(prefillEmail ? 2 : 1);
   const [email, setEmail] = useState(prefillEmail);
   const [serverError, setServerError] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [devOtp, setDevOtp] = useState(prefillDevOtp);
 
   const autoSentRef = useRef(false);
 
@@ -54,7 +56,7 @@ function OtpVerifyForm() {
     if (!prefillEmail || alreadySent || autoSentRef.current) return;
     autoSentRef.current = true;
     authApi.sendOtp(prefillEmail)
-      .then(() => startCooldown())
+      .then((r) => { startCooldown(); if (r.data.devOtp) setDevOtp(r.data.devOtp); })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -73,10 +75,11 @@ function OtpVerifyForm() {
   const onSendOtp = async (data: EmailOnlyInput) => {
     setServerError('');
     try {
-      await authApi.sendOtp(data.email);
+      const r = await authApi.sendOtp(data.email);
       setEmail(data.email);
       otpForm.setValue('email', data.email);
       startCooldown();
+      if (r.data.devOtp) setDevOtp(r.data.devOtp);
       setStep(2);
     } catch (err: unknown) {
       const msg =
@@ -89,8 +92,9 @@ function OtpVerifyForm() {
   const handleResend = async () => {
     setServerError('');
     try {
-      await authApi.sendOtp(email);
+      const r = await authApi.sendOtp(email);
       startCooldown();
+      if (r.data.devOtp) setDevOtp(r.data.devOtp);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -165,6 +169,14 @@ function OtpVerifyForm() {
       <p className="text-sm text-text-muted mb-6">
         We sent a 6-digit code to your email. Enter it below to sign in.
       </p>
+
+      {/* Dev OTP hint — only visible when NODE_ENV !== production */}
+      {devOtp && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 mb-4">
+          <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide shrink-0">DEV</span>
+          <span className="text-sm text-amber-800">OTP code: <span className="font-mono font-bold tracking-widest">{devOtp}</span></span>
+        </div>
+      )}
 
       {/* Email display */}
       <div className="flex items-center gap-3 bg-brand-primary-light border border-brand-primary/20 rounded-xl px-4 py-3 mb-5">

@@ -44,10 +44,11 @@ function RegisterForm() {
   const onSubmit = async (data: RegisterInput) => {
     setServerError('');
     try {
-      await authApi.register(data);
+      const res = await authApi.register(data);
       setSuccess(true);
       setTimeout(() => {
-        router.push(`/otp-verify?email=${encodeURIComponent(data.email)}&sent=1`);
+        const devParam = res.data.devOtp ? `&devOtp=${res.data.devOtp}` : '';
+        router.push(`/otp-verify?email=${encodeURIComponent(data.email)}&sent=1${devParam}`);
       }, 1500);
     } catch (err: unknown) {
       const msg =

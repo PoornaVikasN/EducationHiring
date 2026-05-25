@@ -93,11 +93,8 @@ class SeekerProfile {
   @Prop({ type: String, default: null })
   medicalCouncilName!: string | null;
 
-  @Prop({
-    type: { type: String, enum: ['Point'] },
-    coordinates: { type: [Number] },
-  })
-  location?: { type: 'Point'; coordinates: [number, number] };
+  @Prop({ type: Object, default: null })
+  location?: { type: 'Point'; coordinates: [number, number] } | null;
 }
 
 const SeekerProfileSchema = SchemaFactory.createForClass(SeekerProfile);

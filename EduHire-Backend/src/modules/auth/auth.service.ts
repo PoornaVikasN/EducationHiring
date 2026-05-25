@@ -48,7 +48,7 @@ export class AuthService {
 
   // ── Register ────────────────────────────────────────────────────────────────
 
-  async register(dto: RegisterDto): Promise<{ message: string }> {
+  async register(dto: RegisterDto): Promise<{ message: string; devOtp?: string }> {
     const phone = normalizePhone(dto.phone);
 
     const existing = await this.userModel
@@ -102,6 +102,9 @@ export class AuthService {
     const keyHash = this.hashValue(dto.email.toLowerCase().trim());
     const codeHash = this.hashValue(code);
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+    if (this.config.get('NODE_ENV') !== 'production') {
+      this.logger.log(`[DEV] Registration OTP for ${dto.email}: ${code}`);
+    }
     await this.otpModel.findOneAndUpdate(
       { phoneHash: keyHash },
       { $set: { codeHash, attempts: 0, expiresAt } },
@@ -111,7 +114,8 @@ export class AuthService {
       this.logger.warn(`Registration OTP email failed for ${user._id.toString()}: ${String(err)}`);
     });
 
-    return { message: 'Registration successful. Please verify your email.' };
+    const isDev = this.config.get('NODE_ENV') !== 'production';
+    return { message: 'Registration successful. Please verify your email.', ...(isDev && { devOtp: code }) };
   }
 
   // ── Login ───────────────────────────────────────────────────────────────────
@@ -186,12 +190,15 @@ export class AuthService {
   // OTP is keyed by SHA-256(email) stored in the `phoneHash` field.
   // The same code is dispatched to the user's email AND phone (SMS) when available.
 
-  async sendOtp(dto: SendOtpDto): Promise<{ message: string }> {
+  async sendOtp(dto: SendOtpDto): Promise<{ message: string; devOtp?: string }> {
     const email = dto.email.toLowerCase().trim();
     const keyHash = this.hashValue(email);
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const codeHash = this.hashValue(code);
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+    if (this.config.get('NODE_ENV') !== 'production') {
+      this.logger.log(`[DEV] OTP for ${email}: ${code}`);
+    }
 
     // Upsert OTP record
     await this.otpModel.findOneAndUpdate(
@@ -213,7 +220,8 @@ export class AuthService {
       });
     }
 
-    return { message: 'OTP sent' };
+    const isDev = this.config.get('NODE_ENV') !== 'production';
+    return { message: 'OTP sent', ...(isDev && { devOtp: code }) };
   }
 
   async verifyOtp(dto: VerifyOtpDto, res: Response): Promise<{ accessToken: string; user: SafeUser }> {

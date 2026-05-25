@@ -23,7 +23,7 @@ export interface AuthResponse {
 
 export const authApi = {
   register: (data: { email: string; phone: string; password: string; role: Role; fullName: string }) =>
-    apiClient.post<{ message: string }>('/auth/register', data),
+    apiClient.post<{ message: string; devOtp?: string }>('/auth/register', data),
 
   login: (data: { email: string; password: string }) =>
     apiClient.post<AuthResponse>('/auth/login', data),
@@ -32,7 +32,7 @@ export const authApi = {
     apiClient.post<AuthResponse>('/auth/google', data),
 
   sendOtp: (email: string) =>
-    apiClient.post<{ message: string }>('/auth/otp/send', { email }),
+    apiClient.post<{ message: string; devOtp?: string }>('/auth/otp/send', { email }),
 
   verifyOtp: (data: { email: string; code: string }) =>
     apiClient.post<AuthResponse>('/auth/otp/verify', data),
