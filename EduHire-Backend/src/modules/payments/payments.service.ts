@@ -258,7 +258,7 @@ export class PaymentsService {
   // ── Seeker SOS Subscription ───────────────────────────────────────────────────
 
   async createSeekerSosOrder(currentUser: JwtPayload) {
-    const amountPaise = await this.systemConfig.getPricePaise('SOS_SEEKER_MONTHLY_PAISE');
+    const amountPaise = await this.systemConfig.getPricePaise('APPLICATION_FEE_PAISE');
     const rzp = await this.getRazorpay();
     const razorpayOrder = await rzp.orders.create({
       amount: amountPaise,
@@ -400,12 +400,13 @@ export class PaymentsService {
 
   private async resolveAmount(kind: PaymentKind): Promise<number> {
     switch (kind) {
-      case PaymentKind.JOB_POST: return this.systemConfig.getPricePaise('FULL_TIME_POST_PAISE');
-      case PaymentKind.APPLICATION: return this.systemConfig.getPricePaise('APPLICATION_FEE_PAISE');
-      case PaymentKind.SUBSCRIPTION: return this.systemConfig.getPricePaise('SOS_MONTHLY_PAISE');
-      case PaymentKind.BOOST: return this.systemConfig.getPricePaise('BOOST_PAISE');
-      case PaymentKind.SEEKER_SOS_SUBSCRIPTION: return this.systemConfig.getPricePaise('SOS_SEEKER_MONTHLY_PAISE');
-      default: throw new BadRequestException('Unknown payment kind');
+      case PaymentKind.JOB_POST:
+      case PaymentKind.SUBSCRIPTION:
+        return this.systemConfig.getPricePaise('RECRUITER_MONTHLY_PAISE');
+      case PaymentKind.APPLICATION:
+        return this.systemConfig.getPricePaise('APPLICATION_FEE_PAISE');
+      default:
+        throw new BadRequestException('Unknown or unsupported payment kind');
     }
   }
 

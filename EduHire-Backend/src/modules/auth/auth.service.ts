@@ -87,7 +87,15 @@ export class AuthService {
           : null,
     };
 
-    const user = await this.userModel.create(userData);
+    let user: UserDocument;
+    try {
+      user = await this.userModel.create(userData);
+    } catch (err: unknown) {
+      if ((err as { code?: number }).code === 11000) {
+        throw new ConflictException('Email or phone already registered');
+      }
+      throw err;
+    }
 
     // Generate OTP and send a single combined welcome + verification email
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -96,8 +104,8 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
     await this.otpModel.findOneAndUpdate(
       { phoneHash: keyHash },
-      { codeHash, attempts: 0, expiresAt },
-      { upsert: true, returnDocument: 'after' },
+      { $set: { codeHash, attempts: 0, expiresAt } },
+      { upsert: true },
     );
     await this.emailService.sendRegistrationOtpEmail(user.email!, dto.fullName, code).catch((err: unknown) => {
       this.logger.warn(`Registration OTP email failed for ${user._id.toString()}: ${String(err)}`);
@@ -185,11 +193,11 @@ export class AuthService {
     const codeHash = this.hashValue(code);
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
-    // Upsert OTP record (returnDocument fixes Mongoose deprecation warning)
+    // Upsert OTP record
     await this.otpModel.findOneAndUpdate(
       { phoneHash: keyHash },
-      { codeHash, attempts: 0, expiresAt },
-      { upsert: true, returnDocument: 'after' },
+      { $set: { codeHash, attempts: 0, expiresAt } },
+      { upsert: true },
     );
 
     // Send via email (primary)
@@ -304,8 +312,8 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     await this.otpModel.findOneAndUpdate(
       { phoneHash: keyHash },
-      { codeHash, attempts: 0, expiresAt },
-      { upsert: true, returnDocument: 'after' },
+      { $set: { codeHash, attempts: 0, expiresAt } },
+      { upsert: true },
     );
 
     await this.emailService.sendPasswordResetOtpEmail(user.email, code).catch((err: unknown) => {
