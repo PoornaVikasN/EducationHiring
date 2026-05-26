@@ -25,20 +25,20 @@ export function SiteHeader({ barOpen = false }: SiteHeaderProps) {
       style={{
         top: `${topOffset}px`,
         width: '100%',
-        background: scrolled ? 'rgba(13,27,42,0.96)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(16px)' : 'none',
-        WebkitBackdropFilter: scrolled ? 'blur(16px)' : 'none',
-        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
-        boxShadow: scrolled ? '0 2px 20px rgba(0,0,0,0.3)' : 'none',
-        transition: 'top 0.25s ease, background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease, backdrop-filter 0.35s ease',
+        background: scrolled ? 'rgba(13,27,42,0.96)' : 'rgba(255,255,255,0.90)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.07)',
+        boxShadow: scrolled ? '0 2px 20px rgba(0,0,0,0.3)' : '0 1px 8px rgba(0,0,0,0.05)',
+        transition: 'top 0.25s ease, background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease',
       }}
     >
       <div style={{ maxWidth: '80rem', margin: '0 auto', width: '100%', height: '100%', display: 'flex', alignItems: 'center', padding: '0 1.5rem' }}>
         {/* Logo */}
         <div className="flex items-center gap-1 flex-1">
           <Link href="/" className="flex items-center gap-0.5">
-            <span className="text-xl font-black" style={{ color: '#7986cb' }}>Edu</span>
-            <span className="text-xl font-black text-white">Hire</span>
+            <span className="text-xl font-black" style={{ color: scrolled ? '#7986cb' : '#3949ab' }}>Edu</span>
+            <span className="text-xl font-black" style={{ color: scrolled ? '#ffffff' : '#0f172a' }}>Hire</span>
           </Link>
         </div>
 
@@ -51,22 +51,22 @@ export function SiteHeader({ barOpen = false }: SiteHeaderProps) {
           ].map(({ label, href }) => (
             href.startsWith('#')
               ? <a key={label} href={href} className="text-sm font-medium"
-                   style={{ color: 'rgba(255,255,255,0.75)', transition: 'color 0.15s ease' }}
-                   onMouseEnter={e => (e.currentTarget.style.color = '#7986cb')}
-                   onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}>{label}</a>
+                   style={{ color: scrolled ? 'rgba(255,255,255,0.75)' : '#475569', transition: 'color 0.15s ease' }}
+                   onMouseEnter={e => (e.currentTarget.style.color = '#3949ab')}
+                   onMouseLeave={e => (e.currentTarget.style.color = scrolled ? 'rgba(255,255,255,0.75)' : '#475569')}>{label}</a>
               : <Link key={label} href={href} className="text-sm font-medium"
-                      style={{ color: 'rgba(255,255,255,0.75)', transition: 'color 0.15s ease' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#7986cb'}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.75)'}>{label}</Link>
+                      style={{ color: scrolled ? 'rgba(255,255,255,0.75)' : '#475569', transition: 'color 0.15s ease' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#3949ab'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = scrolled ? 'rgba(255,255,255,0.75)' : '#475569'}>{label}</Link>
           ))}
         </nav>
 
         {/* CTAs */}
         <div className="flex items-center gap-3">
-          <Link href="/login" className="text-sm font-medium text-white"
-                style={{ opacity: 0.8, transition: 'opacity 0.15s ease' }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '0.8'}>
+          <Link href="/login" className="text-sm font-medium"
+                style={{ color: scrolled ? 'rgba(255,255,255,0.85)' : '#334155', transition: 'color 0.15s ease' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#3949ab'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = scrolled ? 'rgba(255,255,255,0.85)' : '#334155'}>
             Sign in
           </Link>
           <Link

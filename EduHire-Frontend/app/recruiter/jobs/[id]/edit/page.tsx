@@ -23,8 +23,8 @@ import { UploadKind } from '../../../../../lib/shared/enums';
 import { DEGREE_OPTIONS, DEPARTMENT_REQUIREMENTS_OPTIONS, EXPERTISE_OPTIONS, JOB_TIMING_DISPLAY_OPTIONS } from '../../../../../lib/shared/constants';
 import { createJobSchema, type CreateJobFormValues } from '../../../../../lib/validations/jobs';
 
-const DEPARTMENT_OPTIONS = ['Nursing', 'Pharmacy', 'Radiology', 'Laboratory', 'Physiotherapy', 'Emergency', 'Surgery', 'ICU', 'Paediatrics', 'Cardiology', 'Administration', 'Other'].map((d) => ({ value: d, label: d }));
-const ROLE_OPTIONS = ['Nurse', 'Doctor', 'Pharmacist', 'Lab Technician', 'Radiologist', 'Physiotherapist', 'Ward Boy', 'OT Technician', 'Receptionist', 'Other'].map((r) => ({ value: r, label: r }));
+const DEPARTMENT_OPTIONS = ['Pre-Primary', 'Primary', 'Secondary', 'Senior Secondary', 'Arts & Crafts', 'Computer Science', 'Physical Education', 'Administration', 'Library', 'Counseling', 'Other'].map((d) => ({ value: d, label: d }));
+const ROLE_OPTIONS = ['SGT (Standard Grade Teacher)', 'TGT (Trained Graduate Teacher)', 'PGT (Post Graduate Teacher)', 'Pre-Primary Teacher', 'Head Master / HM', 'Principal', 'Vice Principal', 'Special Educator', 'Lab Assistant', 'Librarian', 'Counselor', 'Other'].map((r) => ({ value: r, label: r }));
 
 export default function EditJobPage() {
   const params = useParams<{ id: string }>();
@@ -146,7 +146,7 @@ export default function EditJobPage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="title">Job Title *</Label>
-            <Input id="title" placeholder="Staff Nurse — ICU" {...register('title')} />
+            <Input id="title" placeholder="PGT Mathematics — Secondary Section" {...register('title')} />
             {errors.title && <p className="text-xs text-red-500">{errors.title.message}</p>}
           </div>
 
@@ -206,7 +206,7 @@ export default function EditJobPage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="requirements">Requirements (one per line) *</Label>
-            <Textarea id="requirements" placeholder="BNSc or GNM qualified&#10;Minimum 1 year ICU experience&#10;ACLS certification preferred" rows={4} {...register('requirements')} />
+            <Textarea id="requirements" placeholder="B.Ed or D.Ed qualified&#10;Minimum 1 year teaching experience&#10;Strong subject knowledge preferred" rows={4} {...register('requirements')} />
             {errors.requirements && <p className="text-xs text-red-500">{errors.requirements.message}</p>}
           </div>
         </div>
@@ -251,7 +251,7 @@ export default function EditJobPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="noOfCasesPerMonth">No. of Cases per Month</Label>
+            <Label htmlFor="noOfCasesPerMonth">No. of Students per Class (optional)</Label>
             <Input id="noOfCasesPerMonth" type="number" min={0} placeholder="30" onFocus={(e) => e.target.select()} {...register('noOfCasesPerMonth', { setValueAs: (v: string) => v === '' ? undefined : Number(v) })} />
           </div>
 

@@ -318,7 +318,7 @@ function NewJobForm() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="noOfCasesPerMonth">No. of Cases per Month</Label>
+            <Label htmlFor="noOfCasesPerMonth">No. of Students per Class (optional)</Label>
             <Input id="noOfCasesPerMonth" type="number" min={0} placeholder="30" onFocus={(e) => e.target.select()} {...register('noOfCasesPerMonth', { setValueAs: (v: string) => v === '' ? undefined : Number(v) })} />
           </div>
 

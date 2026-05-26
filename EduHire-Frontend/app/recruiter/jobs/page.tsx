@@ -60,7 +60,7 @@ function JobRow({ job, onDelete, onPay, onBoost, ftPostLabel, boostLabel }: {
             Pay {ftPostLabel}
           </Button>
         )}
-        {job.status === JobStatus.EXPIRED && (
+        {job.status === JobStatus.EXPIRED && boostLabel !== '₹0' && (
           <Button size="sm" variant="outline" className="text-xs" onClick={() => onBoost(job)}>
             Boost {boostLabel}
           </Button>
