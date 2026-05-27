@@ -37,8 +37,8 @@ export function SiteHeader({ barOpen = false }: SiteHeaderProps) {
         {/* Logo */}
         <div className="flex items-center gap-1 flex-1">
           <Link href="/" className="flex items-center gap-0.5">
-            <span className="text-xl font-black" style={{ color: scrolled ? '#7986cb' : '#3949ab' }}>Edu</span>
-            <span className="text-xl font-black" style={{ color: scrolled ? '#ffffff' : '#0f172a' }}>Hire</span>
+            <span className="text-xl font-black" style={{ color: scrolled ? '#7986cb' : '#3949ab' }}>School</span>
+            <span className="text-xl font-black" style={{ color: scrolled ? '#ffffff' : '#0f172a' }}>Teacher</span>
           </Link>
         </div>
 

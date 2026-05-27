@@ -94,7 +94,7 @@ function RegisterForm() {
   return (
     <>
       <h1 className="text-xl font-bold text-text-primary mb-1">Create your account</h1>
-      <p className="text-sm text-text-muted mb-5">Join EduHire — free for teachers, always</p>
+      <p className="text-sm text-text-muted mb-5">Join SchoolTeacher — free for teachers, always</p>
 
       {/* Role toggle */}
       <div className="flex gap-2 mb-5">

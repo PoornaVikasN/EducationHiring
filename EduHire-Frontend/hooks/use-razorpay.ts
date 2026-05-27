@@ -55,7 +55,7 @@ export function useRazorpay() {
       amount: order.amount,
       currency: order.currency,
       order_id: order.orderId,
-      name: 'EduHire',
+      name: 'SchoolTeacher',
       description,
       handler: async (response) => {
         try {

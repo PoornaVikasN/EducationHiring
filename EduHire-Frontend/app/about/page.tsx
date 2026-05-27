@@ -3,8 +3,8 @@ import { Heart, Shield, MapPin, Star, Users, BookOpen } from 'lucide-react';
 import { SiteHeader } from '../../common-components/site-header';
 
 export const metadata = {
-  title: 'About — EduHire',
-  description: 'EduHire is Telangana & AP\'s teacher hiring platform, connecting verified schools with qualified teachers across India.',
+  title: 'About — SchoolTeacher',
+  description: 'SchoolTeacher is Telangana & AP\'s teacher hiring platform, connecting verified schools with qualified teachers across India.',
 };
 
 const values = [
@@ -35,7 +35,7 @@ export default function AboutPage() {
             Built for India&apos;s Teaching Heroes
           </h1>
           <p className="text-blue-100 text-lg leading-relaxed">
-            EduHire was born out of frustration — schools struggling to find qualified teachers, educators
+            SchoolTeacher was born out of frustration — schools struggling to find qualified teachers, educators
             scrolling irrelevant listings. We built the platform we wished existed, starting from Hyderabad.
           </p>
         </div>
@@ -108,7 +108,7 @@ export default function AboutPage() {
       <section className="py-20 px-6 text-center bg-bg-page">
         <div className="max-w-xl mx-auto">
           <h2 className="text-3xl font-bold text-text-primary mb-4">Join the Movement</h2>
-          <p className="text-text-muted mb-8">Whether you&apos;re a school or a teacher, EduHire is built for you.</p>
+          <p className="text-text-muted mb-8">Whether you&apos;re a school or a teacher, SchoolTeacher is built for you.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/register"
@@ -129,7 +129,7 @@ export default function AboutPage() {
 
       {/* Footer */}
       <footer className="py-8 px-6 border-t border-border-default bg-white text-center text-sm text-text-muted">
-        <p>© {new Date().getFullYear()} EduHire. All rights reserved. · <Link href="/pricing" className="hover:text-text-primary transition-colors">Pricing</Link> · <Link href="/about" className="hover:text-text-primary transition-colors">About</Link></p>
+        <p>© {new Date().getFullYear()} SchoolTeacher. All rights reserved. · <Link href="/pricing" className="hover:text-text-primary transition-colors">Pricing</Link> · <Link href="/about" className="hover:text-text-primary transition-colors">About</Link></p>
       </footer>
     </div>
   );

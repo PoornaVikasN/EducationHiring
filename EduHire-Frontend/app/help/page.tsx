@@ -34,7 +34,7 @@ function buildFaqSections(appFee: string, subMo: string) {
         },
         {
           q: 'What types of teaching roles are listed?',
-          a: 'EduHire lists full-time teaching positions across all levels — Pre-Primary, Primary, Secondary, Senior Secondary — as well as administrative roles like HM, Principal, and Counselor.',
+          a: 'SchoolTeacher lists full-time teaching positions across all levels — Pre-Primary, Primary, Secondary, Senior Secondary — as well as administrative roles like HM, Principal, and Counselor.',
         },
       ],
     },

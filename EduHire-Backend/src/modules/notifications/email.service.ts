@@ -12,19 +12,19 @@ export class EmailService {
     private config: ConfigService,
     private systemConfig: SystemConfigService,
   ) {
-    this.senderEmail = this.config.get<string>('SMTP_SENDER_EMAIL', 'noreply@eduhire.in');
-    this.senderName = this.config.get<string>('SMTP_SENDER_NAME', 'EduHire');
+    this.senderEmail = this.config.get<string>('SMTP_SENDER_EMAIL', 'noreply@schoolteacher.in');
+    this.senderName = this.config.get<string>('SMTP_SENDER_NAME', 'SchoolTeacher');
   }
 
   async sendRegistrationOtpEmail(to: string, name: string, otp: string): Promise<void> {
-    await this.send(to, 'Welcome to EduHire — verify your email', `
+    await this.send(to, 'Welcome to SchoolTeacher — verify your email', `
       <p>Hi ${name},</p>
-      <p>Welcome to <strong>EduHire</strong>! To activate your account, enter the verification code below:</p>
+      <p>Welcome to <strong>SchoolTeacher</strong>! To activate your account, enter the verification code below:</p>
       <div style="text-align:center;margin:24px 0">
         <span style="font-size:36px;font-weight:700;letter-spacing:8px;font-family:monospace;color:#3949ab">${otp}</span>
       </div>
       <p style="color:#888;font-size:13px">This code expires in 5 minutes. Do not share it with anyone.</p>
-      <br><p>— The EduHire Team</p>
+      <br><p>— The SchoolTeacher Team</p>
     `);
   }
 
@@ -34,15 +34,15 @@ export class EmailService {
       : 'Complete your profile to get noticed by top schools.';
     await this.send(to, '🎉 You\'re in! Next step: complete your profile', `
       <p>Hi ${name},</p>
-      <p>Your email is verified and your <strong>EduHire</strong> account is now active.</p>
+      <p>Your email is verified and your <strong>SchoolTeacher</strong> account is now active.</p>
       <p>${profileHint}</p>
       <p>It only takes a few minutes and makes a big difference.</p>
-      <br><p>— The EduHire Team</p>
+      <br><p>— The SchoolTeacher Team</p>
     `);
   }
 
   async sendOtpEmail(to: string, otp: string): Promise<void> {
-    await this.send(to, 'Your EduHire OTP', `
+    await this.send(to, 'Your SchoolTeacher OTP', `
       <p>Your one-time password is:</p>
       <h2 style="letter-spacing:4px;font-family:monospace">${otp}</h2>
       <p>This OTP expires in 5 minutes. Do not share it with anyone.</p>
@@ -55,7 +55,7 @@ export class EmailService {
       <p>Hi ${seekerName},</p>
       <p>You have been shortlisted for <strong>${jobTitle}</strong>.</p>
       <p>Pay ₹99 to unlock the school's contact details. Payment deadline: <strong>${deadline}</strong>.</p>
-      <br><p>— The EduHire Team</p>
+      <br><p>— The SchoolTeacher Team</p>
     `);
   }
 
@@ -64,17 +64,17 @@ export class EmailService {
       <p>Hi ${seekerName},</p>
       <p>Congratulations! You have been selected for <strong>${jobTitle}</strong>.</p>
       <p>The school will contact you shortly.</p>
-      <br><p>— The EduHire Team</p>
+      <br><p>— The SchoolTeacher Team</p>
     `);
   }
 
   async sendApplicationReceivedEmail(to: string, seekerName: string, jobTitle: string): Promise<void> {
-    await this.send(to, 'Your interest has been registered — EduHire', `
+    await this.send(to, 'Your interest has been registered — SchoolTeacher', `
       <p>Hi ${seekerName},</p>
       <p>We have registered your interest for <strong>${jobTitle}</strong>.</p>
       <p>The school will review your profile and shortlist you if there is a match. No action is needed from your side right now.</p>
       <p>You will be notified once they review your application.</p>
-      <br><p>— The EduHire Team</p>
+      <br><p>— The SchoolTeacher Team</p>
     `);
   }
 
@@ -83,18 +83,18 @@ export class EmailService {
       <p>Hi ${seekerName},</p>
       <p>Your payment has been confirmed for <strong>${jobTitle}</strong> at <strong>${hospitalName}</strong>.</p>
       <p>The school's contact details are now visible in your applications page. You can now connect with them directly.</p>
-      <br><p>— The EduHire Team</p>
+      <br><p>— The SchoolTeacher Team</p>
     `);
   }
 
   async sendApplicationClosedEmail(to: string, seekerName: string, jobTitle: string, reason?: string): Promise<void> {
     const reasonText = reason ? `<p>Reason: ${reason}</p>` : '';
-    await this.send(to, 'Update on your application — EduHire', `
+    await this.send(to, 'Update on your application — SchoolTeacher', `
       <p>Hi ${seekerName},</p>
       <p>Your application for <strong>${jobTitle}</strong> has been closed.</p>
       ${reasonText}
-      <p>Don't be discouraged — there are many other opportunities waiting for you. Keep browsing jobs on EduHire.</p>
-      <br><p>— The EduHire Team</p>
+      <p>Don't be discouraged — there are many other opportunities waiting for you. Keep browsing jobs on SchoolTeacher.</p>
+      <br><p>— The SchoolTeacher Team</p>
     `);
   }
 
@@ -112,12 +112,12 @@ export class EmailService {
         </a>
       </p>
       <p style="color:#888;font-size:12px;margin-top:20px">You're receiving this because you have job alerts enabled. To update your preferences, visit your profile settings.</p>
-      <br><p>— The EduHire Team</p>
+      <br><p>— The SchoolTeacher Team</p>
     `);
   }
 
   async sendPasswordResetOtpEmail(to: string, otp: string): Promise<void> {
-    await this.send(to, 'Reset your EduHire password', `
+    await this.send(to, 'Reset your SchoolTeacher password', `
       <p>You requested a password reset. Use the code below to set a new password:</p>
       <div style="text-align:center;margin:24px 0">
         <span style="font-size:36px;font-weight:700;letter-spacing:8px;font-family:monospace;color:#3949ab">${otp}</span>

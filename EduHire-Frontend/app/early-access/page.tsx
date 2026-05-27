@@ -41,7 +41,7 @@ export default function EarlyAccessPage() {
             Limited Spots
           </span>
           <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-5 leading-tight">
-            Get Early Access to EduHire
+            Get Early Access to SchoolTeacher
           </h1>
           <p className="text-blue-100 text-lg max-w-xl mx-auto leading-relaxed">
             Be among the first 100 schools or teachers on the platform. Early members get exclusive perks and help shape the product.
@@ -153,7 +153,7 @@ export default function EarlyAccessPage() {
       </section>
 
       <footer className="py-8 px-6 border-t border-border-default bg-white text-center text-sm text-text-muted mt-auto">
-        <p>© 2026 EduHire · <Link href="/about" className="hover:text-text-primary transition-colors">About</Link> · <Link href="/help" className="hover:text-text-primary transition-colors">Help</Link></p>
+        <p>© 2026 SchoolTeacher · <Link href="/about" className="hover:text-text-primary transition-colors">About</Link> · <Link href="/help" className="hover:text-text-primary transition-colors">Help</Link></p>
       </footer>
     </div>
   );

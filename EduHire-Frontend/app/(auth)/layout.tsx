@@ -17,8 +17,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="relative z-10 flex flex-col h-full px-12 py-10">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-0.5 mb-auto">
-            <span className="text-2xl font-black" style={{ color: '#7986cb' }}>Edu</span>
-            <span className="text-2xl font-black text-white">Hire</span>
+            <span className="text-2xl font-black" style={{ color: '#7986cb' }}>School</span>
+            <span className="text-2xl font-black text-white">Teacher</span>
           </Link>
 
           {/* Main copy */}
@@ -66,8 +66,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="flex-1 flex flex-col items-center justify-center bg-bg-page px-6 py-12 min-h-screen">
         {/* Mobile logo */}
         <Link href="/" className="lg:hidden mb-8 flex items-center gap-0.5">
-          <span className="text-2xl font-black" style={{ color: '#7986cb' }}>Edu</span>
-          <span className="text-2xl font-black text-text-primary">Hire</span>
+          <span className="text-2xl font-black" style={{ color: '#7986cb' }}>School</span>
+          <span className="text-2xl font-black text-text-primary">Teacher</span>
         </Link>
 
         <div className="w-full max-w-md bg-bg-card rounded-2xl shadow-lg border border-border-default p-8">
@@ -75,7 +75,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         <p className="mt-6 text-xs text-text-muted">
-          © {new Date().getFullYear()} EduHire. All rights reserved.
+          © {new Date().getFullYear()} SchoolTeacher. All rights reserved.
         </p>
       </div>
 

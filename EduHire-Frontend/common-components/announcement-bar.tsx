@@ -9,7 +9,7 @@ interface AnnouncementBarProps {
 
 export function AnnouncementBar({ onDismiss }: AnnouncementBarProps) {
   const handleDismiss = () => {
-    sessionStorage.setItem('eduhire_bar_dismissed', '1');
+    sessionStorage.setItem('schoolteacher_bar_dismissed', '1');
     onDismiss();
   };
 

@@ -29,7 +29,7 @@ const TESTIMONIALS = [
   { quote: "The intro video feature is a game changer. We assessed 4 Telugu medium teachers before even scheduling interviews.", name: "Sunitha Varma", role: "HR Head", school: "Secunderabad ICSE School", initials: "SV", color: '#7c3aed' },
   { quote: "Transferred from Vijayawada to Hyderabad and found a Primary role near Kondapur in 8 days. Location radius filter is perfect.", name: "Arjun Rao", role: "Primary Teacher", school: "Hyderabad", initials: "AR", color: '#3949ab' },
   { quote: "Being completely free for teachers is huge. I applied to 15 schools across Telangana without spending a rupee.", name: "Padmavathi Reddy", role: "Correspondent", school: "Nellore English Medium", initials: "PR", color: '#0891b2' },
-  { quote: "The international section connected me with a CBSE school in Dubai. Now teaching in UAE thanks to EduHire.", name: "Annapurna Krishna", role: "PGT Science", school: "Dubai (ex-Hyderabad)", initials: "AK", color: '#7c3aed' },
+  { quote: "The international section connected me with a CBSE school in Dubai. Now teaching in UAE thanks to SchoolTeacher.", name: "Annapurna Krishna", role: "PGT Science", school: "Dubai (ex-Hyderabad)", initials: "AK", color: '#7c3aed' },
 ];
 
 // ── Steps data ────────────────────────────────────────────────────────────────
@@ -57,26 +57,34 @@ export default function LandingPage() {
   const [audience, setAudience] = useState<'teacher' | 'school'>('teacher');
   const steps = audience === 'teacher' ? TEACHER_STEPS : SCHOOL_STEPS;
 
-  // Typewriter effect for hero tagline
-  const fullTagline = heroMode === 'teacher' ? 'is waiting.' : 'one post away.';
-  const [typedTagline, setTypedTagline] = useState('');
+  // Full typewriter — types ENTIRE headline (both lines)
+  const HEADLINES = {
+    teacher: { line1: 'Your next classroom', line2: 'is waiting.' },
+    school:  { line1: 'The right teacher is', line2: 'one post away.' },
+  };
+  const fullText = `${HEADLINES[heroMode].line1}\n${HEADLINES[heroMode].line2}`;
+  const [typed, setTyped] = useState('');
   const [showCursor, setShowCursor] = useState(true);
 
   useEffect(() => {
-    setTypedTagline('');
+    setTyped('');
     let i = 0;
-    const typing = setInterval(() => {
+    const t = setInterval(() => {
       i++;
-      setTypedTagline(fullTagline.slice(0, i));
-      if (i >= fullTagline.length) clearInterval(typing);
-    }, 70);
-    return () => clearInterval(typing);
-  }, [heroMode, fullTagline]);
+      setTyped(fullText.slice(0, i));
+      if (i >= fullText.length) clearInterval(t);
+    }, 55);
+    return () => clearInterval(t);
+  }, [heroMode, fullText]);
 
   useEffect(() => {
     const blink = setInterval(() => setShowCursor(c => !c), 530);
     return () => clearInterval(blink);
   }, []);
+
+  const nlIdx = typed.indexOf('\n');
+  const typedLine1 = nlIdx === -1 ? typed : typed.slice(0, nlIdx);
+  const typedLine2 = nlIdx === -1 ? null : typed.slice(nlIdx + 1);
 
   return (
     <div className="flex flex-col min-h-screen overflow-x-hidden bg-white">
@@ -84,43 +92,54 @@ export default function LandingPage() {
       <SiteHeader barOpen={false} />
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
-      <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ background: '#ffffff', minHeight: '100svh' }}>
-        {/* Centre radial glow */}
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 70% 55% at 50% 45%, rgba(57,73,171,0.06) 0%, transparent 70%)' }} />
+      <section
+        className="relative flex flex-col items-center justify-center overflow-hidden"
+        style={{
+          minHeight: '100svh',
+          backgroundImage: `
+            linear-gradient(135deg, rgba(10,15,30,0.90) 0%, rgba(26,35,126,0.80) 45%, rgba(10,15,30,0.90) 100%),
+            url('https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1920&q=80')
+          `,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        {/* Subtle dot-grid overlay */}
+        <div className="bg-grid-white absolute inset-0 pointer-events-none" style={{ opacity: 0.04 }} />
 
         <div className="relative z-10 w-full max-w-4xl mx-auto px-6 flex flex-col items-center text-center" style={{ paddingTop: 'calc(80px + 4rem)', paddingBottom: '4rem' }}>
 
           {/* ── Audience toggle ── */}
-          <div className="hero-anim hero-delay-0 inline-flex rounded-full p-1 mb-10" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
+          <div className="hero-anim hero-delay-0 inline-flex rounded-full p-1 mb-10"
+            style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.20)', backdropFilter: 'blur(8px)' }}>
             <button onClick={() => setHeroMode('teacher')}
               className="px-5 py-2 rounded-full text-sm font-bold transition-all duration-200"
               style={heroMode === 'teacher'
-                ? { background: '#3949ab', color: '#fff', boxShadow: '0 2px 10px rgba(57,73,171,0.40)' }
-                : { color: '#64748b', background: 'transparent' }}>
+                ? { background: '#3949ab', color: '#fff', boxShadow: '0 2px 10px rgba(57,73,171,0.50)' }
+                : { color: 'rgba(255,255,255,0.65)', background: 'transparent' }}>
               👩‍🏫 For Teachers
             </button>
             <button onClick={() => setHeroMode('school')}
               className="px-5 py-2 rounded-full text-sm font-bold transition-all duration-200"
               style={heroMode === 'school'
-                ? { background: '#f59e0b', color: '#fff', boxShadow: '0 2px 10px rgba(245,158,11,0.40)' }
-                : { color: '#64748b', background: 'transparent' }}>
+                ? { background: '#f59e0b', color: '#fff', boxShadow: '0 2px 10px rgba(245,158,11,0.50)' }
+                : { color: 'rgba(255,255,255,0.65)', background: 'transparent' }}>
               🏫 For Schools
             </button>
           </div>
 
-          {/* ── Headline ── */}
+          {/* ── Headline (full typewriter) ── */}
           <h1 className="hero-anim hero-delay-1 font-black tracking-tight mb-5"
-            style={{ fontSize: 'clamp(2.8rem, 6.5vw, 5.5rem)', lineHeight: 1.08, color: '#0f172a', maxWidth: 780 }}>
-            {heroMode === 'teacher' ? (
-              <>Your next classroom<br /></>
-            ) : (
-              <>The right teacher is<br /></>
+            style={{ fontSize: 'clamp(2rem, 4.2vw, 4rem)', lineHeight: 1.08, maxWidth: 900 }}>
+            <span style={{ color: '#ffffff' }}>{typedLine1}</span>
+            {typedLine2 !== null && (
+              <>
+                <br />
+                <span style={{ color: heroMode === 'teacher' ? '#818cf8' : '#fbbf24' }}>{typedLine2}</span>
+              </>
             )}
-            <span style={{ color: heroMode === 'teacher' ? '#3949ab' : '#d97706' }}>
-              {typedTagline}
-            </span>
             <span style={{
-              color: heroMode === 'teacher' ? '#3949ab' : '#d97706',
+              color: heroMode === 'teacher' ? '#818cf8' : '#fbbf24',
               opacity: showCursor ? 1 : 0,
               transition: 'opacity 0.1s',
               fontWeight: 300,
@@ -128,7 +147,7 @@ export default function LandingPage() {
           </h1>
 
           {/* ── Sub-copy ── */}
-          <p className="hero-anim hero-delay-2 mb-10" style={{ fontSize: '1.15rem', color: '#64748b', maxWidth: 540, lineHeight: 1.65 }}>
+          <p className="hero-anim hero-delay-2 mb-10" style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.72)', maxWidth: 540, lineHeight: 1.65 }}>
             {heroMode === 'teacher'
               ? 'Browse verified teaching roles across India. Apply instantly. Zero fees, forever.'
               : 'Post a job in minutes. Get verified teacher profiles straight to your dashboard. First 2 posts every month are free.'}
@@ -141,7 +160,7 @@ export default function LandingPage() {
               className="btn-glow inline-flex items-center gap-2 font-bold px-8 py-4 rounded-xl text-white text-sm"
               style={{
                 background: heroMode === 'teacher' ? 'linear-gradient(135deg, #3949ab, #5c6bc0)' : 'linear-gradient(135deg, #f59e0b, #f97316)',
-                boxShadow: heroMode === 'teacher' ? '0 4px 20px rgba(57,73,171,0.40)' : '0 4px 20px rgba(245,158,11,0.40)',
+                boxShadow: heroMode === 'teacher' ? '0 4px 20px rgba(57,73,171,0.55)' : '0 4px 20px rgba(245,158,11,0.55)',
               }}>
               {heroMode === 'teacher' ? 'Browse Teaching Jobs' : 'Post a Job — Free'}
               <ArrowRight className="w-4 h-4" />
@@ -149,13 +168,13 @@ export default function LandingPage() {
             <Link
               href={heroMode === 'teacher' ? '/register?role=JOB_SEEKER' : '/login'}
               className="inline-flex items-center gap-2 font-semibold px-8 py-4 rounded-xl text-sm transition-colors"
-              style={{ border: '1.5px solid #e2e8f0', color: '#334155', background: '#fff' }}>
+              style={{ border: '1.5px solid rgba(255,255,255,0.28)', color: '#ffffff', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(6px)' }}>
               {heroMode === 'teacher' ? 'Create Free Profile' : 'See How It Works'}
             </Link>
           </div>
 
           {/* ── Micro trust ── */}
-          <p className="hero-anim hero-delay-4 text-xs mb-16" style={{ color: '#94a3b8' }}>
+          <p className="hero-anim hero-delay-4 text-xs mb-16" style={{ color: 'rgba(255,255,255,0.45)' }}>
             {heroMode === 'teacher' ? 'No credit card · Free for teachers, forever' : '2 free job posts every month · No setup fee'}
           </p>
 
@@ -285,7 +304,7 @@ export default function LandingPage() {
       <div style={{ background: '#0d1b2a', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '14px 0' }}>
         <div className="max-w-7xl mx-auto px-6 flex items-center gap-6">
           <span className="text-xs font-bold uppercase tracking-widest flex-shrink-0" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            Schools using EduHire:
+            Schools using SchoolTeacher:
           </span>
           <div className="marquee-track flex-1">
             <div className="animate-marquee-fast flex gap-8 items-center">
@@ -308,7 +327,7 @@ export default function LandingPage() {
       <section className="py-24 px-6" style={{ background: '#f8fafc', borderTop: '1px solid #e8edf5' }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14 will-reveal">
-            <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>Why EduHire</p>
+            <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>Why SchoolTeacher</p>
             <h2 className="font-black mb-3" style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', color: '#0f172a', lineHeight: 1.1 }}>
               Everything you need.
             </h2>
@@ -796,7 +815,7 @@ export default function LandingPage() {
           <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold mb-6"
             style={{ background: '#e8eaf6', color: '#3949ab', border: '1px solid #c5cae9' }}>
             <Sparkles className="w-3.5 h-3.5" />
-            Join EduHire today
+            Join SchoolTeacher today
           </div>
 
           <h2 className="font-black mb-5" style={{ fontSize: 'clamp(2.2rem, 4.5vw, 3.5rem)', color: '#0f172a', lineHeight: 1.1 }}>
@@ -805,7 +824,7 @@ export default function LandingPage() {
 
           <p className="text-base mb-10 max-w-xl mx-auto" style={{ color: '#64748b' }}>
             Whether you&apos;re a teacher looking for the right role or a school that needs the right hire —
-            EduHire is where it happens.
+            SchoolTeacher is where it happens.
           </p>
 
           <div className="flex flex-wrap gap-4 justify-center">
@@ -876,7 +895,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <p className="text-xs" style={{ color: '#475569' }}>© {new Date().getFullYear()} EduHire. All rights reserved.</p>
+            <p className="text-xs" style={{ color: '#475569' }}>© {new Date().getFullYear()} SchoolTeacher. All rights reserved.</p>
             <p className="text-xs" style={{ color: '#475569' }}>Born in Hyderabad. Built for India &amp; beyond.</p>
           </div>
         </div>

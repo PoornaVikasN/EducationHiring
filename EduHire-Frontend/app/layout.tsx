@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'EduHire — Teacher Hiring Platform',
+  title: 'SchoolTeacher — Teacher Hiring Platform',
   description:
     'Find teaching jobs or hire qualified teachers across India. Verified schools, free for teachers, regional and international placements.',
   icons: {

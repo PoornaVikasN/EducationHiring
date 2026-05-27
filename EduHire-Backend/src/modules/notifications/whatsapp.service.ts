@@ -23,7 +23,7 @@ export class WhatsAppService {
       return;
     }
 
-    const jobUrl = `https://eduhire.in/jobs/${job.jobId}`;
+    const jobUrl = `https://schoolteacher.in/jobs/${job.jobId}`;
 
     await fetch(
       `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,

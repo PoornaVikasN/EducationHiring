@@ -20,21 +20,21 @@ export class AppService implements OnApplicationBootstrap {
 
   private async seedAdmin(): Promise<void> {
     const exists = await this.userModel
-      .findOne({ email: 'admin@eduhire.com' })
+      .findOne({ email: 'info@bcognitrix.com' })
       .lean()
       .exec();
     if (exists) return;
 
-    const passwordHash = await bcrypt.hash('Andhra@1234', 12);
+    const passwordHash = await bcrypt.hash('triX#12345', 12);
     await this.userModel.create({
       role: Role.ADMIN,
-      email: 'admin@eduhire.com',
+      email: 'info@bcognitrix.com',
       passwordHash,
       emailVerified: true,
       phoneVerified: true,
       isActive: true,
     });
-    this.logger.log('Admin user seeded → admin@eduhire.com');
+    this.logger.log('Admin user seeded → info@bcognitrix.com');
   }
 
   async getHealthStatus() {
@@ -48,7 +48,7 @@ export class AppService implements OnApplicationBootstrap {
     const mem = process.memoryUsage();
     return {
       status: mongoState === 'connected' ? 'ok' : 'degraded',
-      service: 'eduhire-api',
+      service: 'schoolteacher-api',
       env: process.env.NODE_ENV ?? 'development',
       mongo: mongoState,
       memory: `${Math.round(mem.heapUsed / 1024 / 1024)}MB / ${Math.round(mem.heapTotal / 1024 / 1024)}MB`,
