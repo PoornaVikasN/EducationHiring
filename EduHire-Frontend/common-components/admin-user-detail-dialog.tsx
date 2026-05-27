@@ -28,6 +28,12 @@ const PRACTICE_LABELS: Record<string, string> = {
   PRIVATE: 'Private',
 };
 
+function roleLabel(role: string) {
+  if (role === 'JOB_SEEKER') return 'Teacher';
+  if (role === 'RECRUITER') return 'School';
+  return 'Admin';
+}
+
 const ACADEMICS_LABELS: Record<string, string> = {
   INTERNSHIP: 'Internship',
   GRADUATE: 'Graduate',
@@ -288,7 +294,7 @@ export function AdminUserDetailDialog({ user, onOpenChange }: Props) {
                 user.role === Role.ADMIN ? 'bg-purple-100 text-purple-700' :
                 user.role === Role.RECRUITER ? 'bg-blue-100 text-blue-700' :
                 'bg-slate-100 text-slate-600'
-              }`}>{user.role.replace('_', ' ')}</span>
+              }`}>{roleLabel(user.role)}</span>
             </div>
             <div>
               <span className="text-text-muted">Status: </span>

@@ -131,11 +131,11 @@ export default function AdminAnalyticsPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <KpiCard label="Total" value={totalUsers} color="text-blue-600" />
-                <KpiCard label="Job Seekers" value={totalSeekers} color="text-sky-600" />
-                <KpiCard label="Recruiters" value={totalRecruiters} color="text-indigo-600" />
+                <KpiCard label="Teachers" value={totalSeekers} color="text-sky-600" />
+                <KpiCard label="Schools" value={totalRecruiters} color="text-indigo-600" />
               </div>
-              <SimpleBar label="Job Seekers" value={seekerPct} max={100} color="bg-sky-500" />
-              <SimpleBar label="Recruiters" value={recruiterPct} max={100} color="bg-indigo-500" />
+              <SimpleBar label="Teachers" value={seekerPct} max={100} color="bg-sky-500" />
+              <SimpleBar label="Schools" value={recruiterPct} max={100} color="bg-indigo-500" />
               <p className="text-[11px] text-text-muted">% of total user base</p>
             </div>
           )}

@@ -124,8 +124,8 @@ export default function AppHeader() {
       <header className="sticky top-0 z-50 bg-brand-header text-white h-16 shadow-lg border-b border-white/5">
         <div className="max-w-7xl mx-auto w-full h-full flex items-center px-4 sm:px-6">
           <span className="flex items-center gap-1">
-            <span className="text-xl font-bold" style={{ color: '#7986cb' }}>Edu</span>
-            <span className="text-xl font-bold">Hire</span>
+            <span className="text-xl font-bold" style={{ color: '#7986cb' }}>School</span>
+            <span className="text-xl font-bold">Teacher</span>
           </span>
         </div>
       </header>
@@ -139,8 +139,8 @@ export default function AppHeader() {
 
         {/* Logo */}
         <Link href={homeHref} className="flex items-center gap-1 mr-6 shrink-0">
-          <span className="text-xl font-bold" style={{ color: '#7986cb' }}>Edu</span>
-          <span className="text-xl font-bold">Hire</span>
+          <span className="text-xl font-bold" style={{ color: '#7986cb' }}>School</span>
+          <span className="text-xl font-bold">Teacher</span>
           {isRecruiter && (
             <span className="ml-2 hidden sm:inline text-[10px] bg-brand-primary px-2 py-0.5 rounded-full font-medium">
               School
@@ -210,7 +210,7 @@ export default function AppHeader() {
                   {displayName}
                 </span>
                 <span className="text-[10px] text-slate-400 leading-tight">
-                  {isAdmin ? 'Administrator' : isRecruiter ? 'School / Recruiter' : 'Teacher'}
+                  {isAdmin ? 'Administrator' : isRecruiter ? 'School' : 'Teacher'}
                 </span>
               </div>
               <ChevronDown
@@ -242,7 +242,7 @@ export default function AppHeader() {
                 </div>
                 <div className="mt-3">
                   <span className="text-xs px-2.5 py-1 bg-white/20 rounded-full font-medium">
-                    {isAdmin ? 'Administrator' : isRecruiter ? 'School / Recruiter' : 'Teacher'}
+                    {isAdmin ? 'Administrator' : isRecruiter ? 'School' : 'Teacher'}
                   </span>
                 </div>
               </div>

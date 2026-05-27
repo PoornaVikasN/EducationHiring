@@ -21,6 +21,12 @@ import { useDebouncedValue } from '../../../hooks/use-debounced-value';
 import { Role, UserStatus } from '../../../lib/shared/enums';
 import { downloadCsv } from '../../../lib/utils/export-csv';
 
+function roleLabel(role: string) {
+  if (role === 'JOB_SEEKER') return 'Teacher';
+  if (role === 'RECRUITER') return 'School';
+  return 'Admin';
+}
+
 function UserRow({
   user,
   onSuspend,
@@ -51,7 +57,7 @@ function UserRow({
           user.role === Role.ADMIN ? 'bg-purple-100 text-purple-700' :
           user.role === Role.RECRUITER ? 'bg-blue-100 text-blue-700' :
           'bg-slate-100 text-slate-600'
-        }`}>{user.role.replace('_', ' ')}</span>
+        }`}>{roleLabel(user.role)}</span>
       </td>
       <td className="px-4 py-3">
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
@@ -233,8 +239,8 @@ function UsersContent() {
                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Roles</SelectItem>
-                  <SelectItem value={Role.JOB_SEEKER}>Job Seeker</SelectItem>
-                  <SelectItem value={Role.RECRUITER}>Recruiter</SelectItem>
+                  <SelectItem value={Role.JOB_SEEKER}>Teacher</SelectItem>
+                  <SelectItem value={Role.RECRUITER}>School</SelectItem>
                 </SelectContent>
               </Select>
             </div>

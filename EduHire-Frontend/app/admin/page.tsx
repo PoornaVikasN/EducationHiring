@@ -156,7 +156,7 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <p className="text-slate-400 text-sm">Admin Panel</p>
-              <h1 className="text-2xl font-bold">EduHire Administration</h1>
+              <h1 className="text-2xl font-bold">SchoolTeacher Administration</h1>
               <p className="text-slate-300 text-sm mt-0.5">{user?.email}</p>
             </div>
           </div>
@@ -174,7 +174,7 @@ export default function AdminDashboardPage() {
         {[
           { label: 'Total Users', value: stats?.totalUsers, icon: Users, bg: 'bg-blue-100', iconColor: 'text-blue-600', href: '/admin/users' },
           { label: 'Teachers', value: stats?.totalSeekers, icon: Users, bg: 'bg-sky-100', iconColor: 'text-sky-600', href: '/admin/users' },
-          { label: 'Recruiters', value: stats?.totalRecruiters, icon: Users, bg: 'bg-indigo-100', iconColor: 'text-indigo-600', href: '/admin/users' },
+          { label: 'Schools', value: stats?.totalRecruiters, icon: Users, bg: 'bg-indigo-100', iconColor: 'text-indigo-600', href: '/admin/users' },
           { label: 'Active Jobs', value: stats?.activeJobs, icon: Briefcase, bg: 'bg-green-100', iconColor: 'text-green-600', href: '/admin/jobs' },
           { label: 'Positions Filled', value: stats?.filledJobs, icon: Trophy, bg: 'bg-purple-100', iconColor: 'text-purple-600', href: '/admin/jobs' },
           { label: 'Pending School Verify', value: stats?.pendingHospitals, icon: CheckCircle, bg: 'bg-amber-100', iconColor: 'text-amber-600', href: '/admin/hospitals' },
