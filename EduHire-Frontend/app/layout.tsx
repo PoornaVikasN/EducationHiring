@@ -15,12 +15,9 @@ export const metadata: Metadata = {
   description:
     'Find teaching jobs or hire qualified teachers across India. Verified schools, free for teachers, regional and international placements.',
   icons: {
-    icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: '32x32' },
-    ],
+    icon: { url: '/icon.svg', type: 'image/svg+xml' },
     apple: { url: '/icon.svg', type: 'image/svg+xml' },
-    shortcut: '/favicon.ico',
+    shortcut: '/icon.svg',
   },
 };
 

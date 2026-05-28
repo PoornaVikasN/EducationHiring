@@ -69,7 +69,7 @@ function LoginForm() {
   return (
     <>
       <h1 className="text-xl font-bold text-text-primary mb-1">Welcome back</h1>
-      <p className="text-sm text-text-muted mb-6">Sign in to your EduHire account</p>
+      <p className="text-sm text-text-muted mb-6">Sign in to your SchoolTeacher account</p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-1.5">

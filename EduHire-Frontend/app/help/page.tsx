@@ -97,11 +97,11 @@ function buildFaqSections(appFee: string, subMo: string) {
         },
         {
           q: "I'm not receiving email notifications. What should I do?",
-          a: 'Check your spam folder first. Add noreply@eduhire.in to your contacts. You can also toggle notification preferences in Settings.',
+          a: 'Check your spam folder first. Add noreply@schoolteacher.in to your contacts. You can also toggle notification preferences in Settings.',
         },
         {
           q: 'How do I contact support?',
-          a: 'Email us at support@eduhire.in or raise a dispute ticket from the Settings page. We respond within 1 business day.',
+          a: 'Email us at support@schoolteacher.in or raise a dispute ticket from the Settings page. We respond within 1 business day.',
         },
       ],
     },
@@ -143,7 +143,7 @@ export default function HelpPage() {
       <section className="py-16 px-6 text-center bg-white border-b border-border-default">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-4xl font-extrabold text-text-primary mb-3">Help & FAQs</h1>
-          <p className="text-text-muted text-lg">Everything you need to know about EduHire.</p>
+          <p className="text-text-muted text-lg">Everything you need to know about SchoolTeacher.</p>
         </div>
       </section>
 
@@ -167,7 +167,7 @@ export default function HelpPage() {
           <h2 className="text-2xl font-bold text-text-primary mb-3">Still have questions?</h2>
           <p className="text-text-muted mb-6">Our support team responds within 1 business day.</p>
           <a
-            href="mailto:support@eduhire.in"
+            href="mailto:support@schoolteacher.in"
             className="inline-block px-8 py-3 rounded-xl text-sm font-bold text-white"
             style={{ background: '#3949ab' }}
           >
@@ -177,7 +177,7 @@ export default function HelpPage() {
       </section>
 
       <footer className="py-8 px-6 border-t border-border-default bg-bg-page text-center text-sm text-text-muted">
-        <p>© 2026 EduHire · <Link href="/about" className="hover:text-text-primary transition-colors">About</Link> · <Link href="/pricing" className="hover:text-text-primary transition-colors">Pricing</Link></p>
+        <p>© 2026 SchoolTeacher · <Link href="/about" className="hover:text-text-primary transition-colors">About</Link> · <Link href="/pricing" className="hover:text-text-primary transition-colors">Pricing</Link></p>
       </footer>
     </div>
   );

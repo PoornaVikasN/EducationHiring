@@ -93,11 +93,11 @@ export default function LandingPage() {
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
       <section
-        className="relative flex flex-col items-center justify-center overflow-hidden"
+        className="relative flex items-center overflow-hidden"
         style={{
           minHeight: '100svh',
           backgroundImage: `
-            linear-gradient(135deg, rgba(10,15,30,0.90) 0%, rgba(26,35,126,0.80) 45%, rgba(10,15,30,0.90) 100%),
+            linear-gradient(135deg, rgba(10,15,30,0.82) 0%, rgba(26,35,126,0.68) 45%, rgba(10,15,30,0.82) 100%),
             url('https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1920&q=80')
           `,
           backgroundSize: 'cover',
@@ -107,194 +107,237 @@ export default function LandingPage() {
         {/* Subtle dot-grid overlay */}
         <div className="bg-grid-white absolute inset-0 pointer-events-none" style={{ opacity: 0.04 }} />
 
-        <div className="relative z-10 w-full max-w-4xl mx-auto px-6 flex flex-col items-center text-center" style={{ paddingTop: 'calc(80px + 4rem)', paddingBottom: '4rem' }}>
+        <div
+          className="relative z-10 w-full max-w-6xl mx-auto px-6 flex flex-col lg:flex-row items-center gap-8 lg:gap-12"
+          style={{ minHeight: '100svh', paddingTop: 'calc(80px + 3rem)', paddingBottom: '3rem' }}
+        >
+          {/* ── LEFT COLUMN ── */}
+          <div className="flex-1 flex flex-col items-center text-center lg:items-start lg:text-left">
 
-          {/* ── Audience toggle ── */}
-          <div className="hero-anim hero-delay-0 inline-flex rounded-full p-1 mb-10"
-            style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.20)', backdropFilter: 'blur(8px)' }}>
-            <button onClick={() => setHeroMode('teacher')}
-              className="px-5 py-2 rounded-full text-sm font-bold transition-all duration-200"
-              style={heroMode === 'teacher'
-                ? { background: '#3949ab', color: '#fff', boxShadow: '0 2px 10px rgba(57,73,171,0.50)' }
-                : { color: 'rgba(255,255,255,0.65)', background: 'transparent' }}>
-              👩‍🏫 For Teachers
-            </button>
-            <button onClick={() => setHeroMode('school')}
-              className="px-5 py-2 rounded-full text-sm font-bold transition-all duration-200"
-              style={heroMode === 'school'
-                ? { background: '#f59e0b', color: '#fff', boxShadow: '0 2px 10px rgba(245,158,11,0.50)' }
-                : { color: 'rgba(255,255,255,0.65)', background: 'transparent' }}>
-              🏫 For Schools
-            </button>
+            {/* Audience toggle */}
+            <div className="hero-anim hero-delay-0 inline-flex rounded-full p-1 mb-8"
+              style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.20)', backdropFilter: 'blur(8px)' }}>
+              <button onClick={() => setHeroMode('teacher')}
+                className="px-5 py-2 rounded-full text-sm font-bold transition-all duration-200"
+                style={heroMode === 'teacher'
+                  ? { background: '#3949ab', color: '#fff', boxShadow: '0 2px 10px rgba(57,73,171,0.50)' }
+                  : { color: 'rgba(255,255,255,0.65)', background: 'transparent' }}>
+                👩‍🏫 For Teachers
+              </button>
+              <button onClick={() => setHeroMode('school')}
+                className="px-5 py-2 rounded-full text-sm font-bold transition-all duration-200"
+                style={heroMode === 'school'
+                  ? { background: '#f59e0b', color: '#fff', boxShadow: '0 2px 10px rgba(245,158,11,0.50)' }
+                  : { color: 'rgba(255,255,255,0.65)', background: 'transparent' }}>
+                🏫 For Schools
+              </button>
+            </div>
+
+            {/* Headline (full typewriter) */}
+            <h1 className="hero-anim hero-delay-1 font-black tracking-tight mb-5"
+              style={{ fontSize: 'clamp(2rem, 4.2vw, 4rem)', lineHeight: 1.08, maxWidth: 700 }}>
+              <span style={{ color: '#ffffff' }}>{typedLine1}</span>
+              {typedLine2 !== null && (
+                <>
+                  <br />
+                  <span style={{ color: heroMode === 'teacher' ? '#818cf8' : '#fbbf24' }}>{typedLine2}</span>
+                </>
+              )}
+              <span style={{
+                color: heroMode === 'teacher' ? '#818cf8' : '#fbbf24',
+                opacity: showCursor ? 1 : 0,
+                transition: 'opacity 0.1s',
+                fontWeight: 300,
+              }}>|</span>
+            </h1>
+
+            {/* Sub-copy */}
+            <p className="hero-anim hero-delay-2 mb-8" style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.72)', maxWidth: 460, lineHeight: 1.65 }}>
+              {heroMode === 'teacher'
+                ? 'Verified schools. Instant apply. Zero fees, forever.'
+                : 'Post in minutes. Get matched with verified teachers. First 2 posts free.'}
+            </p>
+
+            {/* CTAs */}
+            <div className="hero-anim hero-delay-3 flex flex-wrap items-center justify-center lg:justify-start gap-3 mb-4">
+              <Link
+                href={heroMode === 'teacher' ? '/register?role=JOB_SEEKER' : '/register?role=RECRUITER'}
+                className="btn-glow inline-flex items-center gap-2 font-bold px-9 py-4 rounded-xl text-white text-base"
+                style={{
+                  background: heroMode === 'teacher' ? 'linear-gradient(135deg, #3949ab, #5c6bc0)' : 'linear-gradient(135deg, #f59e0b, #f97316)',
+                  boxShadow: heroMode === 'teacher' ? '0 4px 20px rgba(57,73,171,0.55)' : '0 4px 20px rgba(245,158,11,0.55)',
+                }}>
+                {heroMode === 'teacher' ? 'Browse Teaching Jobs' : 'Post a Job — Free'}
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href={heroMode === 'teacher' ? '/register?role=JOB_SEEKER' : '/login'}
+                className="inline-flex items-center gap-2 font-semibold px-7 py-3 rounded-xl text-sm transition-colors"
+                style={{ border: '1.5px solid rgba(255,255,255,0.28)', color: '#ffffff', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(6px)' }}>
+                {heroMode === 'teacher' ? 'Create Free Profile' : 'See How It Works'}
+              </Link>
+            </div>
+
+            {/* Micro trust */}
+            <p className="hero-anim hero-delay-4 text-xs mb-5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              {heroMode === 'teacher' ? 'No credit card · Free for teachers, forever' : '2 free job posts every month · No setup fee'}
+            </p>
+
+            {/* Trust chips */}
+            <div className="hero-anim hero-delay-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">
+              {[
+                '✓ Free for teachers, forever',
+                '✓ Admin-verified schools only',
+                '✓ Direct chat with schools',
+                '✓ 2 free posts/month for schools',
+              ].map((chip) => (
+                <span
+                  key={chip}
+                  className="text-[11px] font-semibold px-3 py-1 rounded-full"
+                  style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.15)' }}
+                >
+                  {chip}
+                </span>
+              ))}
+            </div>
           </div>
 
-          {/* ── Headline (full typewriter) ── */}
-          <h1 className="hero-anim hero-delay-1 font-black tracking-tight mb-5"
-            style={{ fontSize: 'clamp(2rem, 4.2vw, 4rem)', lineHeight: 1.08, maxWidth: 900 }}>
-            <span style={{ color: '#ffffff' }}>{typedLine1}</span>
-            {typedLine2 !== null && (
-              <>
-                <br />
-                <span style={{ color: heroMode === 'teacher' ? '#818cf8' : '#fbbf24' }}>{typedLine2}</span>
-              </>
-            )}
-            <span style={{
-              color: heroMode === 'teacher' ? '#818cf8' : '#fbbf24',
-              opacity: showCursor ? 1 : 0,
-              transition: 'opacity 0.1s',
-              fontWeight: 300,
-            }}>|</span>
-          </h1>
+          {/* ── RIGHT COLUMN — floating cards ── */}
+          <div key={heroMode} className="hidden lg:block relative flex-shrink-0" style={{ width: 420, height: 500 }}>
 
-          {/* ── Sub-copy ── */}
-          <p className="hero-anim hero-delay-2 mb-10" style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.72)', maxWidth: 540, lineHeight: 1.65 }}>
-            {heroMode === 'teacher'
-              ? 'Browse verified teaching roles across India. Apply instantly. Zero fees, forever.'
-              : 'Post a job in minutes. Get verified teacher profiles straight to your dashboard. First 2 posts every month are free.'}
-          </p>
-
-          {/* ── CTAs ── */}
-          <div className="hero-anim hero-delay-3 flex flex-wrap items-center justify-center gap-3 mb-4">
-            <Link
-              href={heroMode === 'teacher' ? '/register?role=JOB_SEEKER' : '/register?role=RECRUITER'}
-              className="btn-glow inline-flex items-center gap-2 font-bold px-8 py-4 rounded-xl text-white text-sm"
+            {/* Blob glow behind cards */}
+            <div
+              className="animate-blob absolute rounded-full pointer-events-none"
               style={{
-                background: heroMode === 'teacher' ? 'linear-gradient(135deg, #3949ab, #5c6bc0)' : 'linear-gradient(135deg, #f59e0b, #f97316)',
-                boxShadow: heroMode === 'teacher' ? '0 4px 20px rgba(57,73,171,0.55)' : '0 4px 20px rgba(245,158,11,0.55)',
-              }}>
-              {heroMode === 'teacher' ? 'Browse Teaching Jobs' : 'Post a Job — Free'}
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href={heroMode === 'teacher' ? '/register?role=JOB_SEEKER' : '/login'}
-              className="inline-flex items-center gap-2 font-semibold px-8 py-4 rounded-xl text-sm transition-colors"
-              style={{ border: '1.5px solid rgba(255,255,255,0.28)', color: '#ffffff', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(6px)' }}>
-              {heroMode === 'teacher' ? 'Create Free Profile' : 'See How It Works'}
-            </Link>
-          </div>
+                top: '40%', left: '30%',
+                transform: 'translate(-50%, -50%)',
+                width: 288, height: 288,
+                background: heroMode === 'teacher'
+                  ? 'radial-gradient(circle, rgba(57,73,171,0.20), transparent)'
+                  : 'radial-gradient(circle, rgba(245,158,11,0.18), transparent)',
+                filter: 'blur(48px)',
+              }}
+            />
 
-          {/* ── Micro trust ── */}
-          <p className="hero-anim hero-delay-4 text-xs mb-16" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            {heroMode === 'teacher' ? 'No credit card · Free for teachers, forever' : '2 free job posts every month · No setup fee'}
-          </p>
-
-          {/* ── Product mockup ── */}
-          <div className="hero-anim hero-delay-4 w-full" style={{ maxWidth: 860 }}>
             {heroMode === 'teacher' ? (
-              /* Teacher mode — profile card + job card */
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Teacher profile card */}
-                <div className="rounded-2xl p-6 text-left" style={{ background: '#fff', border: '1px solid #e2e8f0', boxShadow: '0 8px 40px rgba(57,73,171,0.09), 0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-base font-bold text-white flex-shrink-0"
+              <>
+                {/* Card 1 — Job listing */}
+                <div className="animate-float hero-anim hero-delay-2 absolute rounded-2xl p-4 bg-white shadow-2xl"
+                  style={{ top: '8%', left: '0%', width: 215 }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: '#e8eaf6' }}>
+                      <Building2 className="w-4 h-4" style={{ color: '#3949ab' }} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold" style={{ color: '#0f172a' }}>Sree Vidyanikethan</p>
+                      <p className="text-[10px]" style={{ color: '#94a3b8' }}>CBSE · Hyderabad</p>
+                    </div>
+                  </div>
+                  <p className="text-sm font-black mb-1" style={{ color: '#0f172a' }}>PGT Mathematics</p>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mb-2"
+                    style={{ background: '#e8eaf6', color: '#3949ab' }}>₹35k – 50k / mo</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                      style={{ background: '#dcfce7', color: '#166534' }}>Verified ✓</span>
+                    <span className="text-[10px]" style={{ color: '#94a3b8' }}>📍 Hyderabad, TS</span>
+                  </div>
+                </div>
+
+                {/* Card 2 — Shortlist notification */}
+                <div className="animate-float-delayed hero-anim hero-delay-3 absolute rounded-xl p-3 bg-white shadow-xl"
+                  style={{ top: '2%', right: '0%', width: 175 }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#22c55e' }} />
+                    <span className="text-xs font-bold" style={{ color: '#0f172a' }}>2 new shortlists!</span>
+                  </div>
+                  <p className="text-[10px] leading-relaxed" style={{ color: '#94a3b8' }}>
+                    DPS &amp; Vidyanikethan reviewed your profile
+                  </p>
+                  <p className="text-[10px] mt-1.5 font-semibold" style={{ color: '#3949ab' }}>View now →</p>
+                </div>
+
+                {/* Card 3 — Profile match score */}
+                <div className="animate-float-slow hero-anim hero-delay-4 absolute rounded-2xl p-4 bg-white shadow-2xl"
+                  style={{ bottom: '10%', right: '2%', width: 200 }}>
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
                       style={{ background: 'linear-gradient(135deg, #3949ab, #6366f1)' }}>PS</div>
                     <div>
-                      <p className="font-bold text-sm" style={{ color: '#0f172a' }}>Priya Sharma</p>
-                      <p className="text-xs" style={{ color: '#64748b' }}>PGT Mathematics · 5 yrs exp</p>
-                      <p className="text-[11px]" style={{ color: '#94a3b8' }}>Hyderabad, Telangana</p>
+                      <p className="text-xs font-bold" style={{ color: '#0f172a' }}>Priya Sharma</p>
+                      <p className="text-[10px]" style={{ color: '#94a3b8' }}>PGT · 5 yrs · Hyderabad</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-0.5 mb-3">
-                    {[1,2,3,4,5].map(i => <Star key={i} className="w-3.5 h-3.5" style={{ fill: '#f59e0b', color: '#f59e0b' }} />)}
-                    <span className="text-xs ml-1.5 font-medium" style={{ color: '#64748b' }}>5.0</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px]" style={{ color: '#64748b' }}>Profile score</span>
+                    <span className="text-[10px] font-bold" style={{ color: '#3949ab' }}>92%</span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {['Maths', 'Statistics', 'CBSE', 'B.Ed', 'Immediate'].map(t => (
-                      <span key={t} className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: '#e8eaf6', color: '#3949ab' }}>{t}</span>
+                  <div className="w-full rounded-full h-1.5" style={{ background: '#e2e8f0' }}>
+                    <div className="h-1.5 rounded-full" style={{ width: '92%', background: 'linear-gradient(90deg, #3949ab, #6366f1)' }} />
+                  </div>
+                  <p className="text-[10px] mt-1.5" style={{ color: '#059669' }}>Top 5% for PGT roles ✓</p>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Card 1 — Pipeline stats */}
+                <div className="animate-float hero-anim hero-delay-2 absolute rounded-2xl p-4 bg-white shadow-2xl"
+                  style={{ top: '6%', left: '0%', width: 210 }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-xs font-black" style={{ color: '#0f172a' }}>PGT Mathematics</p>
+                      <p className="text-[10px]" style={{ color: '#94a3b8' }}>Posted 2 days ago</p>
+                    </div>
+                    <div className="flex items-center gap-1 rounded-full px-2 py-0.5" style={{ background: '#f0fdf4' }}>
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e' }} />
+                      <span className="text-[10px] font-bold" style={{ color: '#166534' }}>Live</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[{ n: '47', l: 'Applied', bg: '#e8eaf6', c: '#3949ab' },
+                      { n: '12', l: 'Shortlisted', bg: '#fef9c3', c: '#854d0e' },
+                      { n: '3',  l: 'In Chat', bg: '#dcfce7', c: '#166534' }].map(s => (
+                      <div key={s.l} className="rounded-lg p-2 text-center" style={{ background: s.bg }}>
+                        <p className="text-base font-black" style={{ color: s.c }}>{s.n}</p>
+                        <p className="text-[9px]" style={{ color: s.c }}>{s.l}</p>
+                      </div>
                     ))}
-                  </div>
-                  <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#22c55e' }} />
-                    <span className="text-xs font-semibold" style={{ color: '#166534' }}>Video profile available ▶</span>
                   </div>
                 </div>
 
-                {/* Job listing card */}
-                <div className="rounded-2xl p-6 text-left" style={{ background: '#fff', border: '1px solid #e2e8f0', boxShadow: '0 8px 40px rgba(57,73,171,0.09), 0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#e8eaf6' }}>
-                        <Building2 className="w-5 h-5" style={{ color: '#3949ab' }} />
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm" style={{ color: '#0f172a' }}>Delhi Public School</p>
-                        <p className="text-[11px]" style={{ color: '#94a3b8' }}>New Delhi · CBSE</p>
-                      </div>
+                {/* Card 2 — Top applicant */}
+                <div className="animate-float-delayed hero-anim hero-delay-3 absolute rounded-2xl p-4 bg-white shadow-xl"
+                  style={{ top: '4%', right: '0%', width: 190 }}>
+                  <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: '#94a3b8' }}>Top Match</p>
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                      style={{ background: 'linear-gradient(135deg, #3949ab, #6366f1)' }}>PS</div>
+                    <div>
+                      <p className="text-xs font-bold" style={{ color: '#0f172a' }}>Priya Sharma</p>
+                      <p className="text-[10px]" style={{ color: '#94a3b8' }}>PGT · 5 yrs · Hyd</p>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: '#dcfce7', color: '#166534' }}>Verified ✓</span>
                   </div>
-                  <p className="font-black text-base mb-1" style={{ color: '#0f172a' }}>PGT Mathematics</p>
-                  <p className="text-sm font-semibold mb-3" style={{ color: '#3949ab' }}>₹40,000 – ₹55,000 / month</p>
-                  <div className="flex items-center gap-3 text-xs mb-4" style={{ color: '#94a3b8' }}>
-                    <span>📍 New Delhi</span>
-                    <span>·</span>
-                    <span>47 applicants</span>
-                    <span>·</span>
-                    <span>2 days ago</span>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-semibold" style={{ color: '#64748b' }}>Profile match</span>
-                      <span className="text-[10px] font-bold" style={{ color: '#3949ab' }}>62%</span>
-                    </div>
-                    <div className="w-full rounded-full h-1.5" style={{ background: '#e2e8f0' }}>
-                      <div className="h-1.5 rounded-full" style={{ width: '62%', background: 'linear-gradient(90deg, #3949ab, #6366f1)' }} />
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black" style={{ color: '#059669' }}>95% match</span>
+                    <button className="text-[10px] font-bold px-2.5 py-1 rounded-lg text-white"
+                      style={{ background: '#f59e0b' }}>Chat →</button>
                   </div>
                 </div>
-              </div>
-            ) : (
-              /* School mode — applicant pipeline */
-              <div className="rounded-2xl p-6 text-left" style={{ background: '#fff', border: '1px solid #e2e8f0', boxShadow: '0 8px 40px rgba(245,158,11,0.09), 0 1px 3px rgba(0,0,0,0.04)' }}>
-                {/* Job header */}
-                <div className="flex items-center justify-between mb-5 pb-4" style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <div>
-                    <p className="font-black text-base" style={{ color: '#0f172a' }}>PGT Mathematics</p>
-                    <p className="text-xs mt-0.5" style={{ color: '#64748b' }}>Delhi Public School · Posted 2 days ago</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 rounded-full px-3 py-1" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e' }} />
-                    <span className="text-xs font-bold" style={{ color: '#166534' }}>Live</span>
-                  </div>
-                </div>
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-3 mb-5">
-                  {[
-                    { n: '47', l: 'Applicants', bg: '#e8eaf6', c: '#3949ab' },
-                    { n: '12', l: 'Shortlisted', bg: '#fef9c3', c: '#854d0e' },
-                    { n: '3',  l: 'In Chat',    bg: '#dcfce7', c: '#166534' },
-                  ].map(s => (
-                    <div key={s.l} className="rounded-xl p-3 text-center" style={{ background: s.bg }}>
-                      <p className="font-black text-2xl" style={{ color: s.c }}>{s.n}</p>
-                      <p className="text-[10px] font-semibold mt-0.5" style={{ color: s.c }}>{s.l}</p>
+
+                {/* Card 3 — Chat notification */}
+                <div className="animate-float-slow hero-anim hero-delay-4 absolute rounded-xl p-3 bg-white shadow-xl"
+                  style={{ bottom: '12%', right: '3%', width: 195 }}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
+                      style={{ background: '#f59e0b' }}>PS</div>
+                    <div>
+                      <p className="text-xs font-bold" style={{ color: '#0f172a' }}>Priya Sharma</p>
+                      <p className="text-[10px]" style={{ color: '#94a3b8' }}>started a chat · just now</p>
                     </div>
-                  ))}
+                    <div className="w-2 h-2 rounded-full ml-auto flex-shrink-0" style={{ background: '#22c55e' }} />
+                  </div>
                 </div>
-                {/* Top applicants */}
-                <p className="text-xs font-bold mb-2" style={{ color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Top matches</p>
-                <div className="space-y-2">
-                  {[
-                    { init: 'PS', name: 'Priya Sharma',  role: 'PGT · 5 yrs · Hyderabad', match: 95, color: '#3949ab' },
-                    { init: 'RK', name: 'Ravi Kumar',    role: 'PGT · 3 yrs · Delhi',     match: 88, color: '#0891b2' },
-                    { init: 'SV', name: 'Sunita Verma',  role: 'PGT · 7 yrs · Noida',     match: 82, color: '#7c3aed' },
-                  ].map(a => (
-                    <div key={a.name} className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ border: '1px solid #f1f5f9', background: '#fafafa' }}>
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                          style={{ background: a.color }}>{a.init}</div>
-                        <div>
-                          <p className="text-xs font-bold" style={{ color: '#0f172a' }}>{a.name}</p>
-                          <p className="text-[10px]" style={{ color: '#94a3b8' }}>{a.role}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold" style={{ color: '#059669' }}>{a.match}% match</span>
-                        <button className="text-[10px] font-bold px-2.5 py-1 rounded-lg text-white" style={{ background: '#f59e0b' }}>Chat</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -850,11 +893,11 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
             <div className="col-span-2 md:col-span-1">
               <Link href="/" className="flex items-center gap-0.5 mb-3">
-                <span className="text-xl font-black" style={{ color: '#7986cb' }}>Edu</span>
-                <span className="text-xl font-black text-white">Hire</span>
+                <span className="text-xl font-black" style={{ color: '#7986cb' }}>School</span>
+                <span className="text-xl font-black text-white">Teacher</span>
               </Link>
               <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>
-                Hyderabad-born teacher hiring platform serving Telangana, AP, and all of India.
+                India's teacher hiring platform. Free for teachers, always.
               </p>
             </div>
             <div>

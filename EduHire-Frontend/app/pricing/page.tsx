@@ -21,8 +21,8 @@ export default function PricingPage() {
       {/* Nav */}
       <header className="sticky top-0 z-50 bg-brand-header/95 backdrop-blur-md text-white px-6 h-16 flex items-center border-b border-white/5 shadow-lg">
         <Link href="/" className="flex items-center gap-1 flex-1">
-          <span className="text-xl font-bold" style={{ color: '#7986cb' }}>Edu</span>
-          <span className="text-xl font-bold">Hire</span>
+          <span className="text-xl font-bold" style={{ color: '#7986cb' }}>School</span>
+          <span className="text-xl font-bold">Teacher</span>
         </Link>
         <nav className="hidden md:flex items-center gap-6 mr-6">
           <Link href="/jobs" className="text-sm text-slate-300 hover:text-white transition-colors">Browse Jobs</Link>
@@ -209,7 +209,7 @@ export default function PricingPage() {
           <div className="space-y-4">
             {[
               {
-                q: 'Is EduHire really free for teachers?',
+                q: 'Is SchoolTeacher really free for teachers?',
                 a: 'Yes — completely free to create a profile, browse all listings, and apply to unlimited jobs. You only pay a small confirmation fee after a school shortlists you and you choose to proceed.',
               },
               {
@@ -261,7 +261,7 @@ export default function PricingPage() {
       </section>
 
       <footer className="bg-[#080f18] text-slate-500 py-6 px-6 text-center text-xs">
-        © {new Date().getFullYear()} EduHire · Teacher Hiring Platform · India
+        © {new Date().getFullYear()} SchoolTeacher · Teacher Hiring Platform · India
       </footer>
     </div>
   );
