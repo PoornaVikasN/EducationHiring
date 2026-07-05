@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { CheckCircle, Loader2, MapPin, Upload, User, X } from 'lucide-react';
+import { CheckCircle, Loader2, MapPin, Upload, User, Video, X } from 'lucide-react';
 import { LocationAutocomplete } from '../../../common-components/location-autocomplete';
 import { useEffect, useRef, useState } from 'react';
 
@@ -53,6 +53,9 @@ export default function SeekerProfilePage() {
   const resumeRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [otpInlineOpen, setOtpInlineOpen] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpSending, setOtpSending] = useState(false);
@@ -124,6 +127,7 @@ export default function SeekerProfilePage() {
         medicalCouncilName: (profile.medicalCouncilName as string) ?? '',
       });
       setResumeUrl((profile.resumeUrl as string) ?? null);
+      setVideoUrl((profile.introVideoUrl as string) ?? null);
     }
   }, [profile, reset]);
 
@@ -140,6 +144,7 @@ export default function SeekerProfilePage() {
         gender: values.gender,
         bio: values.bio || undefined,
         resumeUrl: resumeUrl ?? undefined,
+        introVideoUrl: videoUrl ?? undefined,
         skills: values.skills ? values.skills.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
         age: values.age,
         maritalStatus: values.maritalStatus,
@@ -182,6 +187,22 @@ export default function SeekerProfilePage() {
       toast({ title: 'Upload failed', variant: 'destructive' });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingVideo(true);
+    try {
+      const url = await uploadFile(UploadKind.INTRO_VIDEO, file);
+      setVideoUrl(url);
+      toast({ title: 'Intro video uploaded!' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      toast({ title: 'Upload failed', description: msg, variant: 'destructive' });
+    } finally {
+      setUploadingVideo(false);
     }
   };
 
@@ -615,12 +636,39 @@ export default function SeekerProfilePage() {
           )}
         </div>
 
+        {/* ── Intro Video ─────────────────────────────────────────────── */}
+        <div className="bg-bg-card border border-border-default rounded-2xl p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-text-primary border-b border-border-default pb-3">Intro Video</h2>
+          <p className="text-xs text-text-muted -mt-2">Record a short clip introducing yourself. Max 10MB, MP4 or MOV.</p>
+          <input ref={videoRef} type="file" accept="video/mp4,video/quicktime" className="hidden" onChange={handleVideoUpload} />
+          {videoUrl ? (
+            <div className="flex items-center justify-between bg-brand-primary-light border border-brand-primary/20 rounded-xl px-4 py-3">
+              <span className="text-sm text-brand-primary font-medium">Intro video uploaded ✓</span>
+              <Button type="button" variant="outline" size="sm" onClick={() => videoRef.current?.click()}>
+                Replace
+              </Button>
+            </div>
+          ) : (
+            <Button type="button" variant="outline" className="w-full" onClick={() => videoRef.current?.click()} disabled={uploadingVideo}>
+              {uploadingVideo ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Uploading…</> : <><Video className="w-4 h-4 mr-2" />Upload Intro Video (max 10MB)</>}
+            </Button>
+          )}
+        </div>
+
         {isSubmitting || mutation.isPending ? (
           <Button disabled className="w-full">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving…
           </Button>
         ) : (
-          <Button type="submit" className="w-full" disabled={!isDirty && resumeUrl === (profile?.resumeUrl as string | null ?? null)}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={
+              !isDirty &&
+              resumeUrl === (profile?.resumeUrl as string | null ?? null) &&
+              videoUrl === (profile?.introVideoUrl as string | null ?? null)
+            }
+          >
             Save Profile
           </Button>
         )}

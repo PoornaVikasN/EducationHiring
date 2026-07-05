@@ -21,6 +21,9 @@ class SeekerProfile {
   @Prop({ type: String, default: null })
   resumeUrl!: string | null;
 
+  @Prop({ type: String, default: null })
+  introVideoUrl!: string | null;
+
   @Prop({ type: [String], default: [] })
   certUrls!: string[];
 

@@ -204,7 +204,7 @@ export default function RecruiterHospitalPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="registrationNumber">Registration Number *</Label>
+            <Label htmlFor="registrationNumber">Affiliation Number / Recognition Number *</Label>
             <Input id="registrationNumber" placeholder="TS/SCH/2024/001" {...register('registrationNumber')} />
             {errors.registrationNumber && <p className="text-xs text-red-500">{errors.registrationNumber.message}</p>}
           </div>

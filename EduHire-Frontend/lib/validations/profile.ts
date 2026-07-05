@@ -33,7 +33,7 @@ export type SeekerProfileFormValues = z.infer<typeof seekerProfileSchema>;
 
 export const hospitalProfileSchema = z.object({
   name: z.string().min(2, 'School name is required').max(120),
-  registrationNumber: z.string().min(3, 'Registration number is required'),
+  registrationNumber: z.string().min(3, 'Affiliation number / recognition number is required'),
   address: z.string().min(5, 'Address is required'),
   city: z.string().min(2, 'City is required'),
   state: z.string().min(2, 'State is required'),

@@ -5,6 +5,8 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { LoggerModule } from 'nestjs-pino';
+import { loggerConfig } from '../config/logger.config';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AdminModule } from '../modules/admin/admin.module';
@@ -43,6 +45,7 @@ function buildMongoUri(): string {
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env'] }),
+    LoggerModule.forRoot(loggerConfig),
     MongooseModule.forRoot(buildMongoUri()),
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),

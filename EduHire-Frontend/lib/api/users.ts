@@ -12,6 +12,7 @@ export interface SeekerProfilePayload {
   availability?: Availability;
   bio?: string;
   resumeUrl?: string;
+  introVideoUrl?: string;
   certificateUrls?: string[];
   skills?: string[];
   age?: number;

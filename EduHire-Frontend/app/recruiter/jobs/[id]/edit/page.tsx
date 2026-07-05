@@ -24,7 +24,7 @@ import { DEGREE_OPTIONS, DEPARTMENT_REQUIREMENTS_OPTIONS, EXPERTISE_OPTIONS, JOB
 import { createJobSchema, type CreateJobFormValues } from '../../../../../lib/validations/jobs';
 
 const DEPARTMENT_OPTIONS = ['Pre-Primary', 'Primary', 'Secondary', 'Senior Secondary', 'Arts & Crafts', 'Computer Science', 'Physical Education', 'Administration', 'Library', 'Counseling', 'Other'].map((d) => ({ value: d, label: d }));
-const ROLE_OPTIONS = ['SGT (Standard Grade Teacher)', 'TGT (Trained Graduate Teacher)', 'PGT (Post Graduate Teacher)', 'Pre-Primary Teacher', 'Head Master / HM', 'Principal', 'Vice Principal', 'Special Educator', 'Lab Assistant', 'Librarian', 'Counselor', 'Other'].map((r) => ({ value: r, label: r }));
+const ROLE_OPTIONS = ['SGT (Standard Grade Teacher)', 'TGT (Trained Graduate Teacher)', 'PGT (Post Graduate Teacher)', 'Pre-Primary Teacher', 'Head Master / HM', 'Principal', 'Vice Principal', 'Special Educator', 'Lab Assistant', 'Librarian', 'Counselor', 'IIT/JEE Faculty', 'NEET Faculty', 'Other'].map((r) => ({ value: r, label: r }));
 
 export default function EditJobPage() {
   const params = useParams<{ id: string }>();

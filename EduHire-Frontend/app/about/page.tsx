@@ -4,12 +4,12 @@ import { SiteHeader } from '../../common-components/site-header';
 
 export const metadata = {
   title: 'About — SchoolTeacher',
-  description: 'SchoolTeacher is Telangana & AP\'s teacher hiring platform, connecting verified schools with qualified teachers across India.',
+  description: 'SchoolTeacher is a Global Teachers Hiring Platform (for free), connecting verified schools with qualified teachers around the world.',
 };
 
 const values = [
   { icon: Heart, title: 'Teachers First', body: 'Every feature is designed around the unique needs of India\'s teaching workforce — from SGT to Principal.' },
-  { icon: MapPin, title: 'Regional Roots', body: 'Born in Hyderabad. We match by area, not just city. A school in Banjara Hills shouldn\'t be showing jobs to teachers in Secunderabad.' },
+  { icon: MapPin, title: 'Global Reach', body: 'A Global Teachers Hiring Platform (for free). We match by area, not just city — teachers and schools connect wherever they are, near or far.' },
   { icon: Shield, title: 'Trust & Verification', body: 'Every school is manually verified by our admin team. Teachers pay only after shortlisting — no money lost on speculative applications.' },
   { icon: Users, title: 'Fair to All Sides', body: 'Schools pay to post beyond the free tier; teachers pay only when they\'re shortlisted. Neither side is exploited.' },
   { icon: BookOpen, title: 'Education Focused', body: 'CBSE, ICSE, Telugu-medium, State Board — we understand the nuances of Indian school education and hiring.' },
@@ -17,7 +17,7 @@ const values = [
 ];
 
 const team = [
-  { name: 'Poorna Vikas', role: 'Co-Founder & CEO', note: 'Former education operations lead with 8+ years in school administration across Telangana.' },
+  { name: 'Poorna Vikas', role: 'Co-Founder & CEO', note: 'Former education operations lead with 8+ years in school administration.' },
   { name: 'Engineering Team', role: 'Product & Engineering', note: 'Ex-startup engineers focused on building reliable, simple tools for India\'s education sector.' },
 ];
 
@@ -36,7 +36,7 @@ export default function AboutPage() {
           </h1>
           <p className="text-blue-100 text-lg leading-relaxed">
             SchoolTeacher was born out of frustration — schools struggling to find qualified teachers, educators
-            scrolling irrelevant listings. We built the platform we wished existed, starting from Hyderabad.
+            scrolling irrelevant listings. We built the platform we wished existed — a Global Teachers Hiring Platform (for free).
           </p>
         </div>
       </section>
@@ -53,7 +53,7 @@ export default function AboutPage() {
             {[
               { label: 'Schools', value: 'Growing' },
               { label: 'Teachers', value: 'Free forever' },
-              { label: 'Cities', value: 'TS + AP + Beyond' },
+              { label: 'Cities', value: 'India + Global' },
               { label: 'Free posts', value: '2/month' },
             ].map(({ label, value }) => (
               <div key={label} className="bg-bg-page rounded-2xl p-6 border border-border-default">

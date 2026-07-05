@@ -40,6 +40,10 @@ export class UpdateSeekerProfileDto {
   resumeUrl?: string;
 
   @IsOptional()
+  @IsUrl()
+  introVideoUrl?: string;
+
+  @IsOptional()
   @IsArray()
   @IsUrl({}, { each: true })
   certUrls?: string[];

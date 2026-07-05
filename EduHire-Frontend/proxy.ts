@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PUBLIC_PATHS = ['/', '/pricing', '/about'];
+const PUBLIC_PATHS = ['/', '/pricing', '/about', '/privacy-policy', '/terms', '/help', '/early-access'];
 const AUTH_PATHS = ['/login', '/register', '/otp-verify', '/forgot-password', '/reset-password'];
 
 export function proxy(request: NextRequest) {
@@ -22,9 +22,9 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Authenticated user on auth page → send to role home
-  // Role home determined client-side after mount (avoids needing role cookie in middleware)
-  if (isAuthPage && hasSession) {
+  // Authenticated user on auth page or landing → send to dashboard
+  // Role home determined client-side after mount (avoids needing role cookie in proxy)
+  if ((isAuthPage || pathname === '/') && hasSession) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

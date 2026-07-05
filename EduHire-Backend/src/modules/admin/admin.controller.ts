@@ -133,7 +133,7 @@ export class AdminController {
     @Body() dto: UpdatePriceDto,
     @CurrentUser() user: { sub: string; email: string },
   ) {
-    return this.systemConfigService.updatePrice(key, dto.valueNumber, user.sub, user.email);
+    return this.systemConfigService.upsertPrice(key, dto.valueNumber, user.sub, user.email);
   }
 
   // ── General settings (radius, etc.) ────────────────────────────────────────

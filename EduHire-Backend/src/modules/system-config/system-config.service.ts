@@ -8,83 +8,69 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import * as crypto from 'crypto';
 import { Model, Types } from 'mongoose';
-import {
-  APPLICATION_FEE_PAISE,
-  RECRUITER_MONTHLY_PAISE,
-  FREE_TIER_JOB_LIMIT,
-} from '../../shared/constants/pricing';
 import { AuditService } from '../audit/audit.service';
 import { SystemConfig, SystemConfigDocument } from './schemas/system-config.schema';
 
-const PRICE_SEEDS: Array<{
+// ─── Pricing is 100% dynamic (see DECISIONS.md D29) ──────────────────────────
+// NO PRICE_SEEDS array here. Every price lives in `SystemConfig{type:'price'}`
+// and is populated by the admin via UI at go-live. `getPricePaise(key)` throws
+// on missing keys so payment endpoints hard-fail until admin configures.
+
+type SettingSeed = {
   key: string;
   label: string;
   description: string;
   valueNumber: number;
   minValue: number;
-}> = [
-  {
-    key: 'RECRUITER_MONTHLY_PAISE',
-    label: 'School Monthly Subscription',
-    description: 'Monthly school subscription for unlimited job posts (paise)',
-    valueNumber: RECRUITER_MONTHLY_PAISE,
-    minValue: 5_000,
-  },
-  {
-    key: 'APPLICATION_FEE_PAISE',
-    label: 'Teacher Shortlist Confirmation Fee',
-    description: 'Teacher pays after shortlist to confirm interview intent — gated behind TEACHER_PAID_ENABLED (paise)',
-    valueNumber: APPLICATION_FEE_PAISE,
-    minValue: 1_000,
-  },
-];
+  maxValue?: number;
+  displayKind?: 'boolean' | 'number';
+  unit?: string;
+};
 
-const SETTING_SEEDS: Array<{ key: string; label: string; description: string; valueNumber: number; minValue: number }> = [
+const SETTING_SEEDS: SettingSeed[] = [
   {
-    key: 'JOB_ALERT_RADIUS_KM',
-    label: 'Job Alert Radius (km)',
-    description: 'Radius in kilometres for location-based job alerts. Teachers within this distance of a new job will receive a notification.',
+    key: 'POSTING_ALERT_RADIUS_KM',
+    label: 'Posting Alert Radius',
+    description:
+      'Radius for location-based posting alerts. Teachers whose saved location is within this distance of a newly posted role will receive a notification — even if the posting city does not match their preferred city list. Minimum 5 km, maximum 200 km.',
     valueNumber: 30,
     minValue: 5,
+    maxValue: 200,
+    unit: 'km',
+    displayKind: 'number',
   },
   {
-    key: 'FREE_TIER_JOB_LIMIT',
-    label: 'Free Tier Job Post Limit',
-    description: 'Maximum number of active job posts a school can have without a paid subscription.',
-    valueNumber: FREE_TIER_JOB_LIMIT,
-    minValue: 1,
-  },
-  {
-    key: 'SCHOOL_PAID_ENABLED',
-    label: 'School Paid Posting Enabled',
-    description: 'When 1, schools must subscribe (RECRUITER_MONTHLY_PAISE) for unlimited posts beyond FREE_TIER_JOB_LIMIT. Set to 0 to make all school posting free.',
+    key: 'URGENT_ALERT_ALL_TEACHERS',
+    label: 'Broadcast URGENT postings to all teachers',
+    description:
+      'When ON (default), every urgent-subscribed teacher with alertUrgentPostings=true receives in-app + email on every new URGENT posting, regardless of their saved cities or location. When OFF, falls back to city-name + radius matching. Subscription + opt-in gates are always enforced.',
     valueNumber: 1,
     minValue: 0,
-  },
-  {
-    key: 'TEACHER_PAID_ENABLED',
-    label: 'Teacher Shortlist Fee Enabled',
-    description: 'When 1, teachers pay APPLICATION_FEE_PAISE after being shortlisted. Set to 0 (default) for free flow: INTERESTED → SHORTLISTED → WON.',
-    valueNumber: 0,
-    minValue: 0,
+    maxValue: 1,
+    displayKind: 'boolean',
   },
 ];
 
-// API keys that admins can rotate via the admin UI
+// API keys that admins can rotate via the admin UI.
+// Add integrations here as they're wired.
 export const API_KEY_WHITELIST: Record<string, { label: string; service: string }> = {
   RAZORPAY_KEY_ID: { label: 'Razorpay Key ID', service: 'Payments' },
   RAZORPAY_KEY_SECRET: { label: 'Razorpay Key Secret', service: 'Payments' },
-  BREVO_API_KEY: { label: 'Brevo API Key', service: 'Email' },
-  MSG91_AUTH_KEY: { label: 'MSG91 Auth Key', service: 'SMS' },
-  MSG91_SENDER_ID: { label: 'MSG91 Sender ID', service: 'SMS' },
-  MSG91_OTP_TEMPLATE_ID: { label: 'MSG91 OTP Template ID', service: 'SMS' },
+  RAZORPAY_WEBHOOK_SECRET: { label: 'Razorpay Webhook Secret', service: 'Payments' },
+  GMAIL_USER: { label: 'Gmail Sender Address', service: 'Email' },
+  GMAIL_CLIENT_ID: { label: 'Gmail OAuth2 Client ID', service: 'Email' },
+  GMAIL_CLIENT_SECRET: { label: 'Gmail OAuth2 Client Secret', service: 'Email' },
+  GMAIL_REFRESH_TOKEN: { label: 'Gmail OAuth2 Refresh Token', service: 'Email' },
+  GOOGLE_API: { label: 'Google UserInfo Endpoint URL', service: 'Google OAuth' },
+  GOOGLE_CLIENT_ID: { label: 'Google OAuth Client ID', service: 'Google OAuth' },
+  GOOGLE_CLIENT_SECRET: { label: 'Google OAuth Client Secret', service: 'Google OAuth' },
   GOOGLE_MAPS_API_KEY: { label: 'Google Maps API Key', service: 'Geolocation' },
   AWS_ACCESS_KEY_ID: { label: 'AWS Access Key ID', service: 'File Storage' },
   AWS_SECRET_ACCESS_KEY: { label: 'AWS Secret Access Key', service: 'File Storage' },
   AWS_BUCKET_NAME: { label: 'AWS Bucket Name', service: 'File Storage' },
   AWS_REGION: { label: 'AWS Region', service: 'File Storage' },
-  WHATSAPP_TOKEN: { label: 'WhatsApp Token', service: 'WhatsApp' },
-  WHATSAPP_PHONE_NUMBER_ID: { label: 'WhatsApp Phone Number ID', service: 'WhatsApp' },
+  AWS_BASE_URL: { label: 'AWS S3 Bucket Public Base URL', service: 'File Storage' },
+  RECAPTCHA_SECRET_KEY: { label: 'reCAPTCHA v3 Secret Key', service: 'Security' },
 };
 
 @Injectable()
@@ -97,26 +83,51 @@ export class SystemConfigService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    for (const seed of PRICE_SEEDS) {
-      const exists = await this.configModel.findOne({ key: seed.key }).lean().exec();
-      if (!exists) {
-        await this.configModel.create({ ...seed, type: 'price', updatedByAdminId: null });
-        this.logger.log(`Seeded pricing config: ${seed.key} = ${seed.valueNumber}`);
-      }
-    }
+    // ── No pricing seeds (D29). Admin fills at go-live.
+
     for (const seed of SETTING_SEEDS) {
       const exists = await this.configModel.findOne({ key: seed.key }).lean().exec();
       if (!exists) {
         await this.configModel.create({ ...seed, type: 'setting', updatedByAdminId: null });
         this.logger.log(`Seeded setting config: ${seed.key} = ${seed.valueNumber}`);
+      } else {
+        // Back-fill metadata on previously-seeded docs that pre-date these fields.
+        // Idempotent — only writes the metadata, never touches valueNumber.
+        const patch: Record<string, unknown> = {};
+        if (seed.displayKind !== undefined && (exists as { displayKind?: string }).displayKind !== seed.displayKind) {
+          patch['displayKind'] = seed.displayKind;
+        }
+        if (seed.unit !== undefined && (exists as { unit?: string }).unit !== seed.unit) {
+          patch['unit'] = seed.unit;
+        }
+        if (seed.maxValue !== undefined && (exists as { maxValue?: number | null }).maxValue !== seed.maxValue) {
+          patch['maxValue'] = seed.maxValue;
+        }
+        if (seed.label && (exists as { label?: string }).label !== seed.label) {
+          patch['label'] = seed.label;
+        }
+        if (seed.description && (exists as { description?: string }).description !== seed.description) {
+          patch['description'] = seed.description;
+        }
+        if (Object.keys(patch).length > 0) {
+          await this.configModel.updateOne({ key: seed.key }, { $set: patch });
+          this.logger.log(`Back-filled setting metadata: ${seed.key} ← ${JSON.stringify(patch)}`);
+        }
       }
     }
   }
 
+  /**
+   * Reads a price from SystemConfig. Throws if unset — payment endpoints
+   * hard-fail on missing config so admin must set every price before go-live.
+   * This is the deliberate D29 behaviour: no fallback constants.
+   */
   async getPricePaise(key: string): Promise<number> {
     const doc = await this.configModel.findOne({ key, type: 'price' }).lean().exec();
     if (!doc || doc.valueNumber == null) {
-      throw new InternalServerErrorException(`Missing pricing config: ${key}`);
+      throw new InternalServerErrorException(
+        `Missing pricing config: ${key}. Admin must set this via Settings → Pricing before this endpoint is usable.`,
+      );
     }
     return doc.valueNumber;
   }
@@ -134,11 +145,19 @@ export class SystemConfigService implements OnModuleInit {
     return doc?.valueNumber ?? fallback;
   }
 
+  async getSettingBoolean(key: string, fallback: boolean): Promise<boolean> {
+    const num = await this.getSettingNumber(key, fallback ? 1 : 0);
+    return num !== 0;
+  }
+
   async updateSetting(key: string, valueNumber: number, adminId: string, adminEmail: string): Promise<void> {
     const doc = await this.configModel.findOne({ key, type: 'setting' }).exec();
     if (!doc) throw new BadRequestException(`Unknown setting key: ${key}`);
     if (valueNumber < doc.minValue) {
       throw new BadRequestException(`Minimum value for ${key} is ${doc.minValue}`);
+    }
+    if (doc.maxValue != null && valueNumber > doc.maxValue) {
+      throw new BadRequestException(`Maximum value for ${key} is ${doc.maxValue}`);
     }
     const oldValue = doc.valueNumber;
     await this.configModel.findByIdAndUpdate(doc._id, {
@@ -150,27 +169,51 @@ export class SystemConfigService implements OnModuleInit {
     );
   }
 
-  async updatePrice(key: string, valueNumber: number, adminId: string, adminEmail: string): Promise<void> {
-    const doc = await this.configModel.findOne({ key, type: 'price' }).exec();
-    if (!doc) throw new BadRequestException(`Unknown price key: ${key}`);
-    if (valueNumber < doc.minValue) {
-      throw new BadRequestException(`Minimum value for ${key} is ${doc.minValue} paise (₹${doc.minValue / 100})`);
+  /**
+   * Create OR update a price row. Because pricing is fully dynamic, admin
+   * both creates new pricing keys AND edits existing ones through this method.
+   * The service accepts a full seed spec so a brand-new key can be created
+   * from the UI without a code deploy.
+   */
+  async upsertPrice(
+    key: string,
+    valueNumber: number,
+    adminId: string,
+    adminEmail: string,
+    meta?: { label?: string; description?: string; minValue?: number },
+  ): Promise<void> {
+    const existing = await this.configModel.findOne({ key, type: 'price' }).exec();
+    const oldValue = existing?.valueNumber ?? null;
+    const label = meta?.label ?? existing?.label ?? key;
+    const description = meta?.description ?? existing?.description ?? '';
+    const minValue = meta?.minValue ?? existing?.minValue ?? 0;
+    if (valueNumber < minValue) {
+      throw new BadRequestException(`Minimum value for ${key} is ${minValue} paise (₹${minValue / 100})`);
     }
-    const oldValue = doc.valueNumber;
-    await this.configModel.findByIdAndUpdate(doc._id, {
-      $set: { valueNumber, updatedByAdminId: new Types.ObjectId(adminId) },
-    });
-    this.auditService.log(adminId, adminEmail, 'PRICE_UPDATED', 'price', key, doc.label,
-      { paise: oldValue, rupees: (oldValue ?? 0) / 100 },
+    await this.configModel.findOneAndUpdate(
+      { key, type: 'price' },
+      {
+        $set: {
+          key, type: 'price', label, description, minValue, valueNumber,
+          updatedByAdminId: new Types.ObjectId(adminId),
+        },
+      },
+      { upsert: true },
+    );
+    this.auditService.log(adminId, adminEmail, existing ? 'PRICE_UPDATED' : 'PRICE_CREATED', 'price', key, label,
+      { paise: oldValue, rupees: oldValue == null ? null : oldValue / 100 },
       { paise: valueNumber, rupees: valueNumber / 100 },
     );
   }
 
-  // ── API Key management (Batch E) ─────────────────────────────────────────────
+  // ── API Key management (encrypted at rest) ─────────────────────────────
 
   private getEncryptionKey(): Buffer {
-    const secret = process.env.JWT_ACCESS_SECRET ?? 'fallback-key-change-me';
-    return Buffer.from(secret.padEnd(32, '0').slice(0, 32));
+    const secret = process.env.CONFIG_ENCRYPTION_KEY;
+    if (!secret || secret.length < 32) {
+      throw new Error('CONFIG_ENCRYPTION_KEY is missing or too short (≥32 chars required).');
+    }
+    return crypto.createHash('sha256').update(secret, 'utf8').digest();
   }
 
   private encrypt(plaintext: string): string {

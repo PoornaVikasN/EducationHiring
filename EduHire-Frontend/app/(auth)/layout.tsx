@@ -24,13 +24,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           {/* Main copy */}
           <div className="py-10">
             <h2 className="text-3xl font-bold leading-tight mb-4">
-              Telangana &amp; AP&apos;s teacher<br />
+              Global Teachers Hiring<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-blue-300">
-                hiring platform.
+                Platform (for free)
               </span>
             </h2>
             <p className="text-slate-400 text-base leading-relaxed mb-10">
-              Born in Hyderabad. Connect with verified CBSE, ICSE and Telugu-medium schools across Telangana, AP, and beyond.
+              Connect with verified CBSE, ICSE and IB schools across India and around the world.
             </p>
 
             <ul className="space-y-4">

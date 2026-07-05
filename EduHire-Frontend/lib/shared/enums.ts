@@ -103,6 +103,7 @@ export enum UploadKind {
   CERTIFICATE = 'certificate',
   DOCUMENT = 'document',
   HOSPITAL_PHOTO = 'hospital_photo',
+  INTRO_VIDEO = 'intro_video',
 }
 
 export enum MaritalStatus {

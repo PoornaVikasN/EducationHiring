@@ -184,4 +184,86 @@ hotlinkable). Reuse the landing-page design blueprint patterns already proven in
 - Reference dummy site (thin app shell, 3 roles): `https://vebspot.com/school/school-teacher-app.html`
 - Landing inspiration: teachaway.com, schrole.com, eteach.com, tes.com, teachstarter.com
 - Base codebase: `Desktop/RxJobs4U/` (do not modify).
-</content>
+
+---
+
+## 8. Rebrand — 2026-07-05
+
+| # | Decision | Rationale |
+|---|---|---|
+| D13 | **Public brand name is "School Teacher"** (with a space). Folder + npm package names stay `EduHire` / `eduhire-*`. Every user-facing string (docs, page titles, `<title>`, email copy, notification body, landing hero) uses "School Teacher". Internal identifiers stay lowercase-hyphen so nothing breaks. | Client renamed; landing page already updated. Path/package rename is unnecessary risk. |
+| D14 | **Substitute-teacher mode is back** as `PostingType.URGENT`. D3 is superseded — the platform now supports both `URGENT` (short-notice sub) and `PERMANENT` (long-term). School and teacher can subscribe to urgent monthly access. | Later client request; matches the healthcare SOS pattern that already works. |
+
+---
+
+## 9. Hardened decisions inherited from RxJobs4U Phase 3a–3f — 2026-07-05
+
+These are the non-obvious calls we made in the sibling project that we're pre-committing to here from day 1. Every one is either a bug-pattern we lived through or an efficiency lesson.
+
+### Security & infra
+
+| # | Decision | Why |
+|---|---|---|
+| D15 | **Custom body-only Mongo-operator sanitizer.** Do NOT use `express-mongo-sanitize` — it mutates `req.query` in place, which crashes on Node 20+ (read-only getter). Custom recursive walker on `req.body` only. | Lost an evening to this in RxJobs4U. Query/params aren't the attack vector; DTOs type-coerce them. See BUG_PATTERNS §Phase 3e. |
+| D16 | **Helmet COOP = `same-origin-allow-popups`** (not the default `same-origin`). | Default blocks Google OAuth popup `postMessage`-back — sign-in silently hangs. Same fix likely clears reCAPTCHA TypeErrors from the badge iframe. |
+| D17 | **`safeEqual` utility for all HMAC compares** (Razorpay, future Meta webhooks). Never `===` / `!==` on signatures. | Timing-attack; caught in RxJobs4U's `eacdadd`. Single helper in `common/utils/crypto.util.ts`. |
+| D18 | **`verifyUploadKey` is opt-in per persist site** (not a global interceptor). Wire into `UsersService.update*`, `SchoolsService.create/update` on any field bearing an S3 URL. | RxJobs4U shipped presign without this and had trust-the-client bugs. HeadObject at persist time is cheap and closes the class. |
+| D19 | **Body size cap explicit at 1 MB** for `json` + `urlencoded`. File uploads bypass the BE entirely (S3 presign). | Cheap DoS defence + locks behaviour vs framework default drift. |
+| D20 | **Env validation via Joi at boot** — fail-fast. `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `CONFIG_ENCRYPTION_KEY` all ≥32 chars and **mutually distinct**. Integration keys required only in `NODE_ENV=production`. | Prod misconfig is expensive; boot-time death is cheap. |
+| D21 | **`tokenVersion` claim** in JWT, revalidated on every request. Bumped on password change / reset / forced logout via `$inc: {tokenVersion:1}`. | Otherwise old access tokens live for 15 min after a credential change. |
+| D22 | **`PUBLIC_FRONTEND_URL` env for every outbound user-facing link.** Never hardcode the FE domain in BE. | RxJobs4U had a `.in` ghost hardcoded in 5 places, found only via repo-wide grep. |
+| D23 | **PII redaction at log-emission** via `redactEmail` / `redactPhone`, PLUS pino redact config for Authorization/cookie/password fields. | Belt + suspenders — one catches app-logs, other catches structured objects. |
+| D24 | **Anonymous auth audit** — `AuditService.logAuthEvent(action, masked, reason, ip, ua)` for `AUTH_FAILED`, `OTP_FAILED`, `OTP_LOCKED`, `PASSWORD_RESET`, `LOGIN_SUCCESS`. Nullable `adminId` on `AuditLog`. | Forensics for credential-stuffing detection; must be forensics-ready before public launch. |
+
+### Data model
+
+| # | Decision | Why |
+|---|---|---|
+| D25 | **All geo fields use a `@Schema({_id:false})` LocationSchema sub-class** with `default: null` on the parent `@Prop`. NEVER inline `{type: {type:String,enum:['Point']}, coordinates:[Number]}`. | Mongoose 9 crashes at schema-build on inline with `default: null` or `default: undefined`. Sub-schema class accepts `null` cleanly. |
+| D26 | **`type: String` explicit** on every `string \| null` `@Prop` even when TS type is unambiguous. | Without it NestJS Mongoose throws `CannotDetermineTypeError` at boot for union types. |
+| D27 | **Never mix `@Prop({index:true})` and `Schema.index()`** on the same field. `@Prop({index:true})` for single-field; `Schema.index()` for compound. | Duplicate index warnings + Atlas may refuse to build. |
+| D28 | **`{returnDocument:'after'}` on `findOneAndUpdate`, never `{new:true}`.** | Mongoose 9 dropped the legacy option; docs may be stale silently. |
+
+### Pricing & config
+
+| # | Decision | Why |
+|---|---|---|
+| D29 | **Pricing is 100% dynamic via `SystemConfig{type:'price'}`.** No hardcoded rupee constants. `getPricePaise(key)` throws if the key isn't configured. Admin fills at go-live via UI. | Departs from RxJobs4U (which had ₹399/₹299/₹99 in a `pricing.ts` file). Client wants pricing flexibility without deploys. |
+| D30 | **SystemConfig settings carry `displayKind` / `unit` / `maxValue` metadata.** FE admin panel branches on `displayKind === 'boolean'` → `<Switch>` render, else `<Input type="number">` + unit suffix. | Otherwise the admin panel shows "Currently set to 1 km" for a 0/1 toggle. |
+| D31 | **Boot-time metadata back-fill** for pre-existing SystemConfig docs. Idempotent — only writes changed fields. | Lets us evolve setting metadata without hand-migrating in prod. |
+
+### Forms & UI
+
+| # | Decision | Why |
+|---|---|---|
+| D32 | **Discriminated forms = discriminated `useForm` instances.** For `type: URGENT \| PERMANENT` posting form, render two separate child components with their own `useForm<VariantValues>()` + variant-specific Zod schema. NEVER one form with a union type. | Otherwise `errors.<field>` becomes uncastable without `as Partial<...>` everywhere. |
+| D33 | **Type-aware display helpers** live in `lib/utils/postings-display.ts`. Every card / detail / dialog that renders a Posting branches on `type === URGENT` to use `urgentQualificationLabel`, `urgentFeeDisplay`, `formatShiftAt`, `formatShiftRange` instead of the salary/experience formatters. | Auto-derived legacy columns don't display meaningfully for urgent — showing "0-0 yrs experience" or "₹240 LPA" on a shift is worse than showing nothing. |
+| D34 | **Notifications bell fetches on mount** (not only on open). | Otherwise the badge count is wrong on first render until user clicks. |
+
+### Ops
+
+| # | Decision | Why |
+|---|---|---|
+| D35 | **`COOKIE_DOMAIN` is blank in local dev.** Set only in prod (`.schoolteacher.com`). | Browser rejects `Domain=.schoolteacher.com` on `localhost` → refresh cookie silently dropped → looks like login is broken. |
+| D36 | **Next.js 16 uses `proxy.ts`** (not `middleware.ts`). Public paths allow-list is the single source of truth for what's not gated. Any new public route → add to `PUBLIC_PATHS` **same commit**. | RxJobs4U had `/privacy-policy` and `/terms` bounce to `/login` for a week because they weren't in the list. |
+| D37 | **Turbopack lazy-compiles per route.** Transient 404s after edits are normal. Fix: hard-refresh browser (`Ctrl+Shift+R`). Persistent: `rm -rf .next && npm run dev`. Not a bug. | Documented so future contributors don't chase ghosts. |
+
+### Chat (Phase 1 planned)
+
+| # | Decision | Why |
+|---|---|---|
+| D38 | **Chat rooms scoped 1:1 with applications.** `roomId === applicationId`. Room created on first entry to `PAID` state. Both parties (teacher + school-admin) joined server-side; anyone else → `disconnect()`. | Simplest scoping; no leaks; matches user's D8 (basic chat with file upload). |
+| D39 | **Chat file uploads** reuse the presign flow with `UploadKind.DOCUMENT` (up to 5 MB, PDF / JPG / PNG). | Reuses infra; no new infra required. |
+| D40 | **Message body max 4000 chars**, validated FE + BE. Longer than the D8 "500-char" spec because file attachments carry most of the weight; long text is fine. | Reconciling D8's 500-char intent with practical UX; if client insists on 500, revisit. **OPEN**. |
+
+---
+
+## 10. Explicit Non-decisions (open, client to confirm)
+
+- Subscription auto-renewal: Razorpay Subscriptions API vs manual re-purchase.
+- Chat 500-char limit vs 4000-char (see D40).
+- Verified badges — who / how.
+- Teacher / school ratings.
+- Referral programme.
+- Actual pricing values (D29 sets the mechanism; values TBD).
+

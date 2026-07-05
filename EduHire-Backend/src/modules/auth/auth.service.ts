@@ -72,7 +72,7 @@ export class AuthService {
         dto.role === Role.JOB_SEEKER
           ? {
               fullName: dto.fullName,
-              headline: null, bio: null, resumeUrl: null, city: null, state: null, availability: null,
+              headline: null, bio: null, resumeUrl: null, introVideoUrl: null, city: null, state: null, availability: null,
               experienceYears: null, skills: [], certUrls: [], desiredCities: [], desiredJobTypes: [],
               age: null, gender: null, maritalStatus: null, degrees: [],
               whatsappNumber: null, whatsappVerified: false, pincode: null, placeOfPractice: null, typeOfPractice: null,

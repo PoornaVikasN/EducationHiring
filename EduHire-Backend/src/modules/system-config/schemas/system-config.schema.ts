@@ -26,6 +26,18 @@ export class SystemConfig {
   @Prop({ required: true, default: 100 })
   minValue!: number;
 
+  // FE render hint. 'boolean' → Switch; 'number' (default if null) → number input.
+  @Prop({ type: String, default: null })
+  displayKind?: 'boolean' | 'number' | null;
+
+  // Display-only suffix shown in the admin UI (e.g. "km", "%", ""). Default ''.
+  @Prop({ type: String, default: '' })
+  unit?: string;
+
+  // Optional upper cap used by both validation (updateSetting) and the FE input max.
+  @Prop({ type: Number, default: null })
+  maxValue?: number | null;
+
   @Prop({ type: Types.ObjectId, default: null })
   updatedByAdminId!: Types.ObjectId | null;
 }

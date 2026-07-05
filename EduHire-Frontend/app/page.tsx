@@ -59,8 +59,8 @@ export default function LandingPage() {
 
   // Full typewriter — types ENTIRE headline (both lines)
   const HEADLINES = {
-    teacher: { line1: 'Your next classroom', line2: 'is waiting.' },
-    school:  { line1: 'The right teacher is', line2: 'one post away.' },
+    teacher: { line1: 'Your Next Destination', line2: 'is waiting' },
+    school:  { line1: 'The right teacher is', line2: 'One Click Away' },
   };
   const fullText = `${HEADLINES[heroMode].line1}\n${HEADLINES[heroMode].line2}`;
   const [typed, setTyped] = useState('');
@@ -167,7 +167,7 @@ export default function LandingPage() {
                   background: heroMode === 'teacher' ? 'linear-gradient(135deg, #3949ab, #5c6bc0)' : 'linear-gradient(135deg, #f59e0b, #f97316)',
                   boxShadow: heroMode === 'teacher' ? '0 4px 20px rgba(57,73,171,0.55)' : '0 4px 20px rgba(245,158,11,0.55)',
                 }}>
-                {heroMode === 'teacher' ? 'Browse Teaching Jobs' : 'Post a Job — Free'}
+                {heroMode === 'teacher' ? 'Teachers Resume' : 'School Management'}
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
@@ -370,12 +370,12 @@ export default function LandingPage() {
       <section className="py-24 px-6" style={{ background: '#f8fafc', borderTop: '1px solid #e8edf5' }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14 will-reveal">
-            <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>Why SchoolTeacher</p>
+            <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>A Dawn of Light</p>
             <h2 className="font-black mb-3" style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', color: '#0f172a', lineHeight: 1.1 }}>
               Everything you need.
             </h2>
             <p className="text-base max-w-md mx-auto" style={{ color: '#64748b' }}>
-              Purpose-built for how education hiring actually works.
+              Literate is matured
             </p>
           </div>
 
@@ -390,21 +390,10 @@ export default function LandingPage() {
                 <MessageSquare className="w-3.5 h-3.5" />
                 Real-time Chat
               </div>
-              <h3 className="font-bold text-lg mb-2 text-white">Talk directly. No middlemen.</h3>
+              <h3 className="font-bold text-lg mb-2 text-white">Interact eachother here on this bridge</h3>
               <p className="text-sm leading-relaxed" style={{ color: '#94a3b8', maxWidth: 340 }}>
-                School and teacher connect the moment there&apos;s a shortlist. One chat thread per application, no email chains.
+                Vacancy in teaching of a School Management will get satisfied by one chat.
               </p>
-              {/* Chat bubble mockup */}
-              <div className="absolute bottom-6 right-6 flex flex-col gap-2 items-end">
-                <div className="rounded-2xl rounded-br-sm px-3 py-2 text-xs font-medium text-white"
-                  style={{ background: '#3949ab', maxWidth: 160 }}>
-                  Are you available to start next month?
-                </div>
-                <div className="rounded-2xl rounded-bl-sm px-3 py-2 text-xs font-medium"
-                  style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.75)', maxWidth: 140 }}>
-                  Yes, I can join June 1st ✓
-                </div>
-              </div>
             </div>
 
             {/* Row 1 — Cell B: Free (narrow) */}
@@ -434,7 +423,7 @@ export default function LandingPage() {
               </div>
               <h3 className="font-bold text-base mb-2" style={{ color: '#0f172a' }}>Intro video profiles</h3>
               <p className="text-sm leading-relaxed" style={{ color: '#64748b' }}>
-                Teachers record a 60-second clip. Schools see the person before the interview.
+                Teachers record a 60-second clip for School Management review. Introduce with your experience and expertise
               </p>
             </div>
 
@@ -466,7 +455,7 @@ export default function LandingPage() {
                 <MapPin className="w-5 h-5" style={{ color: '#f59e0b' }} />
               </div>
               <h3 className="font-bold text-sm mb-1.5" style={{ color: '#0f172a' }}>Location-smart matching</h3>
-              <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>Filter by city, distance radius, or state. Find exactly what&apos;s near you.</p>
+              <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>Filter by city, distance radius, or state and country. Find exactly what&apos;s near you.</p>
             </div>
 
             <div className="will-reveal-scale reveal-delay-2 rounded-3xl p-7"
@@ -476,7 +465,7 @@ export default function LandingPage() {
                 <Zap className="w-5 h-5" style={{ color: '#3949ab' }} />
               </div>
               <h3 className="font-bold text-sm mb-1.5" style={{ color: '#0f172a' }}>One-click apply</h3>
-              <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>No cover letters. No lengthy forms. Just your profile doing the work.</p>
+              <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>Be on job with a real click</p>
             </div>
 
             <div className="will-reveal-scale reveal-delay-3 rounded-3xl p-7"
@@ -591,10 +580,10 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6 py-20">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
             {[
-              { stat: '₹0', label: 'Cost for teachers', accent: '#f59e0b' },
+              { stat: '₹0', label: 'Free for teachers', accent: '#f59e0b' },
               { stat: '48h', label: 'Avg. shortlist response', accent: '#7986cb' },
               { stat: '100%', label: 'Verified school listings', accent: '#7986cb' },
-              { stat: '2+', label: 'Free posts/month for schools', accent: '#f59e0b' },
+              { stat: '2+', label: 'Post Vacancies for free', accent: '#f59e0b' },
             ].map(({ stat, label, accent }, idx) => (
               <div key={label} className={`will-reveal reveal-delay-${idx + 1} flex flex-col items-center text-center`}>
                 <p className="font-black leading-none mb-3" style={{
@@ -633,7 +622,8 @@ export default function LandingPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {['SGT', 'PGT', 'TGT', 'Head Master (HM)', 'Principal', 'Vice Principal',
-                  'Pre-Primary Teacher', 'Special Educator', 'Librarian', 'Counselor'].map(role => (
+                  'Pre-Primary Teacher', 'Special Educator', 'Librarian', 'Counselor',
+                  'IIT/JEE Faculty', 'NEET Faculty'].map(role => (
                   <span key={role} className="px-3 py-1.5 rounded-full text-sm font-semibold cursor-default transition-all hover:-translate-y-0.5 duration-150"
                     style={{ background: '#e8eaf6', color: '#3949ab', border: '1px solid #c5cae9' }}>
                     {role}
@@ -678,13 +668,13 @@ export default function LandingPage() {
               <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold mb-5"
                 style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Globe className="w-3.5 h-3.5" />
-                International Placement Program
+                Global Teachers Hiring Platform (for free)
               </div>
               <h2 className="font-black mb-4 text-white" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.6rem)', lineHeight: 1.2 }}>
                 Teaching opportunities beyond India.
               </h2>
               <p className="text-base mb-8 max-w-lg" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                Teachers from Telangana &amp; AP have been enquiring about opportunities in Gulf countries, South East Asia, and the UK.
+                Teachers from across India have been enquiring about opportunities in Europe, South East Asia, and beyond.
                 Register your interest and we&apos;ll reach out when matching roles go live.
               </p>
               <Link href="/register?role=JOB_SEEKER"
@@ -701,12 +691,18 @@ export default function LandingPage() {
               </p>
               <div className="space-y-2">
                 {[
-                  { flag: '🇦🇪', country: 'UAE / Dubai' },
-                  { flag: '🇸🇦', country: 'Saudi Arabia' },
-                  { flag: '🇶🇦', country: 'Qatar' },
+                  { flag: '🇫🇮', country: 'Finland' },
                   { flag: '🇸🇬', country: 'Singapore' },
                   { flag: '🇲🇾', country: 'Malaysia' },
+                  { flag: '🇺🇸', country: 'USA' },
                   { flag: '🇬🇧', country: 'United Kingdom' },
+                  { flag: '🇩🇪', country: 'Germany' },
+                  { flag: '🇸🇪', country: 'Sweden' },
+                  { flag: '🇦🇺', country: 'Australia' },
+                  { flag: '🇫🇷', country: 'France' },
+                  { flag: '🇳🇱', country: 'Netherlands' },
+                  { flag: '🇨🇭', country: 'Switzerland' },
+                  { flag: '🇮🇪', country: 'Ireland' },
                 ].map(({ flag, country }) => (
                   <div key={country} className="flex items-center gap-3 rounded-xl px-4 py-2.5"
                     style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
@@ -890,14 +886,14 @@ export default function LandingPage() {
       {/* ── FOOTER ───────────────────────────────────────────────────────────── */}
       <footer style={{ background: '#0a1628', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="max-w-6xl mx-auto px-6 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
             <div className="col-span-2 md:col-span-1">
               <Link href="/" className="flex items-center gap-0.5 mb-3">
                 <span className="text-xl font-black" style={{ color: '#7986cb' }}>School</span>
                 <span className="text-xl font-black text-white">Teacher</span>
               </Link>
               <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>
-                India's teacher hiring platform. Free for teachers, always.
+                Global teacher hiring platform. Free for teachers, always.
               </p>
             </div>
             <div>
@@ -936,10 +932,26 @@ export default function LandingPage() {
                 ))}
               </ul>
             </div>
+            <div>
+              <p className="text-xs font-bold text-white uppercase tracking-wider mb-3">Legal</p>
+              <ul className="space-y-2">
+                {[
+                  { label: 'Privacy Policy', href: '/privacy-policy' },
+                  { label: 'Terms & Conditions', href: '/terms' },
+                ].map(({ label, href }) => (
+                  <li key={label}><Link href={href} className="text-xs hover:text-white transition-colors" style={{ color: '#64748b' }}>{label}</Link></li>
+                ))}
+              </ul>
+            </div>
           </div>
           <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <p className="text-xs" style={{ color: '#475569' }}>© {new Date().getFullYear()} SchoolTeacher. All rights reserved.</p>
-            <p className="text-xs" style={{ color: '#475569' }}>Born in Hyderabad. Built for India &amp; beyond.</p>
+            <a href="https://bcognitrix.com/" target="_blank" rel="noopener noreferrer"
+              className="text-xs transition-colors hover:text-white"
+              style={{ color: 'rgba(255,255,255,0.68)', textDecoration: 'none' }}>
+              Made with ♡ by B-COGNITRIX
+            </a>
+            <p className="text-xs" style={{ color: '#475569' }}>Global Teachers Hiring Platform (for free)</p>
           </div>
         </div>
       </footer>
