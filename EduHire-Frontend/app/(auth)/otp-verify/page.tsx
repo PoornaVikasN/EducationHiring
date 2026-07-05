@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { Button } from '../../../common-components/ui/button';
 import { Input } from '../../../common-components/ui/input';
 import { Label } from '../../../common-components/ui/label';
+import { OtpCodeInput } from '../../../common-components/auth/otp-code-input';
 import { authApi } from '../../../lib/api/auth';
 import { useAuth } from '../../../lib/auth-context';
 import { getRoleHome } from '../../../lib/auth-redirect';
@@ -212,15 +213,10 @@ function OtpVerifyForm() {
               {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
             </Button>
           </div>
-          <Input
-            id="code"
-            type="text"
-            inputMode="numeric"
-            placeholder="123456"
-            maxLength={6}
+          <OtpCodeInput
+            value={otpForm.watch('code') ?? ''}
+            onChange={(val) => otpForm.setValue('code', val, { shouldValidate: true })}
             autoFocus
-            className="tracking-[0.4em] text-center text-xl font-mono h-12"
-            {...otpForm.register('code')}
           />
           {otpForm.formState.errors.code && (
             <p className="text-xs text-red-500">{otpForm.formState.errors.code.message}</p>

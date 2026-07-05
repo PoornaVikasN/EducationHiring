@@ -136,7 +136,7 @@ export default function HelpPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-bg-page">
-      <SiteHeader />
+      <SiteHeader forceSolid />
       <div className="h-16" />
 
       {/* Hero */}

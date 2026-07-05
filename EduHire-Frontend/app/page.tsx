@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ArrowRight,
   Building2,
@@ -57,34 +57,25 @@ export default function LandingPage() {
   const [audience, setAudience] = useState<'teacher' | 'school'>('teacher');
   const steps = audience === 'teacher' ? TEACHER_STEPS : SCHOOL_STEPS;
 
-  // Full typewriter — types ENTIRE headline (both lines)
-  const HEADLINES = {
-    teacher: { line1: 'Your Next Destination', line2: 'is waiting' },
-    school:  { line1: 'The right teacher is', line2: 'One Click Away' },
-  };
-  const fullText = `${HEADLINES[heroMode].line1}\n${HEADLINES[heroMode].line2}`;
-  const [typed, setTyped] = useState('');
-  const [showCursor, setShowCursor] = useState(true);
-
-  useEffect(() => {
-    setTyped('');
-    let i = 0;
-    const t = setInterval(() => {
-      i++;
-      setTyped(fullText.slice(0, i));
-      if (i >= fullText.length) clearInterval(t);
-    }, 55);
-    return () => clearInterval(t);
-  }, [heroMode, fullText]);
-
-  useEffect(() => {
-    const blink = setInterval(() => setShowCursor(c => !c), 530);
-    return () => clearInterval(blink);
-  }, []);
-
-  const nlIdx = typed.indexOf('\n');
-  const typedLine1 = nlIdx === -1 ? typed : typed.slice(0, nlIdx);
-  const typedLine2 = nlIdx === -1 ? null : typed.slice(nlIdx + 1);
+  const HERO_COPY = {
+    teacher: {
+      headlineLead: 'Find the teaching role',
+      headlineHighlight: 'you were meant for.',
+      gradient: 'linear-gradient(90deg, #fbbf24, #f59e0b)',
+      subtext: 'Verified schools, real classrooms, zero fees. Build your profile and get discovered.',
+      ctaLabel: 'Create your free profile',
+      ctaHref: '/register?role=JOB_SEEKER',
+    },
+    school: {
+      headlineLead: 'Hire great teachers,',
+      headlineHighlight: 'faster than ever.',
+      gradient: 'linear-gradient(90deg, #818cf8, #6366f1)',
+      subtext: 'Reach verified teachers across India and abroad. Post a role in minutes, shortlist with confidence.',
+      ctaLabel: 'Post your first job',
+      ctaHref: '/register?role=RECRUITER',
+    },
+  } as const;
+  const hero = HERO_COPY[heroMode];
 
   return (
     <div className="flex flex-col min-h-screen overflow-x-hidden bg-white">
@@ -92,104 +83,101 @@ export default function LandingPage() {
       <SiteHeader barOpen={false} />
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
-      <section
-        className="relative flex items-center overflow-hidden"
-        style={{
-          minHeight: '100svh',
-          backgroundImage: `
-            linear-gradient(135deg, rgba(10,15,30,0.82) 0%, rgba(26,35,126,0.68) 45%, rgba(10,15,30,0.82) 100%),
-            url('https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1920&q=80')
-          `,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        {/* Subtle dot-grid overlay */}
-        <div className="bg-grid-white absolute inset-0 pointer-events-none" style={{ opacity: 0.04 }} />
-
+      <section className="relative flex items-end overflow-hidden" style={{ minHeight: '100svh' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="https://images.pexels.com/photos/8617542/pexels-photo-8617542.jpeg?auto=compress&cs=tinysrgb&w=1600"
+          alt="Teacher engaging with students in a classroom"
+          className="absolute inset-0 w-full h-full"
+          style={{ objectFit: 'cover', objectPosition: 'center 30%' }}
+        />
         <div
-          className="relative z-10 w-full max-w-6xl mx-auto px-6 flex flex-col lg:flex-row items-center gap-8 lg:gap-12"
-          style={{ minHeight: '100svh', paddingTop: 'calc(80px + 3rem)', paddingBottom: '3rem' }}
-        >
-          {/* ── LEFT COLUMN ── */}
-          <div className="flex-1 flex flex-col items-center text-center lg:items-start lg:text-left">
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.18) 38%, rgba(0,0,0,0.72) 75%, rgba(0,0,0,0.85) 100%)',
+          }}
+        />
 
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-40 pb-16 md:pb-24">
+          <div style={{ maxWidth: 620 }}>
             {/* Audience toggle */}
-            <div className="hero-anim hero-delay-0 inline-flex rounded-full p-1 mb-8"
+            <div className="hero-anim hero-delay-0 inline-flex rounded-full p-1 mb-6"
               style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.20)', backdropFilter: 'blur(8px)' }}>
               <button onClick={() => setHeroMode('teacher')}
                 className="px-5 py-2 rounded-full text-sm font-bold transition-all duration-200"
                 style={heroMode === 'teacher'
                   ? { background: '#3949ab', color: '#fff', boxShadow: '0 2px 10px rgba(57,73,171,0.50)' }
                   : { color: 'rgba(255,255,255,0.65)', background: 'transparent' }}>
-                👩‍🏫 For Teachers
+                For Teachers
               </button>
               <button onClick={() => setHeroMode('school')}
                 className="px-5 py-2 rounded-full text-sm font-bold transition-all duration-200"
                 style={heroMode === 'school'
                   ? { background: '#f59e0b', color: '#fff', boxShadow: '0 2px 10px rgba(245,158,11,0.50)' }
                   : { color: 'rgba(255,255,255,0.65)', background: 'transparent' }}>
-                🏫 For Schools
+                For Schools
               </button>
             </div>
 
-            {/* Headline (full typewriter) */}
-            <h1 className="hero-anim hero-delay-1 font-black tracking-tight mb-5"
-              style={{ fontSize: 'clamp(2rem, 4.2vw, 4rem)', lineHeight: 1.08, maxWidth: 700 }}>
-              <span style={{ color: '#ffffff' }}>{typedLine1}</span>
-              {typedLine2 !== null && (
-                <>
-                  <br />
-                  <span style={{ color: heroMode === 'teacher' ? '#818cf8' : '#fbbf24' }}>{typedLine2}</span>
-                </>
-              )}
-              <span style={{
-                color: heroMode === 'teacher' ? '#818cf8' : '#fbbf24',
-                opacity: showCursor ? 1 : 0,
-                transition: 'opacity 0.1s',
-                fontWeight: 300,
-              }}>|</span>
+            {/* Badge row */}
+            <div className="hero-anim hero-delay-0 flex flex-wrap gap-2 mb-6">
+              {['Verified Schools', 'Free for Teachers'].map((badge) => (
+                <span key={badge} className="text-[11px] font-semibold px-3 py-1 rounded-full"
+                  style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.20)' }}>
+                  {badge}
+                </span>
+              ))}
+            </div>
+
+            {/* Headline */}
+            <h1 className="hero-anim hero-delay-1 font-black leading-tight tracking-tight mb-5 text-white"
+              style={{ fontSize: 'clamp(2.8rem, 5.5vw, 4.4rem)' }}>
+              {hero.headlineLead}{' '}
+              <span key={heroMode} style={{
+                background: hero.gradient,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                color: 'transparent',
+              }}>
+                {hero.headlineHighlight}
+              </span>
             </h1>
 
             {/* Sub-copy */}
-            <p className="hero-anim hero-delay-2 mb-8" style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.72)', maxWidth: 460, lineHeight: 1.65 }}>
-              {heroMode === 'teacher'
-                ? 'Verified schools. Instant apply. Zero fees, forever.'
-                : 'Post in minutes. Get matched with verified teachers. First 2 posts free.'}
+            <p className="hero-anim hero-delay-2 mb-8 leading-relaxed"
+              style={{ color: 'rgba(255,255,255,0.88)', fontSize: '1.1rem', maxWidth: 520 }}>
+              {hero.subtext}
             </p>
 
             {/* CTAs */}
-            <div className="hero-anim hero-delay-3 flex flex-wrap items-center justify-center lg:justify-start gap-3 mb-4">
+            <div className="hero-anim hero-delay-3 flex flex-wrap items-center gap-3 mb-6">
               <Link
-                href={heroMode === 'teacher' ? '/register?role=JOB_SEEKER' : '/register?role=RECRUITER'}
+                key={heroMode}
+                href={hero.ctaHref}
                 className="btn-glow inline-flex items-center gap-2 font-bold px-9 py-4 rounded-xl text-white text-base"
                 style={{
                   background: heroMode === 'teacher' ? 'linear-gradient(135deg, #3949ab, #5c6bc0)' : 'linear-gradient(135deg, #f59e0b, #f97316)',
                   boxShadow: heroMode === 'teacher' ? '0 4px 20px rgba(57,73,171,0.55)' : '0 4px 20px rgba(245,158,11,0.55)',
                 }}>
-                {heroMode === 'teacher' ? 'Teachers Resume' : 'School Management'}
+                {hero.ctaLabel}
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link
-                href={heroMode === 'teacher' ? '/register?role=JOB_SEEKER' : '/login'}
+              <a
+                href="#how-it-works"
                 className="inline-flex items-center gap-2 font-semibold px-7 py-3 rounded-xl text-sm transition-colors"
                 style={{ border: '1.5px solid rgba(255,255,255,0.28)', color: '#ffffff', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(6px)' }}>
-                {heroMode === 'teacher' ? 'Create Free Profile' : 'See How It Works'}
-              </Link>
+                See how it works
+              </a>
             </div>
 
-            {/* Micro trust */}
-            <p className="hero-anim hero-delay-4 text-xs mb-5" style={{ color: 'rgba(255,255,255,0.45)' }}>
-              {heroMode === 'teacher' ? 'No credit card · Free for teachers, forever' : '2 free job posts every month · No setup fee'}
-            </p>
-
-            {/* Trust chips */}
-            <div className="hero-anim hero-delay-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">
+            {/* Value pills */}
+            <div className="hero-anim hero-delay-4 flex flex-wrap items-center gap-2">
               {[
-                '✓ Free for teachers, forever',
-                '✓ Admin-verified schools only',
-                '✓ Direct chat with schools',
-                '✓ 2 free posts/month for schools',
+                'Free for teachers, forever',
+                'Admin-verified schools only',
+                'Direct chat with schools',
               ].map((chip) => (
                 <span
                   key={chip}
@@ -200,145 +188,6 @@ export default function LandingPage() {
                 </span>
               ))}
             </div>
-          </div>
-
-          {/* ── RIGHT COLUMN — floating cards ── */}
-          <div key={heroMode} className="hidden lg:block relative flex-shrink-0" style={{ width: 420, height: 500 }}>
-
-            {/* Blob glow behind cards */}
-            <div
-              className="animate-blob absolute rounded-full pointer-events-none"
-              style={{
-                top: '40%', left: '30%',
-                transform: 'translate(-50%, -50%)',
-                width: 288, height: 288,
-                background: heroMode === 'teacher'
-                  ? 'radial-gradient(circle, rgba(57,73,171,0.20), transparent)'
-                  : 'radial-gradient(circle, rgba(245,158,11,0.18), transparent)',
-                filter: 'blur(48px)',
-              }}
-            />
-
-            {heroMode === 'teacher' ? (
-              <>
-                {/* Card 1 — Job listing */}
-                <div className="animate-float hero-anim hero-delay-2 absolute rounded-2xl p-4 bg-white shadow-2xl"
-                  style={{ top: '8%', left: '0%', width: 215 }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: '#e8eaf6' }}>
-                      <Building2 className="w-4 h-4" style={{ color: '#3949ab' }} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold" style={{ color: '#0f172a' }}>Sree Vidyanikethan</p>
-                      <p className="text-[10px]" style={{ color: '#94a3b8' }}>CBSE · Hyderabad</p>
-                    </div>
-                  </div>
-                  <p className="text-sm font-black mb-1" style={{ color: '#0f172a' }}>PGT Mathematics</p>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mb-2"
-                    style={{ background: '#e8eaf6', color: '#3949ab' }}>₹35k – 50k / mo</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
-                      style={{ background: '#dcfce7', color: '#166534' }}>Verified ✓</span>
-                    <span className="text-[10px]" style={{ color: '#94a3b8' }}>📍 Hyderabad, TS</span>
-                  </div>
-                </div>
-
-                {/* Card 2 — Shortlist notification */}
-                <div className="animate-float-delayed hero-anim hero-delay-3 absolute rounded-xl p-3 bg-white shadow-xl"
-                  style={{ top: '2%', right: '0%', width: 175 }}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#22c55e' }} />
-                    <span className="text-xs font-bold" style={{ color: '#0f172a' }}>2 new shortlists!</span>
-                  </div>
-                  <p className="text-[10px] leading-relaxed" style={{ color: '#94a3b8' }}>
-                    DPS &amp; Vidyanikethan reviewed your profile
-                  </p>
-                  <p className="text-[10px] mt-1.5 font-semibold" style={{ color: '#3949ab' }}>View now →</p>
-                </div>
-
-                {/* Card 3 — Profile match score */}
-                <div className="animate-float-slow hero-anim hero-delay-4 absolute rounded-2xl p-4 bg-white shadow-2xl"
-                  style={{ bottom: '10%', right: '2%', width: 200 }}>
-                  <div className="flex items-center gap-2.5 mb-3">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg, #3949ab, #6366f1)' }}>PS</div>
-                    <div>
-                      <p className="text-xs font-bold" style={{ color: '#0f172a' }}>Priya Sharma</p>
-                      <p className="text-[10px]" style={{ color: '#94a3b8' }}>PGT · 5 yrs · Hyderabad</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px]" style={{ color: '#64748b' }}>Profile score</span>
-                    <span className="text-[10px] font-bold" style={{ color: '#3949ab' }}>92%</span>
-                  </div>
-                  <div className="w-full rounded-full h-1.5" style={{ background: '#e2e8f0' }}>
-                    <div className="h-1.5 rounded-full" style={{ width: '92%', background: 'linear-gradient(90deg, #3949ab, #6366f1)' }} />
-                  </div>
-                  <p className="text-[10px] mt-1.5" style={{ color: '#059669' }}>Top 5% for PGT roles ✓</p>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Card 1 — Pipeline stats */}
-                <div className="animate-float hero-anim hero-delay-2 absolute rounded-2xl p-4 bg-white shadow-2xl"
-                  style={{ top: '6%', left: '0%', width: 210 }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-xs font-black" style={{ color: '#0f172a' }}>PGT Mathematics</p>
-                      <p className="text-[10px]" style={{ color: '#94a3b8' }}>Posted 2 days ago</p>
-                    </div>
-                    <div className="flex items-center gap-1 rounded-full px-2 py-0.5" style={{ background: '#f0fdf4' }}>
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e' }} />
-                      <span className="text-[10px] font-bold" style={{ color: '#166534' }}>Live</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[{ n: '47', l: 'Applied', bg: '#e8eaf6', c: '#3949ab' },
-                      { n: '12', l: 'Shortlisted', bg: '#fef9c3', c: '#854d0e' },
-                      { n: '3',  l: 'In Chat', bg: '#dcfce7', c: '#166534' }].map(s => (
-                      <div key={s.l} className="rounded-lg p-2 text-center" style={{ background: s.bg }}>
-                        <p className="text-base font-black" style={{ color: s.c }}>{s.n}</p>
-                        <p className="text-[9px]" style={{ color: s.c }}>{s.l}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Card 2 — Top applicant */}
-                <div className="animate-float-delayed hero-anim hero-delay-3 absolute rounded-2xl p-4 bg-white shadow-xl"
-                  style={{ top: '4%', right: '0%', width: 190 }}>
-                  <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: '#94a3b8' }}>Top Match</p>
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg, #3949ab, #6366f1)' }}>PS</div>
-                    <div>
-                      <p className="text-xs font-bold" style={{ color: '#0f172a' }}>Priya Sharma</p>
-                      <p className="text-[10px]" style={{ color: '#94a3b8' }}>PGT · 5 yrs · Hyd</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black" style={{ color: '#059669' }}>95% match</span>
-                    <button className="text-[10px] font-bold px-2.5 py-1 rounded-lg text-white"
-                      style={{ background: '#f59e0b' }}>Chat →</button>
-                  </div>
-                </div>
-
-                {/* Card 3 — Chat notification */}
-                <div className="animate-float-slow hero-anim hero-delay-4 absolute rounded-xl p-3 bg-white shadow-xl"
-                  style={{ bottom: '12%', right: '3%', width: 195 }}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
-                      style={{ background: '#f59e0b' }}>PS</div>
-                    <div>
-                      <p className="text-xs font-bold" style={{ color: '#0f172a' }}>Priya Sharma</p>
-                      <p className="text-[10px]" style={{ color: '#94a3b8' }}>started a chat · just now</p>
-                    </div>
-                    <div className="w-2 h-2 rounded-full ml-auto flex-shrink-0" style={{ background: '#22c55e' }} />
-                  </div>
-                </div>
-              </>
-            )}
           </div>
         </div>
       </section>
@@ -370,12 +219,12 @@ export default function LandingPage() {
       <section className="py-24 px-6" style={{ background: '#f8fafc', borderTop: '1px solid #e8edf5' }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14 will-reveal">
-            <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>A Dawn of Light</p>
+            <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>Why School Teacher</p>
             <h2 className="font-black mb-3" style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', color: '#0f172a', lineHeight: 1.1 }}>
               Everything you need.
             </h2>
             <p className="text-base max-w-md mx-auto" style={{ color: '#64748b' }}>
-              Literate is matured
+              Built for how hiring actually works — not a form dump.
             </p>
           </div>
 
@@ -390,9 +239,9 @@ export default function LandingPage() {
                 <MessageSquare className="w-3.5 h-3.5" />
                 Real-time Chat
               </div>
-              <h3 className="font-bold text-lg mb-2 text-white">Interact eachother here on this bridge</h3>
+              <h3 className="font-bold text-lg mb-2 text-white">Chat directly, no middlemen</h3>
               <p className="text-sm leading-relaxed" style={{ color: '#94a3b8', maxWidth: 340 }}>
-                Vacancy in teaching of a School Management will get satisfied by one chat.
+                Once a school shortlists you, message them directly — no recruiters, no back-and-forth over email.
               </p>
             </div>
 
@@ -423,7 +272,7 @@ export default function LandingPage() {
               </div>
               <h3 className="font-bold text-base mb-2" style={{ color: '#0f172a' }}>Intro video profiles</h3>
               <p className="text-sm leading-relaxed" style={{ color: '#64748b' }}>
-                Teachers record a 60-second clip for School Management review. Introduce with your experience and expertise
+                Record a 60-second intro so schools get a real sense of who you are before the first interview.
               </p>
             </div>
 
@@ -465,7 +314,7 @@ export default function LandingPage() {
                 <Zap className="w-5 h-5" style={{ color: '#3949ab' }} />
               </div>
               <h3 className="font-bold text-sm mb-1.5" style={{ color: '#0f172a' }}>One-click apply</h3>
-              <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>Be on job with a real click</p>
+              <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>Express interest in one tap — no forms, no cover letters.</p>
             </div>
 
             <div className="will-reveal-scale reveal-delay-3 rounded-3xl p-7"
@@ -689,25 +538,28 @@ export default function LandingPage() {
               <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'rgba(255,255,255,0.35)' }}>
                 Where teachers are heading
               </p>
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5" style={{ minWidth: 0 }}>
                 {[
-                  { flag: '🇫🇮', country: 'Finland' },
-                  { flag: '🇸🇬', country: 'Singapore' },
-                  { flag: '🇲🇾', country: 'Malaysia' },
-                  { flag: '🇺🇸', country: 'USA' },
-                  { flag: '🇬🇧', country: 'United Kingdom' },
-                  { flag: '🇩🇪', country: 'Germany' },
-                  { flag: '🇸🇪', country: 'Sweden' },
-                  { flag: '🇦🇺', country: 'Australia' },
-                  { flag: '🇫🇷', country: 'France' },
-                  { flag: '🇳🇱', country: 'Netherlands' },
-                  { flag: '🇨🇭', country: 'Switzerland' },
-                  { flag: '🇮🇪', country: 'Ireland' },
-                ].map(({ flag, country }) => (
-                  <div key={country} className="flex items-center gap-3 rounded-xl px-4 py-2.5"
-                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
-                    <span className="text-lg leading-none">{flag}</span>
-                    <p className="text-sm font-semibold text-white">{country}</p>
+                  { code: 'FI', country: 'Finland' },
+                  { code: 'SG', country: 'Singapore' },
+                  { code: 'MY', country: 'Malaysia' },
+                  { code: 'US', country: 'USA' },
+                  { code: 'UK', country: 'United Kingdom' },
+                  { code: 'DE', country: 'Germany' },
+                  { code: 'SE', country: 'Sweden' },
+                  { code: 'AU', country: 'Australia' },
+                  { code: 'FR', country: 'France' },
+                  { code: 'NL', country: 'Netherlands' },
+                  { code: 'CH', country: 'Switzerland' },
+                  { code: 'IE', country: 'Ireland' },
+                ].map(({ code, country }) => (
+                  <div key={country} className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all hover:-translate-y-0.5 duration-150"
+                    style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.16)' }}>
+                    <span className="flex items-center justify-center flex-shrink-0 rounded-md text-[11px] font-black"
+                      style={{ width: 30, height: 22, background: 'rgba(245,158,11,0.18)', color: '#fbbf24', letterSpacing: '0.02em' }}>
+                      {code}
+                    </span>
+                    <p className="text-sm font-semibold text-white truncate">{country}</p>
                   </div>
                 ))}
               </div>
@@ -719,9 +571,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS — STATIC GRID ───────────────────────────────────────── */}
-      <section className="py-24 px-6" style={{ background: '#f8fafc', borderTop: '1px solid #e8edf5' }}>
-        <div className="max-w-5xl mx-auto">
+      {/* ── TESTIMONIALS — OPPOSITE-DIRECTION MARQUEE ────────────────────────── */}
+      <section className="py-24 overflow-hidden" style={{ background: '#f8fafc', borderTop: '1px solid #e8edf5' }}>
+        <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-14 will-reveal">
             <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>Testimonials</p>
             <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.6rem)', color: '#0f172a', lineHeight: 1.2 }}>
@@ -729,37 +581,41 @@ export default function LandingPage() {
             </h2>
             <p className="text-base mt-2" style={{ color: '#64748b' }}>From teachers who found their role and schools who found their hire.</p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {TESTIMONIALS.map((t, idx) => (
-              <div key={t.name}
-                className={`will-reveal-scale reveal-delay-${(idx % 3) + 1} rounded-2xl p-6 bg-white`}
-                style={{ border: '1px solid #e8edf5', boxShadow: '0 2px 16px rgba(57,73,171,0.05)' }}>
-                {/* Stars */}
-                <div className="flex gap-0.5 mb-3">
-                  {[1,2,3,4,5].map(i => <Star key={i} className="w-3.5 h-3.5" style={{ fill: '#f59e0b', color: '#f59e0b' }} />)}
-                </div>
-                {/* Quote */}
-                <p className="text-sm leading-relaxed mb-4" style={{ color: '#475569', fontStyle: 'italic' }}>
-                  &ldquo;{t.quote}&rdquo;
-                </p>
-                {/* Divider */}
-                <div className="border-t mb-4" style={{ borderColor: '#f1f5f9' }} />
-                {/* Author */}
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                    style={{ background: t.color }}>
-                    {t.initials}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold" style={{ color: '#0f172a' }}>{t.name}</p>
-                    <p className="text-xs" style={{ color: '#94a3b8' }}>{t.role} · {t.school}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
+
+        {[TESTIMONIALS.slice(0, 3), TESTIMONIALS.slice(3, 6)].map((row, rowIdx) => (
+          <div key={rowIdx} className="marquee-track mb-4">
+            <div className={rowIdx === 0 ? 'animate-marquee' : 'animate-marquee-reverse'}>
+              {[...row, ...row].map((t, i) => (
+                <div key={`${t.name}-${i}`}
+                  className="shrink-0 w-72 md:w-80 rounded-2xl p-6 mx-3 bg-white"
+                  style={{ border: '1px solid #e8edf5', boxShadow: '0 2px 16px rgba(57,73,171,0.05)' }}>
+                  {/* Stars */}
+                  <div className="flex gap-0.5 mb-3">
+                    {[1,2,3,4,5].map(s => <Star key={s} className="w-3.5 h-3.5" style={{ fill: '#f59e0b', color: '#f59e0b' }} />)}
+                  </div>
+                  {/* Quote */}
+                  <p className="text-sm leading-relaxed mb-4" style={{ color: '#475569', fontStyle: 'italic' }}>
+                    &ldquo;{t.quote}&rdquo;
+                  </p>
+                  {/* Divider */}
+                  <div className="border-t mb-4" style={{ borderColor: '#f1f5f9' }} />
+                  {/* Author */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                      style={{ background: t.color }}>
+                      {t.initials}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: '#0f172a' }}>{t.name}</p>
+                      <p className="text-xs" style={{ color: '#94a3b8' }}>{t.role} · {t.school}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* ── PRICING ──────────────────────────────────────────────────────────── */}
@@ -778,6 +634,10 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Teachers */}
             <div className="will-reveal-left rounded-3xl p-10" style={{ background: '#f0f4ff', border: '2px solid #c5cae9' }}>
+              <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-5"
+                style={{ background: 'rgba(57,73,171,0.12)' }}>
+                <GraduationCap className="w-5 h-5" style={{ color: '#3949ab' }} />
+              </div>
               <div className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full mb-6"
                 style={{ background: '#dcfce7', color: '#166534' }}>
                 ✨ Always free
@@ -804,6 +664,10 @@ export default function LandingPage() {
 
             {/* Schools */}
             <div className="will-reveal rounded-3xl p-10 relative" style={{ background: '#0d1b2a', border: '2px solid rgba(245,158,11,0.40)' }}>
+              <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-5"
+                style={{ background: 'rgba(245,158,11,0.15)' }}>
+                <Building2 className="w-5 h-5" style={{ color: '#f59e0b' }} />
+              </div>
               <div className="mb-6">
                 <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>For Schools</p>
                 <div className="flex items-end gap-2">
@@ -849,6 +713,10 @@ export default function LandingPage() {
           style={{ width: 440, height: 440, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.09), transparent)', filter: 'blur(60px)', bottom: '-15%', right: '-5%' }} />
         <div className="animate-blob animation-delay-4000 absolute pointer-events-none"
           style={{ width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.06), transparent)', filter: 'blur(50px)', top: '30%', right: '20%' }} />
+
+        {/* Dotted texture overlay */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ backgroundImage: 'radial-gradient(rgba(15,23,42,0.06) 1px, transparent 1px)', backgroundSize: '22px 22px' }} />
 
         <div className="relative z-10 max-w-3xl mx-auto text-center will-reveal">
           <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold mb-6"
@@ -904,7 +772,7 @@ export default function LandingPage() {
                   { label: 'Create profile', href: '/register?role=JOB_SEEKER' },
                   { label: 'Sign in', href: '/login' },
                 ].map(({ label, href }) => (
-                  <li key={label}><Link href={href} className="text-xs hover:text-white transition-colors" style={{ color: '#64748b' }}>{label}</Link></li>
+                  <li key={label}><Link href={href} className="text-xs font-medium hover:text-white transition-colors" style={{ color: '#94a3b8' }}>{label}</Link></li>
                 ))}
               </ul>
             </div>
@@ -916,7 +784,7 @@ export default function LandingPage() {
                   { label: 'Search teachers', href: '/register?role=RECRUITER' },
                   { label: 'Pricing', href: '#pricing' },
                 ].map(({ label, href }) => (
-                  <li key={label}><Link href={href} className="text-xs hover:text-white transition-colors" style={{ color: '#64748b' }}>{label}</Link></li>
+                  <li key={label}><Link href={href} className="text-xs font-medium hover:text-white transition-colors" style={{ color: '#94a3b8' }}>{label}</Link></li>
                 ))}
               </ul>
             </div>
@@ -928,7 +796,7 @@ export default function LandingPage() {
                   { label: 'Help', href: '/help' },
                   { label: 'Early access', href: '/early-access' },
                 ].map(({ label, href }) => (
-                  <li key={label}><Link href={href} className="text-xs hover:text-white transition-colors" style={{ color: '#64748b' }}>{label}</Link></li>
+                  <li key={label}><Link href={href} className="text-xs font-medium hover:text-white transition-colors" style={{ color: '#94a3b8' }}>{label}</Link></li>
                 ))}
               </ul>
             </div>
@@ -939,19 +807,19 @@ export default function LandingPage() {
                   { label: 'Privacy Policy', href: '/privacy-policy' },
                   { label: 'Terms & Conditions', href: '/terms' },
                 ].map(({ label, href }) => (
-                  <li key={label}><Link href={href} className="text-xs hover:text-white transition-colors" style={{ color: '#64748b' }}>{label}</Link></li>
+                  <li key={label}><Link href={href} className="text-xs font-medium hover:text-white transition-colors" style={{ color: '#94a3b8' }}>{label}</Link></li>
                 ))}
               </ul>
             </div>
           </div>
           <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <p className="text-xs" style={{ color: '#475569' }}>© {new Date().getFullYear()} SchoolTeacher. All rights reserved.</p>
+            <p className="text-xs font-medium" style={{ color: '#94a3b8' }}>© {new Date().getFullYear()} SchoolTeacher. All rights reserved.</p>
             <a href="https://bcognitrix.com/" target="_blank" rel="noopener noreferrer"
-              className="text-xs transition-colors hover:text-white"
-              style={{ color: 'rgba(255,255,255,0.68)', textDecoration: 'none' }}>
+              className="text-xs font-semibold transition-colors hover:text-white"
+              style={{ color: 'rgba(255,255,255,0.80)', textDecoration: 'none' }}>
               Made with ♡ by B-COGNITRIX
             </a>
-            <p className="text-xs" style={{ color: '#475569' }}>Global Teachers Hiring Platform (for free)</p>
+            <p className="text-xs font-medium" style={{ color: '#94a3b8' }}>Global Teachers Hiring Platform (for free)</p>
           </div>
         </div>
       </footer>

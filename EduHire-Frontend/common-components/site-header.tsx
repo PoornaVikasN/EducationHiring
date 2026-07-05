@@ -1,14 +1,26 @@
 'use client';
 
+import { Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 interface SiteHeaderProps {
   barOpen?: boolean;
+  /** Set true for pages whose content starts with a light background (no dark hero photo/gradient behind the header) so nav text stays legible before scrolling. */
+  forceSolid?: boolean;
 }
 
-export function SiteHeader({ barOpen = false }: SiteHeaderProps) {
+const NAV_LINKS = [
+  { label: 'How it works', href: '#how-it-works' },
+  { label: 'Pricing', href: '#pricing' },
+  { label: 'For Schools', href: '#for-schools' },
+];
+
+export function SiteHeader({ barOpen = false, forceSolid = false }: SiteHeaderProps) {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handle = () => setScrolled(window.scrollY > 80);
@@ -17,69 +29,114 @@ export function SiteHeader({ barOpen = false }: SiteHeaderProps) {
     return () => window.removeEventListener('scroll', handle);
   }, []);
 
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+
   const topOffset = barOpen ? 36 : 0;
+  const solid = scrolled || mobileOpen || forceSolid;
+
+  const textShadow = solid ? 'none' : '0 1px 3px rgba(0,0,0,0.55)';
 
   return (
-    <header
-      className="fixed left-0 right-0 z-50 h-16"
-      style={{
-        top: `${topOffset}px`,
-        width: '100%',
-        background: scrolled ? 'rgba(13,27,42,0.96)' : 'rgba(255,255,255,0.90)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.07)',
-        boxShadow: scrolled ? '0 2px 20px rgba(0,0,0,0.3)' : '0 1px 8px rgba(0,0,0,0.05)',
-        transition: 'top 0.25s ease, background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease',
-      }}
-    >
-      <div style={{ maxWidth: '80rem', margin: '0 auto', width: '100%', height: '100%', display: 'flex', alignItems: 'center', padding: '0 1.5rem' }}>
-        {/* Logo */}
-        <div className="flex items-center gap-1 flex-1">
-          <Link href="/" className="flex items-center gap-0.5">
-            <span className="text-xl font-black" style={{ color: scrolled ? '#7986cb' : '#3949ab' }}>School</span>
-            <span className="text-xl font-black" style={{ color: scrolled ? '#ffffff' : '#0f172a' }}>Teacher</span>
-          </Link>
-        </div>
+    <>
+      {/* Always-on top scrim — guarantees header contrast over bright hero photos, independent of the hero's own overlay */}
+      {!solid && (
+        <div
+          className="fixed left-0 right-0 z-40 pointer-events-none"
+          style={{ top: `${topOffset}px`, height: '140px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.55), transparent)' }}
+        />
+      )}
 
-        {/* Nav */}
-        <nav className="hidden md:flex items-center gap-7 mr-8">
-          {[
-            { label: 'How it works', href: '#how-it-works' },
-            { label: 'Pricing',      href: '#pricing' },
-            { label: 'For Schools',  href: '#for-schools' },
-          ].map(({ label, href }) => (
-            href.startsWith('#')
-              ? <a key={label} href={href} className="text-sm font-medium"
-                   style={{ color: scrolled ? 'rgba(255,255,255,0.75)' : '#475569', transition: 'color 0.15s ease' }}
-                   onMouseEnter={e => (e.currentTarget.style.color = '#3949ab')}
-                   onMouseLeave={e => (e.currentTarget.style.color = scrolled ? 'rgba(255,255,255,0.75)' : '#475569')}>{label}</a>
-              : <Link key={label} href={href} className="text-sm font-medium"
-                      style={{ color: scrolled ? 'rgba(255,255,255,0.75)' : '#475569', transition: 'color 0.15s ease' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#3949ab'}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = scrolled ? 'rgba(255,255,255,0.75)' : '#475569'}>{label}</Link>
-          ))}
-        </nav>
+      <header
+        className="fixed left-0 right-0 z-50 h-16"
+        style={{
+          top: `${topOffset}px`,
+          width: '100%',
+          background: solid ? 'rgba(13,27,42,0.96)' : 'transparent',
+          backdropFilter: solid ? 'blur(16px)' : 'none',
+          WebkitBackdropFilter: solid ? 'blur(16px)' : 'none',
+          borderBottom: solid ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
+          boxShadow: solid ? '0 2px 20px rgba(0,0,0,0.3)' : 'none',
+          transition: 'top 0.25s ease, background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease, backdrop-filter 0.35s ease',
+        }}
+      >
+        <div style={{ maxWidth: '80rem', margin: '0 auto', width: '100%', height: '100%', display: 'flex', alignItems: 'center', padding: '0 1.5rem' }}>
+          {/* Logo */}
+          <div className="flex items-center gap-1 flex-1">
+            <Link href="/" className="flex items-center gap-0.5">
+              <span className="text-xl font-black" style={{ color: solid ? '#7986cb' : '#c7d2fe', textShadow }}>School</span>
+              <span className="text-xl font-black" style={{ color: '#ffffff', textShadow }}>Teacher</span>
+            </Link>
+          </div>
 
-        {/* CTAs */}
-        <div className="flex items-center gap-3">
-          <Link href="/login" className="text-sm font-medium"
-                style={{ color: scrolled ? 'rgba(255,255,255,0.85)' : '#334155', transition: 'color 0.15s ease' }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#3949ab'}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = scrolled ? 'rgba(255,255,255,0.85)' : '#334155'}>
-            Sign in
-          </Link>
-          <Link
-            href="/register"
-            className="text-sm font-bold text-white px-5 py-2 rounded-xl"
-            style={{ background: 'linear-gradient(135deg, #3949ab, #5c6bc0)', boxShadow: '0 4px 12px rgba(57,73,171,0.35)', transition: 'transform 0.15s ease, box-shadow 0.15s ease' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 18px rgba(57,73,171,0.50)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(57,73,171,0.35)'; }}
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-7 mr-8">
+            {NAV_LINKS.map(({ label, href }) => (
+              <a key={label} href={href} className="text-sm font-semibold"
+                 style={{ color: 'rgba(255,255,255,0.85)', textShadow, transition: 'color 0.15s ease' }}
+                 onMouseEnter={e => (e.currentTarget.style.color = '#c7d2fe')}
+                 onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.85)')}>{label}</a>
+            ))}
+          </nav>
+
+          {/* Desktop CTAs */}
+          <div className="hidden md:flex items-center gap-3">
+            <Link href="/login" className="text-sm font-semibold"
+                  style={{ color: 'rgba(255,255,255,0.92)', textShadow, transition: 'color 0.15s ease' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#c7d2fe'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.92)'}>
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="text-sm font-bold text-white px-5 py-2 rounded-xl"
+              style={{ background: 'linear-gradient(135deg, #3949ab, #5c6bc0)', boxShadow: '0 4px 12px rgba(57,73,171,0.35)', transition: 'transform 0.15s ease, box-shadow 0.15s ease' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 18px rgba(57,73,171,0.50)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(57,73,171,0.35)'; }}
+            >
+              Join free →
+            </Link>
+          </div>
+
+          {/* Mobile hamburger */}
+          <button
+            className="md:hidden p-2 rounded-lg text-white"
+            style={{ background: mobileOpen ? 'rgba(255,255,255,0.10)' : 'transparent' }}
+            onClick={() => setMobileOpen((p) => !p)}
+            aria-label="Toggle menu"
           >
-            Join free →
-          </Link>
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Mobile nav drawer */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-x-0 z-40 md:hidden"
+          style={{ top: `${topOffset + 64}px`, background: 'rgba(13,27,42,0.98)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          <nav className="p-3 space-y-1">
+            {NAV_LINKS.map(({ label, href }) => (
+              <a key={label} href={href} className="block text-sm px-4 py-2.5 rounded-xl font-medium"
+                 style={{ color: 'rgba(255,255,255,0.85)' }}>
+                {label}
+              </a>
+            ))}
+            <div className="border-t border-white/10 mt-2 pt-3 flex flex-col gap-2">
+              <Link href="/login" className="text-sm font-medium px-4 py-2.5 rounded-xl" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                Sign in
+              </Link>
+              <Link
+                href="/register"
+                className="text-sm font-bold text-white px-4 py-2.5 rounded-xl text-center"
+                style={{ background: 'linear-gradient(135deg, #3949ab, #5c6bc0)' }}
+              >
+                Join free →
+              </Link>
+            </div>
+          </nav>
+        </div>
+      )}
+    </>
   );
 }

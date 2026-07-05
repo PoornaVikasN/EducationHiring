@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowRight, Briefcase, CheckCircle, Infinity } from 'lucide-react';
+import { SiteHeader } from '../../common-components/site-header';
 import { usePublicPricing, formatRupees } from '../../hooks/use-public-pricing';
 import {
   RECRUITER_MONTHLY_PAISE,
@@ -17,24 +18,8 @@ export default function PricingPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-
-      {/* Nav */}
-      <header className="sticky top-0 z-50 bg-brand-header/95 backdrop-blur-md text-white px-6 h-16 flex items-center border-b border-white/5 shadow-lg">
-        <Link href="/" className="flex items-center gap-1 flex-1">
-          <span className="text-xl font-bold" style={{ color: '#7986cb' }}>School</span>
-          <span className="text-xl font-bold">Teacher</span>
-        </Link>
-        <nav className="hidden md:flex items-center gap-6 mr-6">
-          <Link href="/jobs" className="text-sm text-slate-300 hover:text-white transition-colors">Browse Jobs</Link>
-          <Link href="/pricing" className="text-sm text-white font-medium transition-colors">Pricing</Link>
-        </nav>
-        <div className="flex items-center gap-3">
-          <Link href="/login" className="text-sm text-slate-300 hover:text-white transition-colors">Sign in</Link>
-          <Link href="/register" className="text-sm bg-brand-primary hover:bg-brand-primary-dark text-white px-4 py-2 rounded-lg transition-colors font-medium">
-            Get started
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
+      <div className="h-16" />
 
       {/* Hero */}
       <section className="bg-brand-header text-white py-20 px-6 text-center">

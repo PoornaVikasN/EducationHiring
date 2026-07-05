@@ -1,7 +1,6 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -10,6 +9,8 @@ import { z } from 'zod';
 import { Button } from '../../../common-components/ui/button';
 import { Input } from '../../../common-components/ui/input';
 import { Label } from '../../../common-components/ui/label';
+import { PasswordField } from '../../../common-components/auth/password-field';
+import { OtpCodeInput } from '../../../common-components/auth/otp-code-input';
 import { authApi } from '../../../lib/api/auth';
 
 const emailSchema = z.object({
@@ -35,7 +36,6 @@ export default function ForgotPasswordPage() {
   const [step, setStep] = useState<'email' | 'reset'>('email');
   const [sentEmail, setSentEmail] = useState('');
   const [serverError, setServerError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [done, setDone] = useState(false);
 
   const emailForm = useForm<EmailInput>({ resolver: zodResolver(emailSchema) });
@@ -95,44 +95,23 @@ export default function ForgotPasswordPage() {
         <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="otp">Verification code</Label>
-            <Input
-              id="otp"
-              type="text"
-              inputMode="numeric"
-              placeholder="123456"
-              maxLength={6}
-              className="tracking-[0.4em] text-center text-xl font-mono h-12"
-              {...resetForm.register('otp')}
+            <OtpCodeInput
+              value={resetForm.watch('otp') ?? ''}
+              onChange={(val) => resetForm.setValue('otp', val, { shouldValidate: true })}
             />
             {resetForm.formState.errors.otp && (
               <p className="text-xs text-red-500">{resetForm.formState.errors.otp.message}</p>
             )}
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="password">New password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="At least 10 characters"
-                autoComplete="new-password"
-                className="pr-10"
-                {...resetForm.register('password')}
-              />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
-                onClick={() => setShowPassword((v) => !v)}
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {resetForm.formState.errors.password && (
-              <p className="text-xs text-red-500">{resetForm.formState.errors.password.message}</p>
-            )}
-          </div>
+          <PasswordField
+            id="password"
+            label="New password"
+            placeholder="At least 10 characters"
+            autoComplete="new-password"
+            registration={resetForm.register('password')}
+            error={resetForm.formState.errors.password?.message}
+          />
 
           <div className="space-y-1.5">
             <Label htmlFor="confirmPassword">Confirm password</Label>

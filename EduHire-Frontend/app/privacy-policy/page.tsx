@@ -1,21 +1,14 @@
 import Link from 'next/link';
 import { Shield } from 'lucide-react';
+import { SiteHeader } from '../../common-components/site-header';
 
 export const metadata = { title: 'Privacy Policy — SchoolTeacher' };
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen" style={{ background: '#f8fafc' }}>
-      {/* Header */}
-      <div style={{ background: '#ffffff', borderBottom: '1px solid #e8edf5' }}>
-        <div className="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-0.5">
-            <span className="text-lg font-black" style={{ color: '#7986cb' }}>School</span>
-            <span className="text-lg font-black" style={{ color: '#0d1b2a' }}>Teacher</span>
-          </Link>
-          <Link href="/" className="text-sm font-medium" style={{ color: '#3949ab' }}>← Back to Home</Link>
-        </div>
-      </div>
+    <div className="min-h-screen bg-bg-page">
+      <SiteHeader forceSolid />
+      <div className="h-16" />
 
       <div className="max-w-3xl mx-auto px-6 py-16">
         {/* Title */}
@@ -24,7 +17,7 @@ export default function PrivacyPolicyPage() {
                style={{ background: '#dcfce7', border: '1px solid #bbf7d0' }}>
             <Shield className="w-5 h-5" style={{ color: '#16a34a' }} />
           </div>
-          <h1 className="text-3xl font-black" style={{ color: '#0d1b2a' }}>Privacy Policy</h1>
+          <h1 className="text-2xl md:text-3xl font-black" style={{ color: '#0d1b2a' }}>Privacy Policy</h1>
         </div>
         <p className="text-sm mb-12" style={{ color: '#64748b' }}>Last updated: July 2026</p>
 
