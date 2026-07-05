@@ -19,22 +19,24 @@ export class AppService implements OnApplicationBootstrap {
   }
 
   private async seedAdmin(): Promise<void> {
-    const exists = await this.userModel
-      .findOne({ email: 'info@bcognitrix.com' })
-      .lean()
-      .exec();
+    await this.seedAdminAccount('info@bcognitrix.com', 'triX#12345');
+    await this.seedAdminAccount('schoolteachermarketing@gmail.com', 'Tricks#098');
+  }
+
+  private async seedAdminAccount(email: string, password: string): Promise<void> {
+    const exists = await this.userModel.findOne({ email }).lean().exec();
     if (exists) return;
 
-    const passwordHash = await bcrypt.hash('triX#12345', 12);
+    const passwordHash = await bcrypt.hash(password, 12);
     await this.userModel.create({
       role: Role.ADMIN,
-      email: 'info@bcognitrix.com',
+      email,
       passwordHash,
       emailVerified: true,
       phoneVerified: true,
       isActive: true,
     });
-    this.logger.log('Admin user seeded → info@bcognitrix.com');
+    this.logger.log(`Admin user seeded → ${email}`);
   }
 
   async getHealthStatus() {
