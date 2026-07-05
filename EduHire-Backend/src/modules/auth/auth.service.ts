@@ -301,7 +301,7 @@ export class AuthService {
         // Token already expired — nothing to blacklist
       }
     }
-    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(REFRESH_COOKIE, { path: '/', domain: this.cookieDomain() });
     return { message: 'Logged out' };
   }
 
@@ -384,16 +384,23 @@ export class AuthService {
     );
 
     // Clear any legacy cookie that was set with a restricted path
-    res.clearCookie(REFRESH_COOKIE, { path: '/api/auth/refresh' });
+    res.clearCookie(REFRESH_COOKIE, { path: '/api/auth/refresh', domain: this.cookieDomain() });
     res.cookie(REFRESH_COOKIE, refreshToken, {
       httpOnly: true,
       secure: this.config.get('NODE_ENV') === 'production',
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/',
+      domain: this.cookieDomain(),
     });
 
     return { accessToken, user: toSafeUser(user) };
+  }
+
+  // COOKIE_DOMAIN must stay unset in dev so the cookie defaults to the request host
+  // (see ProjectDocuments/BUG_PATTERNS.md BE-15).
+  private cookieDomain(): string | undefined {
+    return this.config.get<string>('COOKIE_DOMAIN') || undefined;
   }
 
   private async blacklistToken(token: string, expUnix: number): Promise<void> {
