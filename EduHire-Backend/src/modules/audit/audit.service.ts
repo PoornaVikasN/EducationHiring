@@ -54,4 +54,28 @@ export class AuditService {
 
     return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
   }
+
+  // Fire-and-forget — anonymous auth-flow audit trail (no acting admin). Used to
+  // record failed logins, OTP failures/lockouts, password resets, and successful
+  // logins for security monitoring without blocking the primary auth request.
+  logAuthEvent(
+    action: 'AUTH_FAILED' | 'OTP_FAILED' | 'OTP_LOCKED' | 'PASSWORD_RESET' | 'LOGIN_SUCCESS',
+    maskedEmail: string,
+    reason: string,
+    ip?: string,
+    userAgent?: string,
+  ): void {
+    this.auditModel
+      .create({
+        adminId: null,
+        adminEmail: null,
+        action,
+        entityType: 'auth',
+        entityLabel: maskedEmail,
+        ip: ip ?? null,
+        userAgent: userAgent ?? null,
+        reason,
+      })
+      .catch((err) => this.logger.error(`Auth audit failed: ${err.message}`));
+  }
 }

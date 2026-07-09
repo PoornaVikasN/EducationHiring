@@ -13,30 +13,30 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { ParseObjectIdPipe } from '../../common/pipes/parse-object-id.pipe';
 import { Role } from '../../shared/enums';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
-import { CreateHospitalDto } from './dto/create-hospital.dto';
-import { UpdateHospitalDto } from './dto/update-hospital.dto';
-import { HospitalsService } from './hospitals.service';
+import { CreateSchoolDto } from './dto/create-school.dto';
+import { UpdateSchoolDto } from './dto/update-school.dto';
+import { SchoolsService } from './schools.service';
 
-@Controller('hospitals')
-export class HospitalsController {
-  constructor(private readonly hospitalsService: HospitalsService) {}
+@Controller('schools')
+export class SchoolsController {
+  constructor(private readonly schoolsService: SchoolsService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @Roles(Role.RECRUITER)
-  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateHospitalDto) {
-    return this.hospitalsService.create(user, dto);
+  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateSchoolDto) {
+    return this.schoolsService.create(user, dto);
   }
 
   @Get('mine')
   @Roles(Role.RECRUITER)
-  getMyHospital(@CurrentUser() user: JwtPayload) {
-    return this.hospitalsService.getMyHospital(user);
+  getMySchool(@CurrentUser() user: JwtPayload) {
+    return this.schoolsService.getMySchool(user);
   }
 
   @Get(':id')
   getById(@Param('id', ParseObjectIdPipe) id: string) {
-    return this.hospitalsService.getById(id);
+    return this.schoolsService.getById(id);
   }
 
   @Patch(':id')
@@ -44,8 +44,8 @@ export class HospitalsController {
   update(
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseObjectIdPipe) id: string,
-    @Body() dto: UpdateHospitalDto,
+    @Body() dto: UpdateSchoolDto,
   ) {
-    return this.hospitalsService.update(user, id, dto);
+    return this.schoolsService.update(user, id, dto);
   }
 }

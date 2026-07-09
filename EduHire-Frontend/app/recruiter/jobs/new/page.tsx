@@ -18,35 +18,35 @@ import { Label } from '../../../../common-components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../../common-components/ui/select';
 import { Textarea } from '../../../../common-components/ui/textarea';
 import { jobsApi } from '../../../../lib/api/jobs';
-import { hospitalsApi } from '../../../../lib/api/hospitals';
+import { schoolsApi } from '../../../../lib/api/schools';
 import { subscriptionsApi } from '../../../../lib/api/subscriptions';
 import { uploadFile } from '../../../../lib/api/uploads';
 import { useToast } from '../../../../hooks/use-toast';
-import { useRazorpay } from '../../../../hooks/use-razorpay';
-import { JobType, PaymentKind, SubscriptionStatus, UploadKind } from '../../../../lib/shared/enums';
+import { JobDepartment, Subject, SubscriptionStatus, TeacherPost, UploadKind } from '../../../../lib/shared/enums';
 import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
-import { DEGREE_OPTIONS, DEPARTMENT_REQUIREMENTS_OPTIONS, EXPERTISE_OPTIONS, JOB_TIMING_DISPLAY_OPTIONS, RECRUITER_MONTHLY_PAISE } from '../../../../lib/shared/constants';
+import { DEGREE_OPTIONS, JOB_TIMING_DISPLAY_OPTIONS, RECRUITER_MONTHLY_PAISE } from '../../../../lib/shared/constants';
 import { usePublicPricing, formatRupees } from '../../../../hooks/use-public-pricing';
 import { createJobSchema, type CreateJobFormValues } from '../../../../lib/validations/jobs';
+import { enumComboboxOptions, enumLabel } from '../../../../lib/utils/enum-options';
 
-const DEPARTMENT_OPTIONS = ['Pre-Primary', 'Primary', 'Secondary', 'Senior Secondary', 'Arts & Crafts', 'Computer Science', 'Physical Education', 'Administration', 'Library', 'Counseling', 'Other'].map((d) => ({ value: d, label: d }));
-const ROLE_OPTIONS = ['SGT (Standard Grade Teacher)', 'TGT (Trained Graduate Teacher)', 'PGT (Post Graduate Teacher)', 'Pre-Primary Teacher', 'Head Master / HM', 'Principal', 'Vice Principal', 'Special Educator', 'Lab Assistant', 'Librarian', 'Counselor', 'Other'].map((r) => ({ value: r, label: r }));
+const DEPARTMENT_OPTIONS = enumComboboxOptions(JobDepartment);
+const ROLE_OPTIONS = enumComboboxOptions(TeacherPost);
+const SUBJECT_OPTIONS = Object.values(Subject);
+const JOB_DEPARTMENT_OPTIONS = Object.values(JobDepartment);
 
 function NewJobForm() {
   const router = useRouter();
   const { toast } = useToast();
   const { pricing } = usePublicPricing();
   const subMo = pricing.RECRUITER_MONTHLY_PAISE ?? RECRUITER_MONTHLY_PAISE;
-  const { pay } = useRazorpay();
   const docRef = useRef<HTMLInputElement>(null);
   const [docUploading, setDocUploading] = useState(false);
   const [jobDocumentUrl, setJobDocumentUrl] = useState<string | null>(null);
-  const defaultType = JobType.FULL_TIME;
 
-  const { data: hospital, isLoading: hospitalLoading } = useQuery({
-    queryKey: ['my-hospital'],
-    queryFn: () => hospitalsApi.getMine().then((r) => r.data).catch(() => null),
+  const { data: school, isLoading: schoolLoading } = useQuery({
+    queryKey: ['my-school'],
+    queryFn: () => schoolsApi.getMine().then((r) => r.data).catch(() => null),
   });
 
   const { data: subscription } = useQuery({
@@ -59,7 +59,7 @@ function NewJobForm() {
 
   const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<CreateJobFormValues>({
     resolver: zodResolver(createJobSchema) as Resolver<CreateJobFormValues>,
-    defaultValues: { type: defaultType, experienceMin: 0, experienceMax: 5, salaryMin: 0, salaryMax: 0, departmentRequirements: [] },
+    defaultValues: { experienceMin: 0, experienceMax: 5, salaryMin: 0, salaryMax: 0, departmentRequirements: [] },
   });
 
   const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,33 +78,14 @@ function NewJobForm() {
     }
   };
 
-  const type = watch('type');
-
   const mutation = useMutation({
     mutationFn: (values: CreateJobFormValues) => {
       const requirements = values.requirements.split('\n').map((s) => s.trim()).filter(Boolean);
       return jobsApi.create({ ...values, requirements, openPositions: values.openPositions ?? 1, jobDocumentUrl: jobDocumentUrl ?? undefined, specializations: values.specializations, requiredDegree: values.requiredDegree || undefined });
     },
-    onSuccess: (res) => {
-      const job = res.data;
-      if (job.status === 'PENDING_PAYMENT') {
-        pay(
-          PaymentKind.JOB_POST,
-          job._id,
-          `Teaching job listing — ${formatRupees(subMo)}/mo unlimited`,
-          () => {
-            toast({ title: 'Job posted!', description: 'Your job is now live.' });
-            router.push('/recruiter/jobs');
-          },
-          () => {
-            toast({ title: 'Job created, payment pending', description: 'Pay from My Jobs to activate.' });
-            router.push('/recruiter/jobs');
-          },
-        );
-      } else {
-        toast({ title: 'Job posted!', description: 'Your job is now live.' });
-        router.push('/recruiter/jobs');
-      }
+    onSuccess: () => {
+      toast({ title: 'Job posted!', description: 'Your job is now live.' });
+      router.push('/recruiter/jobs');
     },
     onError: (err) => {
       const msg = axios.isAxiosError(err) ? (err.response?.data?.message ?? 'Failed to post job') : 'Failed to post job';
@@ -112,7 +93,7 @@ function NewJobForm() {
     },
   });
 
-  if (!hospitalLoading && !hospital) {
+  if (!schoolLoading && !school) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
@@ -132,7 +113,7 @@ function NewJobForm() {
             <p className="text-base font-semibold text-text-primary">School profile required</p>
             <p className="text-sm text-text-muted mt-1 max-w-xs">You need to complete your school profile before you can post job listings.</p>
           </div>
-          <Link href="/recruiter/hospital" className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
+          <Link href="/recruiter/school" className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
             <Building2 className="w-4 h-4" /> Set Up School Profile
           </Link>
         </div>
@@ -175,7 +156,7 @@ function NewJobForm() {
               <Combobox
                 options={DEPARTMENT_OPTIONS}
                 value={watch('department') ?? ''}
-                onValueChange={(v) => setValue('department', v, { shouldDirty: true })}
+                onValueChange={(v) => setValue('department', v as JobDepartment, { shouldDirty: true })}
                 placeholder="Select department"
                 searchPlaceholder="Search department…"
               />
@@ -186,7 +167,7 @@ function NewJobForm() {
               <Combobox
                 options={ROLE_OPTIONS}
                 value={watch('role') ?? ''}
-                onValueChange={(v) => setValue('role', v, { shouldDirty: true })}
+                onValueChange={(v) => setValue('role', v as TeacherPost, { shouldDirty: true })}
                 placeholder="Select role"
                 searchPlaceholder="Search role…"
               />
@@ -325,9 +306,10 @@ function NewJobForm() {
           <div className="space-y-1.5">
             <Label>Department Requirements</Label>
             <ExpertiseSelector
-              options={DEPARTMENT_REQUIREMENTS_OPTIONS}
+              options={JOB_DEPARTMENT_OPTIONS}
+              formatLabel={enumLabel}
               value={watch('departmentRequirements') ?? []}
-              onValueChange={(v) => setValue('departmentRequirements', v, { shouldDirty: true })}
+              onValueChange={(v) => setValue('departmentRequirements', v as JobDepartment[], { shouldDirty: true })}
               searchPlaceholder="Search departments…"
               placeholder="Select required departments"
             />
@@ -336,9 +318,10 @@ function NewJobForm() {
           <div className="space-y-1.5">
             <Label>Specializations Required</Label>
             <ExpertiseSelector
-              options={EXPERTISE_OPTIONS}
+              options={SUBJECT_OPTIONS}
+              formatLabel={enumLabel}
               value={watch('specializations') ?? []}
-              onValueChange={(v) => setValue('specializations', v, { shouldDirty: true })}
+              onValueChange={(v) => setValue('specializations', v as Subject[], { shouldDirty: true })}
               searchPlaceholder="Search specializations…"
               placeholder="Select required specializations"
             />
@@ -375,7 +358,7 @@ function NewJobForm() {
         <div className="bg-brand-primary-light border border-brand-primary/20 rounded-xl p-4 text-sm text-brand-primary">
           {hasActiveSub
             ? '✓ You have an active subscription — your job will go live immediately after submitting.'
-            : `📋 If you've used your 2 free listings this month, you'll be taken to the payment page after submitting.`}
+            : `📋 If you've used your 2 free listings this month, subscribe first to keep posting.`}
         </div>
 
         <Button type="submit" className="w-full" disabled={isSubmitting || mutation.isPending}>

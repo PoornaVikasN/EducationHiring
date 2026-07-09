@@ -29,7 +29,7 @@ const PRACTICE_LABELS: Record<string, string> = {
 };
 
 function roleLabel(role: string) {
-  if (role === 'JOB_SEEKER') return 'Teacher';
+  if (role === 'TEACHER') return 'Teacher';
   if (role === 'RECRUITER') return 'School';
   return 'Admin';
 }
@@ -130,11 +130,11 @@ function SeekerView({ user }: { user: AdminUser }) {
 
       <Section title="Professional Details">
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-          {p.typeOfPractice && (
-            <div><span className="text-text-muted">Practice: </span><span className="font-medium text-text-primary">{PRACTICE_LABELS[p.typeOfPractice] ?? p.typeOfPractice}</span></div>
+          {p.employmentType && (
+            <div><span className="text-text-muted">Employment: </span><span className="font-medium text-text-primary">{PRACTICE_LABELS[p.employmentType] ?? p.employmentType}</span></div>
           )}
-          {p.placeOfPractice && (
-            <div><span className="text-text-muted">Place: </span><span className="font-medium text-text-primary">{p.placeOfPractice}</span></div>
+          {p.currentSchool && (
+            <div><span className="text-text-muted">Current School: </span><span className="font-medium text-text-primary">{p.currentSchool}</span></div>
           )}
           {p.academics && (
             <div><span className="text-text-muted">Academics: </span><span className="font-medium text-text-primary">{ACADEMICS_LABELS[p.academics] ?? p.academics}</span></div>
@@ -152,13 +152,13 @@ function SeekerView({ user }: { user: AdminUser }) {
             <div><span className="text-text-muted">Pincode: </span><span className="font-medium text-text-primary">{p.pincode}</span></div>
           )}
           <div>
-            <span className="text-text-muted">Teaching Council Reg: </span>
+            <span className="text-text-muted">Board Registration: </span>
             <span className="font-medium text-text-primary">
-              {p.isRegisteredInCouncil === true ? 'Yes' : p.isRegisteredInCouncil === false ? 'No' : '—'}
+              {p.isRegisteredWithBoard === true ? 'Yes' : p.isRegisteredWithBoard === false ? 'No' : '—'}
             </span>
           </div>
-          {p.isRegisteredInCouncil && p.medicalCouncilName && (
-            <div className="col-span-2"><span className="text-text-muted">Council Name: </span><span className="font-medium text-text-primary">{p.medicalCouncilName}</span></div>
+          {p.isRegisteredWithBoard && p.boardRegistrationName && (
+            <div className="col-span-2"><span className="text-text-muted">Board Name: </span><span className="font-medium text-text-primary">{p.boardRegistrationName}</span></div>
           )}
         </div>
       </Section>
@@ -184,15 +184,6 @@ function SeekerView({ user }: { user: AdminUser }) {
           <ShieldCheck className="w-4 h-4 text-green-600" />
           <span className="text-green-700 font-medium">Has professional liability coverage</span>
         </div>
-      )}
-
-      {(p.desiredJobTypes?.length ?? 0) > 0 && (
-        <Section title="Interested Job Types">
-          <Chips
-            items={p.desiredJobTypes!.map((t) => t === 'FULL_TIME' ? 'Full-time' : t)}
-            color="teal"
-          />
-        </Section>
       )}
 
       {((p.certUrls?.length ?? 0) > 0 || p.resumeUrl) && (
@@ -254,7 +245,7 @@ function RecruiterView({ user }: { user: AdminUser }) {
         <div className="bg-bg-page border border-border-default rounded-lg p-3">
           <p className="text-text-muted mb-0.5">School</p>
           <p className="font-medium text-text-primary truncate">
-            {p?.hospitalName ?? (p?.hospitalId ? 'Linked (name unavailable)' : 'Not linked')}
+            {p?.schoolName ?? (p?.schoolId ? 'Linked (name unavailable)' : 'Not linked')}
           </p>
         </div>
       </div>
@@ -270,7 +261,7 @@ interface Props {
 export function AdminUserDetailDialog({ user, onOpenChange }: Props) {
   if (!user) return null;
 
-  const isSeeker = user.role === Role.JOB_SEEKER;
+  const isSeeker = user.role === Role.TEACHER;
   const title = isSeeker
     ? (user.seekerProfile?.fullName ?? user.email ?? 'Teacher Profile')
     : (user.recruiterProfile?.fullName ?? user.email ?? 'School Profile');

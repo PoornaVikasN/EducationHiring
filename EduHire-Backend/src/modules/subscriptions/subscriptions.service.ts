@@ -3,20 +3,20 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { SubscriptionStatus } from '../../shared/enums';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
-import { Hospital, HospitalDocument } from '../hospitals/schemas/hospital.schema';
+import { School, SchoolDocument } from '../schools/schemas/school.schema';
 import { Subscription, SubscriptionDocument } from './schemas/subscription.schema';
 
 @Injectable()
 export class SubscriptionsService {
   constructor(
     @InjectModel(Subscription.name) private subModel: Model<SubscriptionDocument>,
-    @InjectModel(Hospital.name) private hospitalModel: Model<HospitalDocument>,
+    @InjectModel(School.name) private schoolModel: Model<SchoolDocument>,
   ) {}
 
-  async getActiveForHospital(hospitalId: string): Promise<SubscriptionDocument | null> {
+  async getActiveForSchool(schoolId: string): Promise<SubscriptionDocument | null> {
     return this.subModel
       .findOne({
-        hospitalId: new Types.ObjectId(hospitalId),
+        schoolId: new Types.ObjectId(schoolId),
         status: SubscriptionStatus.ACTIVE,
         expiresAt: { $gt: new Date() },
         deletedAt: null,
@@ -26,14 +26,14 @@ export class SubscriptionsService {
   }
 
   async getMySubscription(user: JwtPayload) {
-    const hospital = await this.hospitalModel
+    const school = await this.schoolModel
       .findOne({ adminUserId: new Types.ObjectId(user.sub) })
       .lean()
       .exec();
-    if (!hospital) return null;
+    if (!school) return null;
 
     return this.subModel
-      .findOne({ hospitalId: hospital._id, deletedAt: null })
+      .findOne({ schoolId: school._id, deletedAt: null })
       .sort({ createdAt: -1 })
       .lean()
       .exec();

@@ -17,18 +17,17 @@ export interface AdminSeekerProfile {
   degrees?: string[];
   whatsappNumber?: string | null;
   pincode?: string | null;
-  placeOfPractice?: string | null;
-  typeOfPractice?: string | null;
+  currentSchool?: string | null;
+  employmentType?: string | null;
   expertise?: string[];
   academics?: string | null;
   salaryRange?: string | null;
   availableTimings?: string[];
   interestedToCover?: string[];
   indemnityInsurance?: boolean | null;
-  isRegisteredInCouncil?: boolean | null;
-  medicalCouncilName?: string | null;
+  isRegisteredWithBoard?: boolean | null;
+  boardRegistrationName?: string | null;
   desiredCities?: string[];
-  desiredJobTypes?: string[];
   certUrls?: string[];
 }
 
@@ -39,13 +38,14 @@ export interface AdminUser {
   role: string;
   status: UserStatus;
   isActive?: boolean;
+  deletedAt?: string | null;
   emailVerified: boolean;
   createdAt: string;
   seekerProfile?: AdminSeekerProfile;
-  recruiterProfile?: { fullName?: string; hospitalId?: string | null; hospitalName?: string | null };
+  recruiterProfile?: { fullName?: string; schoolId?: string | null; schoolName?: string | null };
 }
 
-export interface AdminHospital {
+export interface AdminSchool {
   _id: string;
   name: string;
   registrationNumber?: string;
@@ -60,13 +60,13 @@ export interface AdminHospital {
   contactPhone?: string;
   description?: string | null;
   website?: string | null;
-  noOfOperationTheatres?: number | null;
-  hospitalInfra?: string[];
-  noOfCabinsAndBeds?: number | null;
+  noOfClassrooms?: number | null;
+  campusFacilities?: string[];
+  noOfLabsOrSpecialRooms?: number | null;
   photos?: string[];
   scopeOfServices?: string | null;
-  hospitalStrength?: number | null;
-  noOfBeds?: number | null;
+  schoolStrength?: number | null;
+  studentCapacity?: number | null;
   accreditations?: string[];
   departments?: string[];
   isVerified: boolean;
@@ -78,11 +78,9 @@ export interface AdminStats {
   totalUsers: number;
   totalSeekers: number;
   totalRecruiters: number;
-  totalHospitals: number;
+  totalSchools: number;
   activeJobs: number;
-  sosActiveJobs: number;
-  fullTimeActiveJobs: number;
-  pendingHospitals: number;
+  pendingSchools: number;
   filledJobs: number;
   totalRevenuePaise: number;
   monthlyRevenuePaise: number;
@@ -110,8 +108,8 @@ export interface PaginatedAdminUsers {
   meta: { page: number; limit: number; total: number; totalPages: number };
 }
 
-export interface PaginatedAdminHospitals {
-  data: AdminHospital[];
+export interface PaginatedAdminSchools {
+  data: AdminSchool[];
   meta: { page: number; limit: number; total: number; totalPages: number };
 }
 
@@ -137,7 +135,7 @@ export interface PaginatedDisputes {
 }
 
 export interface CreateAdminUserPayload {
-  role: Role.JOB_SEEKER | Role.RECRUITER | Role.ADMIN;
+  role: Role.TEACHER | Role.RECRUITER | Role.ADMIN;
   email: string;
   phone: string;
   fullName?: string;
@@ -188,6 +186,46 @@ export interface PaginatedAdminPayments {
   meta: { page: number; limit: number; total: number; totalPages: number };
 }
 
+export interface EmailTemplateChannels {
+  seekerEmail: boolean;
+  seekerInApp: boolean;
+  recruiterEmail: boolean;
+  recruiterInApp: boolean;
+}
+
+export interface EmailTemplate {
+  _id: string;
+  key: string;
+  name: string;
+  trigger: string;
+  description: string;
+  subject: string;
+  body: string;
+  variables: string[];
+  isActive: boolean;
+  isSystem: boolean;
+  channels: EmailTemplateChannels;
+  inAppSeekerTitle: string | null;
+  inAppSeekerBody: string | null;
+  inAppRecruiterTitle: string | null;
+  inAppRecruiterBody: string | null;
+  updatedAt: string;
+}
+
+export interface LegalSection {
+  heading: string;
+  body: string;
+}
+
+export interface LegalPage {
+  _id: string;
+  key: string;
+  title: string;
+  lastUpdatedLabel: string;
+  sections: LegalSection[];
+  updatedAt: string;
+}
+
 export const adminApi = {
   stats: () =>
     apiClient.get<AdminStats>('/admin/stats'),
@@ -195,8 +233,8 @@ export const adminApi = {
   createUser: (data: CreateAdminUserPayload) =>
     apiClient.post<{ message: string }>('/admin/users', data),
 
-  listUsers: (page = 1, limit = 20, search?: string, role?: string, isActive?: boolean, city?: string, joinedFrom?: string, joinedTo?: string) =>
-    apiClient.get<PaginatedAdminUsers>('/admin/users', { params: { page, limit, search, role, isActive, city, joinedFrom, joinedTo } }),
+  listUsers: (page = 1, limit = 20, search?: string, role?: string, isActive?: boolean, city?: string, joinedFrom?: string, joinedTo?: string, includeDeleted?: boolean) =>
+    apiClient.get<PaginatedAdminUsers>('/admin/users', { params: { page, limit, search, role, isActive, city, joinedFrom, joinedTo, includeDeleted } }),
 
   suspendUser: (id: string) =>
     apiClient.patch(`/admin/users/${id}/suspend`),
@@ -204,14 +242,20 @@ export const adminApi = {
   activateUser: (id: string) =>
     apiClient.patch(`/admin/users/${id}/activate`),
 
-  listHospitals: (page = 1, limit = 20, verified?: boolean, search?: string, registeredFrom?: string, registeredTo?: string) =>
-    apiClient.get<PaginatedAdminHospitals>('/admin/hospitals', { params: { page, limit, verified, search, registeredFrom, registeredTo } }),
+  deleteUser: (id: string) =>
+    apiClient.delete(`/admin/users/${id}`),
 
-  verifyHospital: (id: string) =>
-    apiClient.patch(`/admin/hospitals/${id}/verify`),
+  restoreUser: (id: string) =>
+    apiClient.patch(`/admin/users/${id}/restore`),
 
-  rejectHospital: (id: string) =>
-    apiClient.patch(`/admin/hospitals/${id}/reject`),
+  listSchools: (page = 1, limit = 20, verified?: boolean, search?: string, registeredFrom?: string, registeredTo?: string) =>
+    apiClient.get<PaginatedAdminSchools>('/admin/schools', { params: { page, limit, verified, search, registeredFrom, registeredTo } }),
+
+  verifySchool: (id: string) =>
+    apiClient.patch(`/admin/schools/${id}/verify`),
+
+  rejectSchool: (id: string) =>
+    apiClient.patch(`/admin/schools/${id}/reject`),
 
   listDisputes: (page = 1, limit = 20, status?: DisputeStatus) =>
     apiClient.get<PaginatedDisputes>('/disputes', { params: { page, limit, status } }),
@@ -251,4 +295,22 @@ export const adminApi = {
 
   listAuditLogs: (page = 1, limit = 20, entityType?: string) =>
     apiClient.get<PaginatedAuditLogs>('/admin/audit', { params: { page, limit, entityType } }),
+
+  getEmailTemplates: () =>
+    apiClient.get<EmailTemplate[]>('/admin/config/email-templates'),
+
+  updateEmailTemplate: (key: string, data: Partial<Pick<EmailTemplate, 'subject' | 'body' | 'description' | 'isActive' | 'channels' | 'inAppSeekerTitle' | 'inAppSeekerBody' | 'inAppRecruiterTitle' | 'inAppRecruiterBody'>>) =>
+    apiClient.patch<EmailTemplate>(`/admin/config/email-templates/${key}`, data),
+
+  createEmailTemplate: (data: Omit<EmailTemplate, '_id' | 'isSystem' | 'updatedAt'>) =>
+    apiClient.post<EmailTemplate>('/admin/config/email-templates', data),
+
+  deleteEmailTemplate: (key: string) =>
+    apiClient.delete(`/admin/config/email-templates/${key}`),
+
+  getLegalPages: () =>
+    apiClient.get<LegalPage[]>('/admin/config/legal-pages'),
+
+  updateLegalPage: (key: string, data: Partial<Pick<LegalPage, 'title' | 'lastUpdatedLabel' | 'sections'>>) =>
+    apiClient.patch<LegalPage>(`/admin/config/legal-pages/${key}`, data),
 };

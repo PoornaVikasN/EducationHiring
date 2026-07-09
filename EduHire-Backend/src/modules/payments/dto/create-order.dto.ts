@@ -5,7 +5,7 @@ export class CreateOrderDto {
   @IsEnum(PaymentKind)
   kind!: PaymentKind;
 
-  // entityId: jobId for JOB_POST/BOOST, applicationId for APPLICATION, hospitalId for SUBSCRIPTION
+  // entityId: jobId for BOOST, applicationId for APPLICATION, schoolId for SUBSCRIPTION
   @IsMongoId()
   entityId!: string;
 }

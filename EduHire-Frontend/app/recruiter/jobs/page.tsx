@@ -11,8 +11,9 @@ import { useToast } from '../../../hooks/use-toast';
 import { JobStatus } from '../../../lib/shared/enums';
 import { useRazorpay } from '../../../hooks/use-razorpay';
 import { usePublicPricing, formatRupees } from '../../../hooks/use-public-pricing';
-import { RECRUITER_MONTHLY_PAISE, JOB_STATUS_BADGE } from '../../../lib/shared/constants';
+import { JOB_STATUS_BADGE } from '../../../lib/shared/constants';
 import { PaymentKind } from '../../../lib/shared/enums';
+import { enumLabel } from '../../../lib/utils/enum-options';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -25,12 +26,10 @@ function timeAgo(dateStr: string): string {
 
 const STATUS_BADGE = JOB_STATUS_BADGE;
 
-function JobRow({ job, onDelete, onPay, onBoost, ftPostLabel, boostLabel }: {
+function JobRow({ job, onDelete, onBoost, boostLabel }: {
   job: Job;
   onDelete: (id: string) => void;
-  onPay: (job: Job) => void;
   onBoost: (job: Job) => void;
-  ftPostLabel: string;
   boostLabel: string;
 }) {
   const badge = STATUS_BADGE[job.status];
@@ -44,7 +43,7 @@ function JobRow({ job, onDelete, onPay, onBoost, ftPostLabel, boostLabel }: {
           {job.isBoosted && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600">Boosted</span>}
         </div>
         <p className="text-xs text-text-muted">
-          {job.city}, {job.state} · {job.role} · {job.department} · {job.openPositions ?? 1} position{(job.openPositions ?? 1) > 1 ? 's' : ''}
+          {job.city}, {job.state} · {enumLabel(job.role)} · {enumLabel(job.department)} · {job.openPositions ?? 1} position{(job.openPositions ?? 1) > 1 ? 's' : ''}
         </p>
       </div>
 
@@ -55,11 +54,6 @@ function JobRow({ job, onDelete, onPay, onBoost, ftPostLabel, boostLabel }: {
           </Button>
         </Link>
 
-        {job.status === JobStatus.PENDING_PAYMENT && (
-          <Button size="sm" className="text-xs" onClick={() => onPay(job)}>
-            Pay {ftPostLabel}
-          </Button>
-        )}
         {job.status === JobStatus.EXPIRED && boostLabel !== '₹0' && (
           <Button size="sm" variant="outline" className="text-xs" onClick={() => onBoost(job)}>
             Boost {boostLabel}
@@ -83,8 +77,7 @@ function JobRow({ job, onDelete, onPay, onBoost, ftPostLabel, boostLabel }: {
 
 export default function RecruiterJobsPage() {
   const { pricing } = usePublicPricing();
-  const ftPost = pricing.RECRUITER_MONTHLY_PAISE ?? RECRUITER_MONTHLY_PAISE;
-  const boost  = pricing.BOOST_PAISE           ?? 0;
+  const boost = pricing.BOOST_PAISE ?? 0;
   const { toast } = useToast();
   const { pay } = useRazorpay();
   const qc = useQueryClient();
@@ -111,19 +104,6 @@ export default function RecruiterJobsPage() {
     },
     onError: () => toast({ title: 'Delete failed', variant: 'destructive' }),
   });
-
-  const handlePay = (job: Job) => {
-    pay(
-      PaymentKind.JOB_POST,
-      job._id,
-      `Teaching job listing — ${formatRupees(ftPost)}/mo`,
-      () => {
-        toast({ title: 'Payment successful!', description: 'Your job is now live.' });
-        qc.invalidateQueries({ queryKey: ['recruiter-jobs'] });
-      },
-      () => toast({ title: 'Payment failed', variant: 'destructive' }),
-    );
-  };
 
   const handleBoost = (job: Job) => {
     pay(
@@ -173,9 +153,7 @@ export default function RecruiterJobsPage() {
                 key={job._id}
                 job={job}
                 onDelete={(id) => setDeleteTarget(data.data.find((j) => j._id === id) ?? null)}
-                onPay={handlePay}
                 onBoost={handleBoost}
-                ftPostLabel={formatRupees(ftPost)}
                 boostLabel={formatRupees(boost)}
               />
             ))}

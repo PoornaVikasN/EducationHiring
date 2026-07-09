@@ -7,6 +7,7 @@ import { applicationsApi, type Application } from '../../../lib/api/applications
 import { chatApi, type ChatMessage } from '../../../lib/api/chat';
 import { useAuth } from '../../../lib/auth-context';
 import { ApplicationState } from '../../../lib/shared/enums';
+import { usePublicSettings } from '../../../hooks/use-public-settings';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
 
@@ -23,19 +24,22 @@ export default function TeacherChatPage() {
   const [sending, setSending] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { settings } = usePublicSettings();
+  const teacherPaidEnabled = settings.TEACHER_PAID_ENABLED === 1;
 
-  // Load PAID/WON applications
+  // Chat unlocks at SHORTLISTED (default, teacher-fee off) or PAID (teacher-fee on); WON always qualifies.
   useEffect(() => {
+    const unlockState = teacherPaidEnabled ? ApplicationState.PAID : ApplicationState.SHORTLISTED;
     applicationsApi
       .myApplications()
       .then(({ data }) => {
         const chatApps = data.filter(
-          (a) => a.state === ApplicationState.PAID || a.state === ApplicationState.WON,
+          (a) => a.state === unlockState || a.state === ApplicationState.WON,
         );
         setApps(chatApps);
       })
       .catch(() => {});
-  }, []);
+  }, [teacherPaidEnabled]);
 
   // Socket.IO connection
   useEffect(() => {
@@ -93,7 +97,7 @@ export default function TeacherChatPage() {
             </p>
           )}
           {apps.map((app) => {
-            const schoolName = app.hospital?.name ?? 'School';
+            const schoolName = app.school?.name ?? 'School';
             const jobTitle = app.job?.title ?? 'Job';
             const isActive = selected?._id === app._id;
             return (
@@ -122,7 +126,7 @@ export default function TeacherChatPage() {
           <>
             {/* Header */}
             <div className="px-5 py-3 border-b border-border-default">
-              <p className="text-sm font-bold text-text-primary">{selected.hospital?.name ?? 'School'}</p>
+              <p className="text-sm font-bold text-text-primary">{selected.school?.name ?? 'School'}</p>
               <p className="text-xs text-text-muted">{selected.job?.title}</p>
             </div>
 

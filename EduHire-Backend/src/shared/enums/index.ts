@@ -1,9 +1,9 @@
-// RxJobs4U enums — single source of truth for the backend.
-// Mirrored manually in rxjobs4u-frontend/lib/shared/enums when needed.
+// School Teacher enums — single source of truth for the backend.
+// Mirrored manually in eduhire-frontend/lib/shared/enums when needed.
 // See ProjectDocuments/DATA_MODEL.md §Enum Registry.
 
 export enum Role {
-  JOB_SEEKER = 'JOB_SEEKER',
+  TEACHER = 'TEACHER',
   RECRUITER = 'RECRUITER',
   ADMIN = 'ADMIN',
 }
@@ -29,45 +29,35 @@ export enum Availability {
   NOT_LOOKING = 'NOT_LOOKING',
 }
 
-export enum JobType {
-  SOS = 'SOS',
-  FULL_TIME = 'FULL_TIME',
-}
-
 export enum JobStatus {
-  PENDING_PAYMENT = 'PENDING_PAYMENT', // Full-time: hospital posted, awaiting ₹299 payment
-  PENDING_SUBSCRIPTION = 'PENDING_SUBSCRIPTION', // SOS: hospital posted, no active subscription
   ACTIVE = 'ACTIVE', // Live and discoverable
-  FILLED = 'FILLED', // Hospital selected a candidate (Won)
-  EXPIRED = 'EXPIRED', // Full-time: 30-day TTL hit
-  AUTO_DISABLED = 'AUTO_DISABLED', // SOS: 24-hour TTL hit
+  FILLED = 'FILLED', // School selected a candidate (Won)
+  EXPIRED = 'EXPIRED', // 30-day TTL hit
+  AUTO_DISABLED = 'AUTO_DISABLED', // Disabled as a side-effect of the owning school being deleted/deactivated
   DISABLED_BY_ADMIN = 'DISABLED_BY_ADMIN',
 }
 
 /**
- * Application lifecycle (full-time):
- *   INTERESTED → SHORTLISTED → PAID → WON
+ * Application lifecycle:
+ *   INTERESTED → SHORTLISTED → PAID → WON      (TEACHER_PAID_ENABLED on)
  *                                 ↘   ↘
  *                                  ↘   CLOSED
  *                                   CLOSED (also: 48h pay window expired)
  *
- * SOS lifecycle (no payment, free interest):
- *   INTERESTED → WON | CLOSED
+ *   INTERESTED → SHORTLISTED → WON | CLOSED    (TEACHER_PAID_ENABLED off — default)
  */
 export enum ApplicationState {
-  INTERESTED = 'INTERESTED', // Seeker showed interest (free). Awaiting hospital review.
-  SHORTLISTED = 'SHORTLISTED', // Hospital picked them. ₹99 payment notice sent. 48h to pay.
-  PAID = 'PAID', // Seeker paid ₹99. Contact details + interview info revealed.
-  WON = 'WON', // Hospital confirmed hire after interview.
+  INTERESTED = 'INTERESTED', // Teacher showed interest (free). Awaiting school review.
+  SHORTLISTED = 'SHORTLISTED', // School picked them. If TEACHER_PAID_ENABLED, payment notice sent (48h to pay).
+  PAID = 'PAID', // Teacher paid the shortlist fee. Contact details + interview info revealed.
+  WON = 'WON', // School confirmed hire after interview.
   CLOSED = 'CLOSED', // Declined / pay window expired / withdrawn.
 }
 
 export enum PaymentKind {
-  JOB_POST = 'JOB_POST', // Full-time: ₹299 to publish job
-  APPLICATION = 'APPLICATION', // Full-time: ₹99 paid by seeker after shortlist
-  SUBSCRIPTION = 'SUBSCRIPTION', // SOS: ₹399/month for hospital
-  SEEKER_SOS_SUBSCRIPTION = 'SEEKER_SOS_SUBSCRIPTION', // SOS: ₹199/month for seeker
-  BOOST = 'BOOST', // Full-time: ₹99/month to re-activate expired job
+  APPLICATION = 'APPLICATION', // Teacher shortlist-confirmation fee (gated behind TEACHER_PAID_ENABLED)
+  SUBSCRIPTION = 'SUBSCRIPTION', // School monthly unlimited-posting subscription
+  BOOST = 'BOOST', // Re-activate an expired job post
 }
 
 export enum PaymentStatus {
@@ -90,7 +80,7 @@ export enum VerificationStatus {
   REJECTED = 'REJECTED',
 }
 
-export enum HospitalSize {
+export enum SchoolSize {
   SMALL_UNDER_50 = 'SMALL_UNDER_50',
   MEDIUM_50_200 = 'MEDIUM_50_200',
   LARGE_200_500 = 'LARGE_200_500',
@@ -129,15 +119,74 @@ export enum SalaryRange {
   ABOVE_2L      = 'ABOVE_2L',       // > ₹2L/mo
 }
 
-export enum HospitalDepartment {
-  LAB               = 'LAB',
-  PHARMACY          = 'PHARMACY',
-  RADIOLOGY         = 'RADIOLOGY',
-  OPERATION_THEATRE = 'OPERATION_THEATRE',
-  ICU               = 'ICU',
-  EMERGENCY         = 'EMERGENCY',
-  CANTEEN           = 'CANTEEN',
-  HOSTEL            = 'HOSTEL',
+// Expanded 2026-07-09 (DECISIONS.md §3) to match every subject option already live
+// in the job-posting/teacher-profile UI — was previously a narrower 10-value list
+// that didn't cover what the product actually offered.
+export enum Subject {
+  PRIMARY                = 'PRIMARY',
+  ENGLISH                = 'ENGLISH',
+  MATHEMATICS            = 'MATHEMATICS',
+  SCIENCE                = 'SCIENCE',
+  PHYSICS                = 'PHYSICS',
+  CHEMISTRY              = 'CHEMISTRY',
+  BIOLOGY                = 'BIOLOGY',
+  SOCIAL_STUDIES         = 'SOCIAL_STUDIES',
+  HINDI                  = 'HINDI',
+  COMPUTER_SCIENCE       = 'COMPUTER_SCIENCE',
+  TELUGU                 = 'TELUGU',
+  HISTORY                = 'HISTORY',
+  GEOGRAPHY              = 'GEOGRAPHY',
+  ECONOMICS              = 'ECONOMICS',
+  BUSINESS_STUDIES       = 'BUSINESS_STUDIES',
+  ACCOUNTANCY            = 'ACCOUNTANCY',
+  INFORMATION_TECHNOLOGY = 'INFORMATION_TECHNOLOGY',
+  ART_CRAFTS             = 'ART_CRAFTS',
+  MUSIC                  = 'MUSIC',
+  DANCE                  = 'DANCE',
+  ENVIRONMENTAL_SCIENCE  = 'ENVIRONMENTAL_SCIENCE',
+  PRE_PRIMARY_EDUCATION  = 'PRE_PRIMARY_EDUCATION',
+  SPECIAL_EDUCATION      = 'SPECIAL_EDUCATION',
+  SCHOOL_ADMINISTRATION  = 'SCHOOL_ADMINISTRATION',
+  COUNSELING             = 'COUNSELING',
+  OTHERS                 = 'OTHERS',
+}
+
+// Expanded 2026-07-09 (DECISIONS.md §3) to match every role option already live
+// in the job-posting UI — was previously narrowed to the 4-value client-provided
+// list (SGT/PGT/HM/PRINCIPAL), which didn't cover what schools could already post for.
+export enum TeacherPost {
+  SGT                = 'SGT',
+  TGT                = 'TGT',
+  PGT                = 'PGT',
+  PRE_PRIMARY_TEACHER = 'PRE_PRIMARY_TEACHER',
+  HM                 = 'HM',
+  PRINCIPAL          = 'PRINCIPAL',
+  VICE_PRINCIPAL     = 'VICE_PRINCIPAL',
+  SPECIAL_EDUCATOR   = 'SPECIAL_EDUCATOR',
+  LAB_ASSISTANT      = 'LAB_ASSISTANT',
+  LIBRARIAN          = 'LIBRARIAN',
+  COUNSELOR          = 'COUNSELOR',
+  IIT_JEE_FACULTY    = 'IIT_JEE_FACULTY',
+  NEET_FACULTY       = 'NEET_FACULTY',
+  OTHER              = 'OTHER',
+}
+
+// New 2026-07-09 (DECISIONS.md §3) — grade-level/section for a job posting.
+// Distinct from Subject (what's taught) — this is which level/department the
+// role sits in. Was previously an un-enumerated free-text field duplicated
+// (with drift) across the job-post and job-edit frontend pages.
+export enum JobDepartment {
+  PRE_PRIMARY        = 'PRE_PRIMARY',
+  PRIMARY            = 'PRIMARY',
+  SECONDARY          = 'SECONDARY',
+  SENIOR_SECONDARY   = 'SENIOR_SECONDARY',
+  ARTS_CRAFTS        = 'ARTS_CRAFTS',
+  COMPUTER_SCIENCE   = 'COMPUTER_SCIENCE',
+  PHYSICAL_EDUCATION = 'PHYSICAL_EDUCATION',
+  ADMINISTRATION     = 'ADMINISTRATION',
+  LIBRARY            = 'LIBRARY',
+  COUNSELING         = 'COUNSELING',
+  OTHER              = 'OTHER',
 }
 
 export enum AvailableTimings {
@@ -149,23 +198,23 @@ export enum AvailableTimings {
 }
 
 export enum NotificationKind {
-  // Seeker-facing
-  APPLICATION_SHORTLISTED = 'APPLICATION_SHORTLISTED', // hospital shortlisted you — pay ₹99 in 48h
-  APPLICATION_WON = 'APPLICATION_WON', // hospital confirmed hire
-  APPLICATION_CLOSED = 'APPLICATION_CLOSED', // pay window expired or hospital declined
+  // Teacher-facing
+  APPLICATION_SHORTLISTED = 'APPLICATION_SHORTLISTED', // school shortlisted you — pay in 48h (if TEACHER_PAID_ENABLED)
+  APPLICATION_WON = 'APPLICATION_WON', // school confirmed hire
+  APPLICATION_CLOSED = 'APPLICATION_CLOSED', // pay window expired or school declined
   PAYMENT_SUCCESS = 'PAYMENT_SUCCESS',
   PAYMENT_FAILED = 'PAYMENT_FAILED',
   NEW_JOB_IN_LOCATION = 'NEW_JOB_IN_LOCATION',
   // Recruiter-facing
   NEW_INTEREST = 'NEW_INTEREST', // someone showed interest in your job
-  APPLICANT_PAID = 'APPLICANT_PAID', // shortlisted seeker paid — contact revealed both ways
+  APPLICANT_PAID = 'APPLICANT_PAID', // shortlisted teacher paid — contact revealed both ways
   JOB_FILLED = 'JOB_FILLED', // self-confirmation when marking Won
   JOB_EXPIRING_SOON = 'JOB_EXPIRING_SOON',
   JOB_AUTO_DISABLED = 'JOB_AUTO_DISABLED',
   SUB_RENEWED = 'SUB_RENEWED',
   SUB_RENEWAL_FAILED = 'SUB_RENEWAL_FAILED',
-  HOSPITAL_VERIFIED = 'HOSPITAL_VERIFIED',
+  SCHOOL_VERIFIED = 'SCHOOL_VERIFIED',
   // Admin-facing
-  HOSPITAL_REGISTERED = 'HOSPITAL_REGISTERED',
+  SCHOOL_REGISTERED = 'SCHOOL_REGISTERED',
   SYSTEM_ALERT = 'SYSTEM_ALERT',
 }

@@ -4,7 +4,7 @@
 
 ## What is School Teacher?
 
-A location-based school-hiring portal connecting **Schools** with **Teachers**. Two hiring modes: **Substitute/Urgent** (short-notice fills, school subscription + teacher access subscription) and **Permanent/Contract** (long-term posting fee + shortlist confirmation fee). Application flow: `INTERESTED → SHORTLISTED → PAID → WON | CLOSED` (payment after shortlist, no hard cap). A **Chat** feature scoped to each accepted application (Socket.IO) is planned for Phase 1.
+A location-based school-hiring portal connecting **Schools** with **Teachers**. One posting type only — no urgent/substitute mode (see `DECISIONS.md` §11 D42-superseding). Schools post for free up to a monthly limit or subscribe for unlimited posts (`SCHOOL_PAID_ENABLED`/`FREE_TIER_JOB_LIMIT`). Application flow is toggle-driven: `INTERESTED → SHORTLISTED → WON | CLOSED` by default, or `INTERESTED → SHORTLISTED → PAID → WON | CLOSED` when `TEACHER_PAID_ENABLED` is on (see `DECISIONS.md` §2). A **Chat** feature scoped to each application (Socket.IO), unlocking at `SHORTLISTED`/`PAID` per the same toggle, is **live** — not planned (see `DECISIONS.md` §11 D44). File-upload attachments in chat are the one still-unbuilt piece (D39).
 
 Internal folder / npm package names are `eduhire-*` (historical). **Every user-facing string uses "School Teacher".**
 
@@ -106,18 +106,21 @@ Run in two terminals. No top-level orchestration.
 
 **Security scaffolding shipped**:
 - `main.ts` with Helmet (COOP `same-origin-allow-popups`), custom Mongo-operator sanitizer (not `express-mongo-sanitize` — that crashes on Node 20 read-only `req.query`), CORS allow-list, 1 MB body cap, `trust proxy`, pino, `AllExceptionsFilter`.
-- `env.validation.ts` — Joi fail-fast with `JWT_ACCESS_SECRET`/`JWT_REFRESH_SECRET`/`CONFIG_ENCRYPTION_KEY` ≥32 chars & mutually distinct.
-- `common/utils/` — `safeEqual` (timing-safe HMAC), `redactEmail`/`redactPhone`.
-- `common/filters/all-exceptions.filter.ts`, `common/guards/csrf.guard.ts`, `common/decorators/public.decorator.ts`, `common/recaptcha/recaptcha.service.ts` (skips outside prod).
+- `env.validation.ts` — Joi fail-fast with `JWT_ACCESS_SECRET`/`JWT_REFRESH_SECRET`/`CONFIG_ENCRYPTION_KEY` ≥32 chars & mutually distinct. **Actually wired into `ConfigModule.forRoot()` as of `DECISIONS.md` D46 (2026-07-08)** — it existed as dead code (defined but never passed to `ConfigModule`) until then; verify it's still wired before trusting this line again.
+- `common/utils/` — `safeEqual` (timing-safe HMAC, now used by the Razorpay webhook), `redactEmail`/`redactPhone` (now called at every raw email/phone log site).
+- `common/filters/all-exceptions.filter.ts`, `common/guards/csrf.guard.ts` (now applied to `/auth/refresh`/`/auth/logout`), `common/decorators/public.decorator.ts`, `common/recaptcha/recaptcha.service.ts` (skips outside prod).
+- `tokenVersion` on the User schema + JWT payload, bumped on password change/reset and admin delete/restore (D46) — force-invalidates existing tokens.
 - `SystemConfig` module — dynamic pricing pattern with `displayKind`/`unit`/`maxValue` metadata.
-- FE `proxy.ts` with public paths allow-list, `next.config.ts` headers, axios client with in-memory token + refresh-then-retry, `uploads.ts` with client-side MIME + size validation.
+- FE `proxy.ts` with public paths allow-list, `next.config.ts` headers, axios client with in-memory token + refresh-then-retry, `uploads.ts` with client-side MIME + size validation. Server-side `verifyUploadKey` (D46) now backs this up with a real S3 `HeadObject` check before persisting any upload URL.
+- **Caveat:** this "shipped" list has been wrong before — several of these items were listed here as done while actually being dead code or entirely absent, only caught by an explicit audit in `DECISIONS.md` §11 D46. Don't take this section as ground truth without spot-checking the actual code.
 
 ### ⏳ Phase 1 — Next
 
 - Fill `PROJECT_SPEC.md` with the actual product spec.
-- Auth module (register/login/OTP/forgot-password/Google OAuth id_token + `tokenVersion` revocation + reCAPTCHA gate).
+- Auth module (register/login/OTP/forgot-password/Google OAuth id_token + `tokenVersion` revocation + reCAPTCHA gate). **Build in `DECISIONS.md` D41 from the start**: nullable `passwordHash`, `hasPassword` on `SafeUser`/`GET /users/me`, and a Settings "Set Password" mode (no current-password field) for Google-only accounts — don't ship "Change Password" only and patch this later.
 - Domain modules: `schools`, `users` (teacher + school-admin profiles), `postings`, `applications`, `payments`, `subscriptions`, `notifications` (Socket.IO + Web Push).
 - **Chat module** (Socket.IO scoped per application room) — the differentiator.
+- Admin module, past the current job-approval scaffold: when built out, add a `LegalContentModule` per `DECISIONS.md` D42 so `/terms` and `/privacy-policy` (currently static, inherited from RxJobs4U) become admin-editable, alongside an `email-templates`-equivalent if transactional email copy needs the same treatment.
 - Screen design + implementation.
 - Populate `SystemConfig` pricing seeds via admin UI.
 

@@ -5,7 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { Role } from '../../shared/enums';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { EmailService } from '../notifications/email.service';
+import { User, UserDocument } from '../users/schemas/user.schema';
 import { CreateDisputeDto } from './dto/create-dispute.dto';
 import { ResolveDisputeDto } from './dto/resolve-dispute.dto';
 import { Dispute, DisputeDocument, DisputeStatus } from './schemas/dispute.schema';
@@ -14,6 +17,8 @@ import { Dispute, DisputeDocument, DisputeStatus } from './schemas/dispute.schem
 export class DisputesService {
   constructor(
     @InjectModel(Dispute.name) private disputeModel: Model<DisputeDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private emailService: EmailService,
   ) {}
 
   async create(user: JwtPayload, dto: CreateDisputeDto): Promise<DisputeDocument> {
@@ -53,6 +58,22 @@ export class DisputesService {
       .findByIdAndUpdate(id, { $set: update }, { returnDocument: 'after' })
       .exec();
     if (!doc) throw new NotFoundException('Dispute not found');
+
+    if ((status === DisputeStatus.RESOLVED || status === DisputeStatus.REJECTED) && dto?.adminNote) {
+      const user = await this.userModel.findById(doc.raisedBy).select('email role seekerProfile recruiterProfile').lean().exec();
+      if (user?.email) {
+        const name = (user.role === Role.RECRUITER
+          ? (user.recruiterProfile as { fullName?: string } | null)?.fullName
+          : (user.seekerProfile as { fullName?: string } | null)?.fullName) ?? 'there';
+        const channel = user.role === Role.RECRUITER ? 'recruiterEmail' : 'seekerEmail';
+        if (status === DisputeStatus.RESOLVED) {
+          this.emailService.sendDisputeResolvedEmail(user.email, name, doc.subject, dto.adminNote, channel).catch(() => {});
+        } else {
+          this.emailService.sendDisputeRejectedEmail(user.email, name, doc.subject, dto.adminNote, channel).catch(() => {});
+        }
+      }
+    }
+
     return doc;
   }
 

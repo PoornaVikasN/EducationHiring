@@ -12,7 +12,7 @@ import { ConfirmDialog } from '../../../common-components/ui/confirm-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../common-components/ui/dialog';
 import { SeekerProfileView } from '../../../common-components/seeker-profile-view';
 import { useToast } from '../../../hooks/use-toast';
-import { ApplicationState, JobType } from '../../../lib/shared/enums';
+import { ApplicationState } from '../../../lib/shared/enums';
 
 const STATE_BADGE: Record<ApplicationState, { label: string; cls: string }> = {
   [ApplicationState.INTERESTED]: { label: 'Interested', cls: 'bg-blue-100 text-blue-700' },
@@ -22,9 +22,8 @@ const STATE_BADGE: Record<ApplicationState, { label: string; cls: string }> = {
   [ApplicationState.CLOSED]: { label: 'Closed', cls: 'bg-slate-100 text-slate-500' },
 };
 
-function ApplicantCard({ app, jobType, onShortlist, onWon, onClose }: {
+function ApplicantCard({ app, onShortlist, onWon, onClose }: {
   app: Application;
-  jobType: JobType;
   onShortlist: (app: Application) => void;
   onWon: (app: Application) => void;
   onClose: (app: Application) => void;
@@ -119,7 +118,7 @@ function ApplicantCard({ app, jobType, onShortlist, onWon, onClose }: {
           <DialogHeader>
             <DialogTitle>Candidate Profile</DialogTitle>
           </DialogHeader>
-          <SeekerProfileView app={app} jobType={jobType} />
+          <SeekerProfileView app={app} />
         </DialogContent>
       </Dialog>
     </>
@@ -243,7 +242,6 @@ function ApplicantsContent() {
                 <ApplicantCard
                   key={app._id}
                   app={app}
-                  jobType={selectedJob?.type ?? JobType.FULL_TIME}
                   onShortlist={(a) => shortlistMutation.mutate(a)}
                   onWon={(a) => wonMutation.mutate(a)}
                   onClose={(a) => setDeclineTarget(a)}

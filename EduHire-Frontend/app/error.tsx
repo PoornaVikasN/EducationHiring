@@ -10,7 +10,7 @@ import { Role } from '../lib/shared/enums';
 function homePath(role: Role | undefined): string {
   if (role === Role.ADMIN) return '/admin';
   if (role === Role.RECRUITER) return '/recruiter/dashboard';
-  if (role === Role.JOB_SEEKER) return '/dashboard';
+  if (role === Role.TEACHER) return '/dashboard';
   return '/';
 }
 

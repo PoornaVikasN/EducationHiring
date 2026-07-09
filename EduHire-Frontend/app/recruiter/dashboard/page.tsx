@@ -1,9 +1,10 @@
 'use client';
 
-import { hospitalsApi } from '@/lib/api/hospitals';
+import { schoolsApi } from '@/lib/api/schools';
 import { jobsApi } from '@/lib/api/jobs';
 import { useAuth } from '@/lib/auth-context';
 import { JobStatus, VerificationStatus } from '@/lib/shared/enums';
+import { enumLabel } from '@/lib/utils/enum-options';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertCircle,
@@ -112,12 +113,12 @@ export default function RecruiterDashboardPage() {
     queryFn: () => jobsApi.myJobs({ limit: 50 }).then((r) => r.data),
   });
 
-  const { data: hospital, isLoading: hospitalLoading } = useQuery({
-    queryKey: ['my-hospital'],
-    queryFn: () => hospitalsApi.getMine().then((r) => r.data).catch(() => null),
+  const { data: school, isLoading: schoolLoading } = useQuery({
+    queryKey: ['my-school'],
+    queryFn: () => schoolsApi.getMine().then((r) => r.data).catch(() => null),
   });
 
-  const hasHospital = !hospitalLoading && hospital != null;
+  const hasSchool = !schoolLoading && school != null;
   const jobs = myJobs?.data ?? [];
 
   // ── Stats ──────────────────────────────────────────────────────────────────
@@ -125,7 +126,6 @@ export default function RecruiterDashboardPage() {
   const activeJobs = jobs.filter((j) => j.status === JobStatus.ACTIVE);
   const filledJobs = jobs.filter((j) => j.status === JobStatus.FILLED);
   const expiredJobs = jobs.filter((j) => j.status === JobStatus.EXPIRED || j.status === JobStatus.AUTO_DISABLED);
-  const pendingJobs = jobs.filter((j) => j.status === JobStatus.PENDING_PAYMENT || j.status === JobStatus.PENDING_SUBSCRIPTION);
   const openVacancies = activeJobs.reduce(
     (sum, j) => sum + Math.max(0, (j.openPositions ?? 1) - (j.filledPositions ?? 0)),
     0,
@@ -137,7 +137,6 @@ export default function RecruiterDashboardPage() {
     { value: activeJobs.length, hex: '#22c55e', label: 'Active' },
     { value: filledJobs.length, hex: '#3b82f6', label: 'Filled' },
     { value: expiredJobs.length, hex: '#f59e0b', label: 'Expired' },
-    { value: pendingJobs.length, hex: '#94a3b8', label: 'Pending' },
   ];
   const totalJobs = jobs.length;
 
@@ -147,7 +146,6 @@ export default function RecruiterDashboardPage() {
   const stats = [
     { label: 'Active Jobs', value: activeJobs.length || '—', icon: Briefcase, bg: 'bg-teal-100', iconColor: 'text-teal-600' },
     { label: 'Open Vacancies', value: openVacancies || '—', icon: Layers, bg: 'bg-brand-primary-light', iconColor: 'text-brand-primary' },
-    { label: 'Pending Review', value: pendingJobs.length || '—', icon: Clock, bg: 'bg-amber-100', iconColor: 'text-amber-600' },
     { label: 'Jobs Filled', value: filledJobs.length || '—', icon: CheckCircle, bg: 'bg-green-100', iconColor: 'text-green-600' },
     { label: 'Total Posted', value: myJobs?.meta.total ?? '—', icon: Users, bg: 'bg-blue-100', iconColor: 'text-blue-600' },
   ];
@@ -170,7 +168,7 @@ export default function RecruiterDashboardPage() {
                 : 'Manage your job postings and find the right teachers.'}
             </p>
           </div>
-          {hasHospital ? (
+          {hasSchool ? (
             <Link
               href="/recruiter/jobs/new"
               className="shrink-0 flex items-center gap-2 bg-brand-primary hover:bg-brand-primary-dark text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
@@ -179,7 +177,7 @@ export default function RecruiterDashboardPage() {
             </Link>
           ) : (
             <Link
-              href="/recruiter/hospital"
+              href="/recruiter/school"
               className="shrink-0 flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
             >
               <Building2 className="w-4 h-4" /> Set Up School
@@ -188,8 +186,8 @@ export default function RecruiterDashboardPage() {
         </div>
       </div>
 
-      {/* Hospital status banners */}
-      {!hospitalLoading && !hasHospital && (
+      {/* School status banners */}
+      {!schoolLoading && !hasSchool && (
         <div className="flex items-start gap-4 bg-amber-50 border border-amber-200 rounded-2xl p-5">
           <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
             <Building2 className="w-5 h-5 text-amber-600" />
@@ -198,12 +196,12 @@ export default function RecruiterDashboardPage() {
             <p className="text-sm font-semibold text-amber-800">Complete your school profile to post jobs</p>
             <p className="text-xs text-amber-700 mt-0.5">You need to set up your school details before you can post any job listings.</p>
           </div>
-          <Link href="/recruiter/hospital" className="shrink-0 flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+          <Link href="/recruiter/school" className="shrink-0 flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
             Set Up Now <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
       )}
-      {!hospitalLoading && hospital && !hospital.isVerified && hospital.verificationStatus !== VerificationStatus.REJECTED && (
+      {!schoolLoading && school && !school.isVerified && school.verificationStatus !== VerificationStatus.REJECTED && (
         <div className="flex items-start gap-4 bg-amber-50 border border-amber-200 rounded-2xl p-5">
           <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
             <Clock className="w-5 h-5 text-amber-600" />
@@ -212,12 +210,12 @@ export default function RecruiterDashboardPage() {
             <p className="text-sm font-semibold text-amber-800">School profile under review</p>
             <p className="text-xs text-amber-700 mt-0.5">Admin is reviewing your school. Job posting will be unlocked once verified — usually within 24 hours.</p>
           </div>
-          <Link href="/recruiter/hospital" className="shrink-0 flex items-center gap-1.5 border border-amber-400 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors">
+          <Link href="/recruiter/school" className="shrink-0 flex items-center gap-1.5 border border-amber-400 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors">
             View Profile <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
       )}
-      {!hospitalLoading && hospital && !hospital.isVerified && hospital.verificationStatus === VerificationStatus.REJECTED && (
+      {!schoolLoading && school && !school.isVerified && school.verificationStatus === VerificationStatus.REJECTED && (
         <div className="flex items-start gap-4 bg-red-50 border border-red-200 rounded-2xl p-5">
           <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
             <AlertCircle className="w-5 h-5 text-red-600" />
@@ -226,12 +224,12 @@ export default function RecruiterDashboardPage() {
             <p className="text-sm font-semibold text-red-800">School profile rejected</p>
             <p className="text-xs text-red-700 mt-0.5">Your profile was rejected by admin. Please update the details and resubmit for review.</p>
           </div>
-          <Link href="/recruiter/hospital" className="shrink-0 flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+          <Link href="/recruiter/school" className="shrink-0 flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
             Update Profile <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
       )}
-      {!hospitalLoading && hospital && hospital.isVerified && (
+      {!schoolLoading && school && school.isVerified && (
         <div className="flex items-start gap-4 bg-green-50 border border-green-200 rounded-2xl p-4">
           <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
           <p className="text-sm text-green-800 font-medium">School verified — you can post jobs and view applicants.</p>
@@ -321,12 +319,12 @@ export default function RecruiterDashboardPage() {
               </div>
             </div>
             <p className="text-sm text-text-muted mb-4">30-day listing. Shortlist teachers freely and chat once shortlisted.</p>
-            {hasHospital ? (
+            {hasSchool ? (
               <Link href="/recruiter/jobs/new" className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-primary hover:text-brand-primary-dark group/link">
                 Post a Job <ArrowRight className="w-3.5 h-3.5 group-hover/link:translate-x-1 transition-transform" />
               </Link>
             ) : (
-              <Link href="/recruiter/hospital" className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-600 hover:text-amber-700">
+              <Link href="/recruiter/school" className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-600 hover:text-amber-700">
                 Set up school profile first <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             )}
@@ -367,12 +365,12 @@ export default function RecruiterDashboardPage() {
             </div>
             <p className="text-sm font-semibold text-text-primary mb-1">No jobs posted yet</p>
             <p className="text-xs text-text-muted max-w-xs">Post your first job to start receiving applications.</p>
-            {hasHospital ? (
+            {hasSchool ? (
               <Link href="/recruiter/jobs/new" className="mt-4 inline-flex items-center gap-2 bg-brand-primary hover:bg-brand-primary-dark text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
                 <Plus className="w-4 h-4" /> Post a Job
               </Link>
             ) : (
-              <Link href="/recruiter/hospital" className="mt-4 inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
+              <Link href="/recruiter/school" className="mt-4 inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
                 <Building2 className="w-4 h-4" /> Set Up School Profile
               </Link>
             )}
@@ -388,7 +386,7 @@ export default function RecruiterDashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-text-primary truncate">{job.title}</p>
-                    <p className="text-xs text-text-muted">{job.city} · {job.role} · {positions} position{positions > 1 ? 's' : ''}</p>
+                    <p className="text-xs text-text-muted">{job.city} · {enumLabel(job.role)} · {positions} position{positions > 1 ? 's' : ''}</p>
                   </div>
                   <Link href={`/recruiter/applicants?jobId=${job._id}`} className="text-xs text-brand-primary hover:underline shrink-0">
                     View Applicants →

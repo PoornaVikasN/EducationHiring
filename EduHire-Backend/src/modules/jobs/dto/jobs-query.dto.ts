@@ -1,6 +1,6 @@
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { JobStatus, JobType } from '../../../shared/enums';
+import { JobStatus } from '../../../shared/enums';
 
 export class JobsQueryDto {
   @IsOptional()
@@ -15,10 +15,6 @@ export class JobsQueryDto {
   @Max(200)
   @Type(() => Number)
   limit: number = 20;
-
-  @IsOptional()
-  @IsEnum(JobType)
-  type?: JobType;
 
   @IsOptional()
   @IsEnum(JobStatus)

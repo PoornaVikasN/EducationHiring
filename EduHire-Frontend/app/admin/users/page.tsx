@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Filter, Plus, Shield, ShieldOff, Users } from 'lucide-react';
+import { Filter, Plus, RotateCcw, Shield, ShieldOff, Trash2, Users } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { adminApi, type AdminUser } from '../../../lib/api/admin';
 import { AdminCreateUserDialog } from '../../../common-components/admin-create-user-dialog';
@@ -22,7 +22,7 @@ import { Role, UserStatus } from '../../../lib/shared/enums';
 import { downloadCsv } from '../../../lib/utils/export-csv';
 
 function roleLabel(role: string) {
-  if (role === 'JOB_SEEKER') return 'Teacher';
+  if (role === 'TEACHER') return 'Teacher';
   if (role === 'RECRUITER') return 'School';
   return 'Admin';
 }
@@ -31,19 +31,24 @@ function UserRow({
   user,
   onSuspend,
   onActivate,
+  onDelete,
+  onRestore,
   onViewDetail,
 }: {
   user: AdminUser;
   onSuspend: (id: string) => void;
   onActivate: (id: string) => void;
+  onDelete: (user: AdminUser) => void;
+  onRestore: (user: AdminUser) => void;
   onViewDetail: (user: AdminUser) => void;
 }) {
   const name = user.seekerProfile?.fullName ?? user.recruiterProfile?.fullName ?? '—';
+  const isDeleted = !!user.deletedAt;
   const isSuspended = user.status === UserStatus.SUSPENDED || user.isActive === false;
 
   return (
     <tr
-      className="border-b border-border-default hover:bg-bg-page transition-colors cursor-pointer"
+      className={`border-b border-border-default hover:bg-bg-page transition-colors cursor-pointer ${isDeleted ? 'opacity-60' : ''}`}
       onClick={() => onViewDetail(user)}
     >
       <td className="px-4 py-3">
@@ -61,17 +66,28 @@ function UserRow({
       </td>
       <td className="px-4 py-3">
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-          isSuspended ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'
-        }`}>{isSuspended ? 'Suspended' : 'Active'}</span>
+          isDeleted ? 'bg-slate-200 text-slate-600' : isSuspended ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'
+        }`}>{isDeleted ? 'Deleted' : isSuspended ? 'Suspended' : 'Active'}</span>
       </td>
       <td className="px-4 py-3 text-xs text-text-muted">
         {new Date(user.createdAt).toLocaleDateString('en-IN')}
       </td>
       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
         {user.role !== Role.ADMIN && (
-          isSuspended
-            ? <Button size="sm" variant="outline" onClick={() => onActivate(user._id)}><Shield className="w-3.5 h-3.5 mr-1" />Activate</Button>
-            : <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => onSuspend(user._id)}><ShieldOff className="w-3.5 h-3.5 mr-1" />Suspend</Button>
+          isDeleted ? (
+            <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:bg-green-50" onClick={() => onRestore(user)}>
+              <RotateCcw className="w-3.5 h-3.5 mr-1" />Restore
+            </Button>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              {isSuspended
+                ? <Button size="sm" variant="outline" onClick={() => onActivate(user._id)}><Shield className="w-3.5 h-3.5 mr-1" />Activate</Button>
+                : <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => onSuspend(user._id)}><ShieldOff className="w-3.5 h-3.5 mr-1" />Suspend</Button>}
+              <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => onDelete(user)}>
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )
         )}
       </td>
     </tr>
@@ -107,13 +123,16 @@ function UsersContent() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<AdminUser | null>(null);
   const debouncedSearch = useDebouncedValue(search, 400);
 
   const isActiveParam = filters.status === 'ACTIVE' ? true : filters.status === 'SUSPENDED' ? false : undefined;
   const roleParam = filters.role === 'ALL' ? undefined : filters.role;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-users', page, debouncedSearch, filters],
+    queryKey: ['admin-users', page, debouncedSearch, filters, showDeleted],
     queryFn: () => adminApi.listUsers(
       page, 10,
       debouncedSearch || undefined,
@@ -122,6 +141,7 @@ function UsersContent() {
       filters.city || undefined,
       filters.joinedFrom || undefined,
       filters.joinedTo || undefined,
+      showDeleted,
     ).then((r) => r.data),
   });
 
@@ -138,6 +158,26 @@ function UsersContent() {
     mutationFn: (id: string) => adminApi.activateUser(id),
     onSuccess: () => { toast({ title: 'User activated' }); qc.invalidateQueries({ queryKey: ['admin-users'] }); },
     onError: () => toast({ title: 'Action failed', variant: 'destructive' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => adminApi.deleteUser(id),
+    onSuccess: () => {
+      toast({ title: 'User deleted' });
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      setDeleteTarget(null);
+    },
+    onError: () => toast({ title: 'Delete failed', variant: 'destructive' }),
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: (id: string) => adminApi.restoreUser(id),
+    onSuccess: () => {
+      toast({ title: 'User restored' });
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      setRestoreTarget(null);
+    },
+    onError: () => toast({ title: 'Restore failed', variant: 'destructive' }),
   });
 
   const handleExport = () => {
@@ -176,6 +216,13 @@ function UsersContent() {
               </span>
             )}
           </Button>
+          <Button
+            variant={showDeleted ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => { setShowDeleted((v) => !v); setPage(1); }}
+          >
+            {showDeleted ? 'Hide deleted' : 'Show deleted'}
+          </Button>
           <AdminExportButton onExport={handleExport} disabled={!rows.length} />
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Create user
@@ -210,6 +257,8 @@ function UsersContent() {
                     user={u}
                     onSuspend={(id) => suspendMutation.mutate(id)}
                     onActivate={(id) => activateMutation.mutate(id)}
+                    onDelete={setDeleteTarget}
+                    onRestore={setRestoreTarget}
                     onViewDetail={setDetailUser}
                   />
                 ))}
@@ -239,7 +288,7 @@ function UsersContent() {
                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Roles</SelectItem>
-                  <SelectItem value={Role.JOB_SEEKER}>Teacher</SelectItem>
+                  <SelectItem value={Role.TEACHER}>Teacher</SelectItem>
                   <SelectItem value={Role.RECRUITER}>School</SelectItem>
                 </SelectContent>
               </Select>
@@ -282,6 +331,66 @@ function UsersContent() {
           <div className="flex gap-2 mt-4">
             <Button variant="outline" size="sm" onClick={clearFilter} className="flex-1">Clear</Button>
             <Button size="sm" onClick={applyFilter} className="flex-1">Apply</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete this user?</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-text-muted space-y-2 mt-1">
+            <p>
+              This soft-deletes <strong className="text-text-primary">{deleteTarget?.email ?? deleteTarget?.phone}</strong> and force-logs them out immediately.
+            </p>
+            <p>If this is a school account, it also:</p>
+            <ul className="list-disc pl-5 space-y-0.5">
+              <li>Disables the school profile and its active job posts</li>
+              <li>Closes any open (non-final) applications on those jobs</li>
+              <li>Cancels any active subscription</li>
+            </ul>
+            <p>Payment records and audit history are kept. This can be undone with Restore.</p>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button
+              size="sm"
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget._id)}
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete user'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Restore confirm */}
+      <Dialog open={!!restoreTarget} onOpenChange={(open) => { if (!open) setRestoreTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Restore this user?</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-text-muted space-y-2 mt-1">
+            <p>
+              Restores <strong className="text-text-primary">{restoreTarget?.email ?? restoreTarget?.phone}</strong> and re-enables sign-in.
+            </p>
+            <p>
+              If this is a school account, the school profile is restored, but its jobs stay disabled — you&apos;ll need to reactivate each one manually from the Jobs tab. Applications and subscriptions closed at delete time are not restored.
+            </p>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => setRestoreTarget(null)}>Cancel</Button>
+            <Button
+              size="sm"
+              className="flex-1"
+              disabled={restoreMutation.isPending}
+              onClick={() => restoreTarget && restoreMutation.mutate(restoreTarget._id)}
+            >
+              {restoreMutation.isPending ? 'Restoring…' : 'Restore user'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

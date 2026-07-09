@@ -7,41 +7,41 @@ import { AlertCircle, ArrowRight, Clock } from 'lucide-react';
 import Link from 'next/link';
 import AppHeader from '@/common-components/app-header';
 import { useAuth } from '../../lib/auth-context';
-import { hospitalsApi } from '../../lib/api/hospitals';
+import { schoolsApi } from '../../lib/api/schools';
 import { Role, VerificationStatus } from '../../lib/shared/enums';
 
-// Routes accessible even when hospital is unverified
-const ALLOWED_UNVERIFIED = ['/recruiter/dashboard', '/recruiter/hospital'];
+// Routes accessible even when school is unverified
+const ALLOWED_UNVERIFIED = ['/recruiter/dashboard', '/recruiter/school'];
 
 export default function RecruiterLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  const { data: hospital, isLoading: hospitalLoading } = useQuery({
-    queryKey: ['my-hospital'],
-    queryFn: () => hospitalsApi.getMine().then((r) => r.data).catch(() => null),
+  const { data: school, isLoading: schoolLoading } = useQuery({
+    queryKey: ['my-school'],
+    queryFn: () => schoolsApi.getMine().then((r) => r.data).catch(() => null),
     enabled: !isLoading && !!user,
   });
 
   // Redirect seekers away
   useEffect(() => {
-    if (!isLoading && user?.role === Role.JOB_SEEKER) {
+    if (!isLoading && user?.role === Role.TEACHER) {
       router.replace('/dashboard');
     }
   }, [user, isLoading, router]);
 
-  // Redirect unverified hospitals away from restricted pages
+  // Redirect unverified schools away from restricted pages
   useEffect(() => {
-    if (!isLoading && !hospitalLoading && hospital && !hospital.isVerified) {
+    if (!isLoading && !schoolLoading && school && !school.isVerified) {
       const allowed = ALLOWED_UNVERIFIED.some((p) => pathname.startsWith(p));
       if (!allowed) {
-        router.replace('/recruiter/hospital');
+        router.replace('/recruiter/school');
       }
     }
-  }, [hospital, hospitalLoading, isLoading, pathname, router]);
+  }, [school, schoolLoading, isLoading, pathname, router]);
 
-  if (isLoading || hospitalLoading) {
+  if (isLoading || schoolLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg-page">
         <div className="w-8 h-8 rounded-full border-4 border-brand-primary border-t-transparent animate-spin" />
@@ -49,8 +49,8 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
     );
   }
 
-  const isUnverified = hospital && !hospital.isVerified;
-  const isRejected = hospital?.verificationStatus === VerificationStatus.REJECTED;
+  const isUnverified = school && !school.isVerified;
+  const isRejected = school?.verificationStatus === VerificationStatus.REJECTED;
 
   return (
     <div className="min-h-screen flex flex-col bg-bg-page">
@@ -68,7 +68,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
                 <span className="text-sm font-semibold text-red-800">School rejected — </span>
                 <span className="text-sm text-red-700">Update your school profile and resubmit for admin review.</span>
               </div>
-              <Link href="/recruiter/hospital" className="shrink-0 flex items-center gap-1 text-xs font-semibold text-red-700 hover:text-red-900 transition-colors">
+              <Link href="/recruiter/school" className="shrink-0 flex items-center gap-1 text-xs font-semibold text-red-700 hover:text-red-900 transition-colors">
                 Update Profile <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -85,7 +85,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
                   Admin is reviewing your school. You will be notified once verified.
                 </span>
               </div>
-              <Link href="/recruiter/hospital" className="shrink-0 flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 transition-colors">
+              <Link href="/recruiter/school" className="shrink-0 flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 transition-colors">
                 View Profile <ArrowRight className="w-3 h-3" />
               </Link>
             </div>

@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Hospital, HospitalSchema } from '../hospitals/schemas/hospital.schema';
+import { School, SchoolSchema } from '../schools/schemas/school.schema';
 import { Job, JobSchema } from '../jobs/schemas/job.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
+import { SystemConfigModule } from '../system-config/system-config.module';
 import { ApplicationsController } from './applications.controller';
 import { ApplicationsService } from './applications.service';
 import { Application, ApplicationSchema } from './schemas/application.schema';
@@ -12,9 +13,10 @@ import { Application, ApplicationSchema } from './schemas/application.schema';
     MongooseModule.forFeature([
       { name: Application.name, schema: ApplicationSchema },
       { name: Job.name, schema: JobSchema },
-      { name: Hospital.name, schema: HospitalSchema },
+      { name: School.name, schema: SchoolSchema },
       { name: User.name, schema: UserSchema },
     ]),
+    SystemConfigModule,
   ],
   controllers: [ApplicationsController],
   providers: [ApplicationsService],

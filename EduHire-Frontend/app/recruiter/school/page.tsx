@@ -13,78 +13,78 @@ import { ExpertiseSelector } from '../../../common-components/ui/expertise-selec
 import { Input } from '../../../common-components/ui/input';
 import { Label } from '../../../common-components/ui/label';
 import { Textarea } from '../../../common-components/ui/textarea';
-import { hospitalsApi } from '../../../lib/api/hospitals';
+import { schoolsApi } from '../../../lib/api/schools';
 import { uploadFile } from '../../../lib/api/uploads';
 import { useAuth } from '../../../lib/auth-context';
 import { useToast } from '../../../hooks/use-toast';
-import { HospitalDepartment, UploadKind, VerificationStatus } from '../../../lib/shared/enums';
-import { HOSPITAL_ACCREDITATION_OPTIONS, HOSPITAL_INFRA_OPTIONS } from '../../../lib/shared/constants';
-import { hospitalProfileSchema, type HospitalProfileFormValues } from '../../../lib/validations/profile';
+import { Subject, UploadKind, VerificationStatus } from '../../../lib/shared/enums';
+import { SCHOOL_ACCREDITATION_OPTIONS, SCHOOL_INFRA_OPTIONS } from '../../../lib/shared/constants';
+import { schoolProfileSchema, type SchoolProfileFormValues } from '../../../lib/validations/profile';
 import type { Resolver } from 'react-hook-form';
 
-export default function RecruiterHospitalPage() {
+export default function RecruiterSchoolPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const qc = useQueryClient();
   const router = useRouter();
   const logoRef = useRef<HTMLInputElement>(null);
   const photoRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
-  const hospitalCoordsRef = useRef<{ latitude?: number; longitude?: number }>({});
+  const schoolCoordsRef = useRef<{ latitude?: number; longitude?: number }>({});
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [photos, setPhotos] = useState<(string | null)[]>([null, null, null]);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState<boolean[]>([false, false, false]);
 
-  const { data: hospital, isLoading } = useQuery({
-    queryKey: ['my-hospital'],
-    queryFn: () => hospitalsApi.getMine().then((r) => r.data).catch(() => null),
+  const { data: school, isLoading } = useQuery({
+    queryKey: ['my-school'],
+    queryFn: () => schoolsApi.getMine().then((r) => r.data).catch(() => null),
   });
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isDirty, isSubmitting } } = useForm<HospitalProfileFormValues>({
-    resolver: zodResolver(hospitalProfileSchema) as Resolver<HospitalProfileFormValues>,
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isDirty, isSubmitting } } = useForm<SchoolProfileFormValues>({
+    resolver: zodResolver(schoolProfileSchema) as Resolver<SchoolProfileFormValues>,
   });
 
   useEffect(() => {
-    if (hospital) {
+    if (school) {
       reset({
-        name: hospital.name,
-        registrationNumber: hospital.registrationNumber ?? '',
-        address: hospital.address,
-        city: hospital.city,
-        state: hospital.state,
-        pincode: hospital.pincode,
-        contactPhone: hospital.contactPhone.replace(/^\+91/, ''),
-        contactEmail: hospital.contactEmail,
-        description: hospital.description ?? '',
-        website: hospital.website ?? '',
-        noOfOperationTheatres: hospital.noOfOperationTheatres ?? undefined,
-        hospitalInfra: hospital.hospitalInfra ?? [],
-        noOfCabinsAndBeds: hospital.noOfCabinsAndBeds ?? undefined,
-        photos: hospital.photos ?? [],
-        scopeOfServices: hospital.scopeOfServices ?? '',
-        hospitalStrength: hospital.hospitalStrength ?? undefined,
-        noOfBeds: hospital.noOfBeds ?? undefined,
-        accreditations: hospital.accreditations ?? [],
-        departments: hospital.departments ?? [],
+        name: school.name,
+        registrationNumber: school.registrationNumber ?? '',
+        address: school.address,
+        city: school.city,
+        state: school.state,
+        pincode: school.pincode,
+        contactPhone: school.contactPhone.replace(/^\+91/, ''),
+        contactEmail: school.contactEmail,
+        description: school.description ?? '',
+        website: school.website ?? '',
+        noOfClassrooms: school.noOfClassrooms ?? undefined,
+        campusFacilities: school.campusFacilities ?? [],
+        noOfLabsOrSpecialRooms: school.noOfLabsOrSpecialRooms ?? undefined,
+        photos: school.photos ?? [],
+        scopeOfServices: school.scopeOfServices ?? '',
+        schoolStrength: school.schoolStrength ?? undefined,
+        studentCapacity: school.studentCapacity ?? undefined,
+        accreditations: school.accreditations ?? [],
+        departments: school.departments ?? [],
       });
-      setLogoUrl(hospital.logoUrl);
-      const existingPhotos = hospital.photos ?? [];
+      setLogoUrl(school.logoUrl);
+      const existingPhotos = school.photos ?? [];
       setPhotos([existingPhotos[0] ?? null, existingPhotos[1] ?? null, existingPhotos[2] ?? null]);
     } else {
-      // Pre-fill contact from registration for new hospital
+      // Pre-fill contact from registration for a new school
       reset({
         contactEmail: user?.email ?? '',
         contactPhone: (user?.phone ?? '').replace(/^\+91/, ''),
       });
     }
-  }, [hospital, user, reset]);
+  }, [school, user, reset]);
 
   const mutation = useMutation({
-    mutationFn: (values: HospitalProfileFormValues) => {
+    mutationFn: (values: SchoolProfileFormValues) => {
       const photoList = photos.filter(Boolean) as string[];
       const payload = {
         ...values,
-        ...hospitalCoordsRef.current,
+        ...schoolCoordsRef.current,
         contactPhone: `+91${values.contactPhone}`,
         logoUrl: logoUrl ?? undefined,
         website: values.website || undefined,
@@ -92,13 +92,13 @@ export default function RecruiterHospitalPage() {
         scopeOfServices: values.scopeOfServices || undefined,
         photos: photoList.length > 0 ? photoList : undefined,
       };
-      return hospital
-        ? hospitalsApi.update(hospital._id, payload)
-        : hospitalsApi.create(payload);
+      return school
+        ? schoolsApi.update(school._id, payload)
+        : schoolsApi.create(payload);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['my-hospital'] });
-      if (!hospital) {
+      qc.invalidateQueries({ queryKey: ['my-school'] });
+      if (!school) {
         toast({ title: 'School profile submitted!', description: 'Your profile is now under review by the admin.' });
         router.push('/recruiter/dashboard');
       } else {
@@ -131,7 +131,7 @@ export default function RecruiterHospitalPage() {
     if (!file) return;
     setUploadingPhoto((prev) => { const next = [...prev]; next[index] = true; return next; });
     try {
-      const url = await uploadFile(UploadKind.HOSPITAL_PHOTO, file);
+      const url = await uploadFile(UploadKind.SCHOOL_PHOTO, file);
       setPhotos((prev) => { const next = [...prev]; next[index] = url; return next; });
       toast({ title: 'Photo uploaded!' });
     } catch {
@@ -141,11 +141,11 @@ export default function RecruiterHospitalPage() {
     }
   };
 
-  const isVerifiedFinal = hospital?.isVerified === true;
-  const isRejected = hospital?.verificationStatus === VerificationStatus.REJECTED && !isVerifiedFinal;
+  const isVerifiedFinal = school?.isVerified === true;
+  const isRejected = school?.verificationStatus === VerificationStatus.REJECTED && !isVerifiedFinal;
 
   // Determine helper subtitle based on profile state
-  const subtitle = !hospital
+  const subtitle = !school
     ? 'Fill in your school details to get verified and start posting jobs'
     : isVerifiedFinal
     ? 'Your profile is verified and visible to teachers after they apply'
@@ -164,7 +164,7 @@ export default function RecruiterHospitalPage() {
           <h1 className="text-xl font-bold text-text-primary flex items-center gap-2"><Building className="w-5 h-5" /> School Profile</h1>
           <p className="text-sm text-text-muted mt-0.5">{subtitle}</p>
         </div>
-        {hospital && (
+        {school && (
           <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${
             isVerifiedFinal ? 'bg-green-100 text-green-700' :
             isRejected ? 'bg-red-100 text-red-600' :
@@ -243,7 +243,7 @@ export default function RecruiterHospitalPage() {
                 setValue('state', state, { shouldDirty: true, shouldValidate: true });
                 if (pincode) setValue('pincode', pincode, { shouldDirty: true, shouldValidate: true });
                 if (street) setValue('address', street, { shouldDirty: true });
-                hospitalCoordsRef.current = { latitude, longitude };
+                schoolCoordsRef.current = { latitude, longitude };
               }}
               onClear={() => {
                 setValue('city', '', { shouldDirty: true });
@@ -285,21 +285,21 @@ export default function RecruiterHospitalPage() {
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="noOfOperationTheatres">No. of Classrooms</Label>
-              <Input id="noOfOperationTheatres" type="number" min={0} placeholder="20" {...register('noOfOperationTheatres', { valueAsNumber: true })} />
+              <Label htmlFor="noOfClassrooms">No. of Classrooms</Label>
+              <Input id="noOfClassrooms" type="number" min={0} placeholder="20" {...register('noOfClassrooms', { valueAsNumber: true })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="noOfCabinsAndBeds">No. of Labs / Special Rooms</Label>
-              <Input id="noOfCabinsAndBeds" type="number" min={0} placeholder="5" {...register('noOfCabinsAndBeds', { valueAsNumber: true })} />
+              <Label htmlFor="noOfLabsOrSpecialRooms">No. of Labs / Special Rooms</Label>
+              <Input id="noOfLabsOrSpecialRooms" type="number" min={0} placeholder="5" {...register('noOfLabsOrSpecialRooms', { valueAsNumber: true })} />
             </div>
           </div>
 
           <div className="space-y-1.5">
             <Label>School Infrastructure & Facilities</Label>
             <ExpertiseSelector
-              options={HOSPITAL_INFRA_OPTIONS}
-              value={watch('hospitalInfra') ?? []}
-              onValueChange={(v) => setValue('hospitalInfra', v, { shouldDirty: true })}
+              options={SCHOOL_INFRA_OPTIONS}
+              value={watch('campusFacilities') ?? []}
+              onValueChange={(v) => setValue('campusFacilities', v, { shouldDirty: true })}
               searchPlaceholder="Search facilities…"
               placeholder="Select available facilities"
             />
@@ -307,19 +307,19 @@ export default function RecruiterHospitalPage() {
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="hospitalStrength">Teaching Staff Count</Label>
-              <Input id="hospitalStrength" type="number" min={0} placeholder="50" {...register('hospitalStrength', { valueAsNumber: true })} />
+              <Label htmlFor="schoolStrength">Teaching Staff Count</Label>
+              <Input id="schoolStrength" type="number" min={0} placeholder="50" {...register('schoolStrength', { valueAsNumber: true })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="noOfBeds">Total Student Capacity</Label>
-              <Input id="noOfBeds" type="number" min={0} placeholder="800" {...register('noOfBeds', { valueAsNumber: true })} />
+              <Label htmlFor="studentCapacity">Total Student Capacity</Label>
+              <Input id="studentCapacity" type="number" min={0} placeholder="800" {...register('studentCapacity', { valueAsNumber: true })} />
             </div>
           </div>
 
           <div className="space-y-1.5">
             <Label>Board / Affiliations</Label>
             <ExpertiseSelector
-              options={HOSPITAL_ACCREDITATION_OPTIONS}
+              options={SCHOOL_ACCREDITATION_OPTIONS}
               value={watch('accreditations') ?? []}
               onValueChange={(v) => setValue('accreditations', v, { shouldDirty: true })}
               searchPlaceholder="Search board or affiliation…"
@@ -330,18 +330,8 @@ export default function RecruiterHospitalPage() {
           <div className="space-y-1.5">
             <Label>School Sections / Levels</Label>
             <div className="flex flex-wrap gap-2">
-              {(Object.values(HospitalDepartment)).map((dept) => {
+              {(Object.values(Subject)).map((dept) => {
                 const active = (watch('departments') ?? []).includes(dept);
-                const DEPT_LABELS: Record<string, string> = {
-                  LAB: 'Science Lab',
-                  PHARMACY: 'Library',
-                  RADIOLOGY: 'Computer Lab',
-                  OPERATION_THEATRE: 'Activity Room',
-                  ICU: 'Admin Block',
-                  EMERGENCY: 'Sports Facility',
-                  CANTEEN: 'Canteen',
-                  HOSTEL: 'Hostel',
-                };
                 return (
                   <Button
                     key={dept}
@@ -353,7 +343,7 @@ export default function RecruiterHospitalPage() {
                       setValue('departments', active ? current.filter((d) => d !== dept) : [...current, dept], { shouldDirty: true });
                     }}
                   >
-                    {DEPT_LABELS[dept] ?? dept.replace(/_/g, ' ')}
+                    {dept.replace(/_/g, ' ')}
                   </Button>
                 );
               })}
@@ -370,7 +360,7 @@ export default function RecruiterHospitalPage() {
           </div>
         </div>
 
-        {/* Hospital Photos */}
+        {/* School Photos */}
         <div className="bg-bg-card border border-border-default rounded-2xl p-6 space-y-4">
           <h2 className="text-sm font-semibold text-text-primary border-b border-border-default pb-3">School Photos (max 3)</h2>
           <div className="grid grid-cols-3 gap-3">
@@ -413,10 +403,10 @@ export default function RecruiterHospitalPage() {
           </div>
         </div>
 
-        <Button type="submit" className="w-full" disabled={isSubmitting || mutation.isPending || (!isDirty && !!hospital && !uploadingLogo)}>
+        <Button type="submit" className="w-full" disabled={isSubmitting || mutation.isPending || (!isDirty && !!school && !uploadingLogo)}>
           {isSubmitting || mutation.isPending
             ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Saving…</>
-            : hospital ? 'Save Changes' : 'Submit School Profile'}
+            : school ? 'Save Changes' : 'Submit School Profile'}
         </Button>
       </form>
     </div>

@@ -33,12 +33,6 @@ export const paymentsApi = {
   verify: (razorpay_order_id: string, razorpay_payment_id: string, razorpay_signature: string) =>
     apiClient.post('/payments/verify', { razorpay_order_id, razorpay_payment_id, razorpay_signature }),
 
-  createSeekerSosOrder: () =>
-    apiClient.post<RazorpayOrder>('/payments/seeker-sos-subscribe'),
-
-  verifySeekerSosSub: (razorpay_order_id: string, razorpay_payment_id: string, razorpay_signature: string) =>
-    apiClient.post<{ message: string }>('/payments/seeker-sos-subscribe/verify', { razorpay_order_id, razorpay_payment_id, razorpay_signature }),
-
   adminList: (page = 1, limit = 20) =>
     apiClient.get<PaginatedPayments>('/payments/admin', { params: { page, limit } }),
 };

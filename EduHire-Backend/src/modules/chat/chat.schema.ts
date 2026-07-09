@@ -12,7 +12,7 @@ export class ChatMessage {
   senderId!: Types.ObjectId;
 
   @Prop({ type: String, required: true })
-  senderRole!: string; // JOB_SEEKER | RECRUITER
+  senderRole!: string; // TEACHER | RECRUITER
 
   @Prop({ type: String, required: true, maxlength: 2000 })
   text!: string;

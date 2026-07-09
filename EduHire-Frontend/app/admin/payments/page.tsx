@@ -16,10 +16,8 @@ import { PaymentKind, PaymentStatus } from '../../../lib/shared/enums';
 import { downloadCsv } from '../../../lib/utils/export-csv';
 
 const KIND_LABEL: Record<PaymentKind, string> = {
-  [PaymentKind.JOB_POST]: 'Job Post',
   [PaymentKind.APPLICATION]: 'Application',
   [PaymentKind.SUBSCRIPTION]: 'Subscription',
-  [PaymentKind.SEEKER_SOS_SUBSCRIPTION]: 'Teacher Subscription',
   [PaymentKind.BOOST]: 'Boost',
 };
 

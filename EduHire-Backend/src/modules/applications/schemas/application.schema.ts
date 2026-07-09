@@ -9,8 +9,8 @@ export class Application {
   @Prop({ type: Types.ObjectId, ref: 'Job', required: true, index: true })
   jobId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Hospital', required: true, index: true })
-  hospitalId!: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'School', required: true, index: true })
+  schoolId!: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
   seekerId!: Types.ObjectId;
@@ -21,7 +21,7 @@ export class Application {
   @Prop({ type: String, default: null })
   coverNote!: string | null;
 
-  // Set when hospital shortlists
+  // Set when school shortlists
   @Prop({ type: Date, default: null })
   shortlistedAt!: Date | null;
 
@@ -32,18 +32,18 @@ export class Application {
   @Prop({ type: Date, default: null, index: true })
   paymentDueBy!: Date | null;
 
-  // Set when seeker pays ₹99
+  // Set when teacher pays ₹99
   @Prop({ type: Date, default: null })
   paidAt!: Date | null;
 
   @Prop({ type: String, default: null })
   razorpayPaymentId!: string | null;
 
-  // Reveals hospital contact details after payment
+  // Reveals school contact details after payment
   @Prop({ type: Boolean, default: false })
-  hospitalRevealed!: boolean;
+  schoolRevealed!: boolean;
 
-  // Set when hospital marks WON/CLOSED
+  // Set when school marks WON/CLOSED
   @Prop({ type: String, default: null })
   decisionReason!: string | null;
 

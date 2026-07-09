@@ -1,18 +1,17 @@
 import { apiClient } from '../api-client';
-import { JobStatus, JobType } from '../shared/enums';
+import { JobDepartment, JobStatus, Subject, TeacherPost } from '../shared/enums';
 
 export interface Job {
   _id: string;
-  type: JobType;
   status: JobStatus;
-  hospitalId: string;
+  schoolId: string;
   title: string;
   description: string;
   requirements: string[];
   city: string;
   state: string;
-  department: string;
-  role: string;
+  department: JobDepartment;
+  role: TeacherPost;
   experienceMin: number;
   experienceMax: number;
   salaryMin: number;
@@ -22,14 +21,14 @@ export interface Job {
   jobTimingStart?: string | null;
   jobTimingEnd?: string | null;
   noOfCasesPerMonth?: number | null;
-  departmentRequirements?: string[];
-  specializations?: string[];
+  departmentRequirements?: JobDepartment[];
+  specializations?: Subject[];
   requiredDegree?: string | null;
   openPositions?: number;
   filledPositions?: number;
   jobDocumentUrl?: string | null;
   createdAt: string;
-  hospital?: {
+  school?: {
     _id: string;
     name: string;
     logoUrl: string | null;
@@ -42,7 +41,6 @@ export interface Job {
 export interface JobsQuery {
   page?: number;
   limit?: number;
-  type?: JobType;
   status?: JobStatus;
   city?: string;
   search?: string;
@@ -59,14 +57,13 @@ export interface PaginatedJobs {
 }
 
 export interface CreateJobPayload {
-  type: JobType;
   title: string;
   description: string;
   requirements: string[];
   city: string;
   state: string;
-  department: string;
-  role: string;
+  department: JobDepartment;
+  role: TeacherPost;
   experienceMin: number;
   experienceMax: number;
   salaryMin: number;
@@ -74,8 +71,8 @@ export interface CreateJobPayload {
   jobTimingStart?: string;
   jobTimingEnd?: string;
   noOfCasesPerMonth?: number;
-  departmentRequirements?: string[];
-  specializations?: string[];
+  departmentRequirements?: JobDepartment[];
+  specializations?: Subject[];
   requiredDegree?: string;
   openPositions?: number;
   jobDocumentUrl?: string;

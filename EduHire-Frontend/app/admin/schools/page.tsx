@@ -3,8 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, CheckCircle, Filter, XCircle } from 'lucide-react';
 import { Suspense, useState } from 'react';
-import { adminApi, type AdminHospital } from '../../../lib/api/admin';
-import { AdminHospitalDetailDialog } from '../../../common-components/admin-hospital-detail-dialog';
+import { adminApi, type AdminSchool } from '../../../lib/api/admin';
+import { AdminSchoolDetailDialog } from '../../../common-components/admin-school-detail-dialog';
 import AdminTablePagination from '../../../common-components/admin-table-pagination';
 import AdminExportButton from '../../../common-components/admin-export-button';
 import { SearchBar } from '../../../common-components/search-bar';
@@ -39,57 +39,57 @@ function activeCount(f: Filters) {
   return n;
 }
 
-function HospitalRow({
-  hospital,
+function SchoolRow({
+  school,
   onVerify,
   onReject,
   onViewDetail,
 }: {
-  hospital: AdminHospital;
+  school: AdminSchool;
   onVerify: (id: string) => void;
   onReject: (id: string) => void;
-  onViewDetail: (h: AdminHospital) => void;
+  onViewDetail: (h: AdminSchool) => void;
 }) {
-  const verified = hospital.isVerified;
+  const verified = school.isVerified;
   return (
     <tr
       className="border-b border-border-default hover:bg-bg-page transition-colors cursor-pointer"
-      onClick={() => onViewDetail(hospital)}
+      onClick={() => onViewDetail(school)}
     >
       <td className="px-4 py-3">
         <div>
-          <p className="text-sm font-medium text-text-primary">{hospital.name}</p>
-          <p className="text-xs text-text-muted">{hospital.city}, {hospital.state}</p>
+          <p className="text-sm font-medium text-text-primary">{school.name}</p>
+          <p className="text-xs text-text-muted">{school.city}, {school.state}</p>
         </div>
       </td>
-      <td className="px-4 py-3 text-xs text-text-muted">{hospital.contactPhone ?? hospital.phone}</td>
-      <td className="px-4 py-3 text-xs text-text-muted">{hospital.contactEmail ?? hospital.email}</td>
+      <td className="px-4 py-3 text-xs text-text-muted">{school.contactPhone ?? school.phone}</td>
+      <td className="px-4 py-3 text-xs text-text-muted">{school.contactEmail ?? school.email}</td>
       <td className="px-4 py-3">
         {verified ? (
           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Verified</span>
-        ) : hospital.verificationStatus === 'REJECTED' ? (
+        ) : school.verificationStatus === 'REJECTED' ? (
           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">Rejected</span>
         ) : (
           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Pending</span>
         )}
       </td>
       <td className="px-4 py-3 text-xs text-text-muted">
-        {new Date(hospital.createdAt).toLocaleDateString('en-IN')}
+        {new Date(school.createdAt).toLocaleDateString('en-IN')}
       </td>
       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2">
           {!verified && (
-            <Button size="sm" onClick={() => onVerify(hospital._id)}>
+            <Button size="sm" onClick={() => onVerify(school._id)}>
               <CheckCircle className="w-3.5 h-3.5 mr-1" /> Verify
             </Button>
           )}
-          {!verified && hospital.verificationStatus !== 'REJECTED' && (
-            <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => onReject(hospital._id)}>
+          {!verified && school.verificationStatus !== 'REJECTED' && (
+            <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => onReject(school._id)}>
               <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
             </Button>
           )}
           {verified && (
-            <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => onReject(hospital._id)}>
+            <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => onReject(school._id)}>
               <XCircle className="w-3.5 h-3.5 mr-1" /> Revoke
             </Button>
           )}
@@ -99,7 +99,7 @@ function HospitalRow({
   );
 }
 
-function HospitalsContent() {
+function SchoolsContent() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
@@ -107,8 +107,8 @@ function HospitalsContent() {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [draft, setDraft] = useState<Filters>(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [rejectTarget, setRejectTarget] = useState<AdminHospital | null>(null);
-  const [detailHospital, setDetailHospital] = useState<AdminHospital | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<AdminSchool | null>(null);
+  const [detailSchool, setDetailSchool] = useState<AdminSchool | null>(null);
   const debouncedSearch = useDebouncedValue(search, 400);
 
   const verifiedParam =
@@ -117,8 +117,8 @@ function HospitalsContent() {
     undefined;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-hospitals', page, debouncedSearch, filters],
-    queryFn: () => adminApi.listHospitals(
+    queryKey: ['admin-schools', page, debouncedSearch, filters],
+    queryFn: () => adminApi.listSchools(
       page, 10,
       verifiedParam,
       debouncedSearch || undefined,
@@ -138,14 +138,14 @@ function HospitalsContent() {
   const badgeCount = activeCount(filters);
 
   const verifyMutation = useMutation({
-    mutationFn: (id: string) => adminApi.verifyHospital(id),
-    onSuccess: () => { toast({ title: 'School verified' }); qc.invalidateQueries({ queryKey: ['admin-hospitals'] }); qc.invalidateQueries({ queryKey: ['admin-stats'] }); },
+    mutationFn: (id: string) => adminApi.verifySchool(id),
+    onSuccess: () => { toast({ title: 'School verified' }); qc.invalidateQueries({ queryKey: ['admin-schools'] }); qc.invalidateQueries({ queryKey: ['admin-stats'] }); },
     onError: () => toast({ title: 'Action failed', variant: 'destructive' }),
   });
 
   const rejectMutation = useMutation({
-    mutationFn: (id: string) => adminApi.rejectHospital(id),
-    onSuccess: () => { toast({ title: 'School rejected' }); setRejectTarget(null); qc.invalidateQueries({ queryKey: ['admin-hospitals'] }); },
+    mutationFn: (id: string) => adminApi.rejectSchool(id),
+    onSuccess: () => { toast({ title: 'School rejected' }); setRejectTarget(null); qc.invalidateQueries({ queryKey: ['admin-schools'] }); },
     onError: () => toast({ title: 'Action failed', variant: 'destructive' }),
   });
 
@@ -154,7 +154,7 @@ function HospitalsContent() {
   const clearFilter = () => { setDraft(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS); setPage(1); setFilterOpen(false); };
 
   const handleExport = () => {
-    downloadCsv('admin-hospitals', rows, [
+    downloadCsv('admin-schools', rows, [
       { header: 'Name', key: 'name' },
       { header: 'City', key: 'city' },
       { header: 'State', key: 'state' },
@@ -212,12 +212,12 @@ function HospitalsContent() {
                 </thead>
                 <tbody>
                   {rows.map((h) => (
-                    <HospitalRow
+                    <SchoolRow
                       key={h._id}
-                      hospital={h}
+                      school={h}
                       onVerify={(id) => verifyMutation.mutate(id)}
                       onReject={(id) => setRejectTarget(data!.data.find((x) => x._id === id) ?? null)}
-                      onViewDetail={setDetailHospital}
+                      onViewDetail={setDetailSchool}
                     />
                   ))}
                 </tbody>
@@ -284,9 +284,9 @@ function HospitalsContent() {
         </DialogContent>
       </Dialog>
 
-      <AdminHospitalDetailDialog
-        hospital={detailHospital}
-        onOpenChange={(open) => { if (!open) setDetailHospital(null); }}
+      <AdminSchoolDetailDialog
+        school={detailSchool}
+        onOpenChange={(open) => { if (!open) setDetailSchool(null); }}
       />
 
       <ConfirmDialog
@@ -302,6 +302,6 @@ function HospitalsContent() {
   );
 }
 
-export default function AdminHospitalsPage() {
-  return <Suspense><HospitalsContent /></Suspense>;
+export default function AdminSchoolsPage() {
+  return <Suspense><SchoolsContent /></Suspense>;
 }

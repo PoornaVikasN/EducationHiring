@@ -77,8 +77,8 @@ const ACTION_COLORS: Record<string, string> = {
   USER_SUSPENDED: 'bg-red-100 text-red-700',
   USER_ACTIVATED: 'bg-green-100 text-green-700',
   USER_CREATED: 'bg-teal-100 text-teal-700',
-  HOSPITAL_VERIFIED: 'bg-green-100 text-green-700',
-  HOSPITAL_REJECTED: 'bg-red-100 text-red-700',
+  SCHOOL_VERIFIED: 'bg-green-100 text-green-700',
+  SCHOOL_REJECTED: 'bg-red-100 text-red-700',
   JOB_DISABLED: 'bg-orange-100 text-orange-700',
 };
 
@@ -121,8 +121,6 @@ export default function AdminDashboardPage() {
     ACTIVE: { hex: '#22c55e', label: 'Active' },
     FILLED: { hex: '#3b82f6', label: 'Filled' },
     EXPIRED: { hex: '#f59e0b', label: 'Expired' },
-    PENDING_PAYMENT: { hex: '#94a3b8', label: 'Pending Payment' },
-    PENDING_SUBSCRIPTION: { hex: '#a855f7', label: 'Needs Subscription' },
     AUTO_DISABLED: { hex: '#f87171', label: 'Closed' },
     DISABLED_BY_ADMIN: { hex: '#dc2626', label: 'Disabled' },
   };
@@ -177,8 +175,8 @@ export default function AdminDashboardPage() {
           { label: 'Schools', value: stats?.totalRecruiters, icon: Users, bg: 'bg-indigo-100', iconColor: 'text-indigo-600', href: '/admin/users' },
           { label: 'Active Jobs', value: stats?.activeJobs, icon: Briefcase, bg: 'bg-green-100', iconColor: 'text-green-600', href: '/admin/jobs' },
           { label: 'Positions Filled', value: stats?.filledJobs, icon: Trophy, bg: 'bg-purple-100', iconColor: 'text-purple-600', href: '/admin/jobs' },
-          { label: 'Pending School Verify', value: stats?.pendingHospitals, icon: CheckCircle, bg: 'bg-amber-100', iconColor: 'text-amber-600', href: '/admin/hospitals' },
-          { label: 'Schools', value: stats?.totalHospitals, icon: Building2, bg: 'bg-teal-100', iconColor: 'text-teal-600', href: '/admin/hospitals' },
+          { label: 'Pending School Verify', value: stats?.pendingSchools, icon: CheckCircle, bg: 'bg-amber-100', iconColor: 'text-amber-600', href: '/admin/schools' },
+          { label: 'Schools', value: stats?.totalSchools, icon: Building2, bg: 'bg-teal-100', iconColor: 'text-teal-600', href: '/admin/schools' },
           { label: 'Monthly Revenue', value: monthlyRevenue, icon: CreditCard, bg: 'bg-emerald-100', iconColor: 'text-emerald-600', href: '/admin/payments' },
           { label: 'All-time Revenue', value: totalRevenue, icon: CreditCard, bg: 'bg-rose-100', iconColor: 'text-rose-600', href: '/admin/payments' },
         ].map(({ label, value, icon: Icon, bg, iconColor, href }) => (
@@ -230,11 +228,7 @@ export default function AdminDashboardPage() {
               <div className="pt-3 border-t border-border-default">
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-text-muted">Teaching Jobs Active</span>
-                  <span className="text-sm font-bold text-text-primary">{(stats?.sosActiveJobs ?? 0) + (stats?.fullTimeActiveJobs ?? 0) || '—'}</span>
-                </div>
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-xs text-text-muted">Schools Posting</span>
-                  <span className="text-sm font-bold text-text-primary">{stats?.fullTimeActiveJobs ?? '—'}</span>
+                  <span className="text-sm font-bold text-text-primary">{stats?.activeJobs ?? '—'}</span>
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-xs text-text-muted">Fill Rate</span>
@@ -250,10 +244,10 @@ export default function AdminDashboardPage() {
       <div className="bg-bg-card border border-border-default rounded-2xl p-6">
         <h2 className="text-sm font-semibold text-text-primary mb-4">Pending Actions</h2>
         <div className="grid sm:grid-cols-3 gap-4">
-          <Link href="/admin/hospitals?filter=pending" className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl hover:border-amber-400 transition-colors">
+          <Link href="/admin/schools?filter=pending" className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl hover:border-amber-400 transition-colors">
             <Building2 className="w-5 h-5 text-amber-600 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-amber-800">{stats?.pendingHospitals ?? 0} schools</p>
+              <p className="text-sm font-semibold text-amber-800">{stats?.pendingSchools ?? 0} schools</p>
               <p className="text-xs text-amber-600">awaiting verification</p>
             </div>
           </Link>
@@ -302,7 +296,7 @@ export default function AdminDashboardPage() {
       <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { href: '/admin/users', icon: Users, label: 'Manage Users', desc: 'View, suspend, or activate accounts' },
-          { href: '/admin/hospitals', icon: Building2, label: 'Verify Schools', desc: 'Approve or reject school profiles' },
+          { href: '/admin/schools', icon: Building2, label: 'Verify Schools', desc: 'Approve or reject school profiles' },
           { href: '/admin/jobs', icon: Briefcase, label: 'Manage Jobs', desc: 'Monitor and disable job listings' },
           { href: '/admin/payments', icon: CreditCard, label: 'Payments', desc: 'Audit all payment transactions' },
         ].map(({ href, icon: Icon, label, desc }) => (

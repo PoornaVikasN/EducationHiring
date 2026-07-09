@@ -3,7 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Application, ApplicationSchema } from '../applications/schemas/application.schema';
-import { Hospital, HospitalSchema } from '../hospitals/schemas/hospital.schema';
+import { School, SchoolSchema } from '../schools/schemas/school.schema';
+import { SystemConfigModule } from '../system-config/system-config.module';
 import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gateway';
 import { ChatMessage, ChatMessageSchema } from './chat.schema';
@@ -15,7 +16,7 @@ import { ChatService } from './chat.service';
     MongooseModule.forFeature([
       { name: ChatMessage.name, schema: ChatMessageSchema },
       { name: Application.name, schema: ApplicationSchema },
-      { name: Hospital.name, schema: HospitalSchema },
+      { name: School.name, schema: SchoolSchema },
     ]),
     JwtModule.registerAsync({
       useFactory: (config: ConfigService) => ({
@@ -23,6 +24,7 @@ import { ChatService } from './chat.service';
       }),
       inject: [ConfigService],
     }),
+    SystemConfigModule,
   ],
   controllers: [ChatController],
   providers: [ChatService, ChatGateway],

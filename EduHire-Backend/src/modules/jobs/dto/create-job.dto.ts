@@ -11,12 +11,9 @@ import {
   MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { JobType } from '../../../shared/enums';
+import { JobDepartment, Subject, TeacherPost } from '../../../shared/enums';
 
 export class CreateJobDto {
-  @IsEnum(JobType)
-  type!: JobType;
-
   @IsString()
   @MinLength(5)
   title!: string;
@@ -44,11 +41,11 @@ export class CreateJobDto {
   @IsNumber()
   latitude?: number;
 
-  @IsString()
-  department!: string;
+  @IsEnum(JobDepartment)
+  department!: JobDepartment;
 
-  @IsString()
-  role!: string;
+  @IsEnum(TeacherPost)
+  role!: TeacherPost;
 
   @IsNumber()
   @Min(0)
@@ -88,8 +85,8 @@ export class CreateJobDto {
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  departmentRequirements?: string[];
+  @IsEnum(JobDepartment, { each: true })
+  departmentRequirements?: JobDepartment[];
 
   @IsOptional()
   @IsInt()
@@ -104,8 +101,8 @@ export class CreateJobDto {
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  specializations?: string[];
+  @IsEnum(Subject, { each: true })
+  specializations?: Subject[];
 
   @IsOptional()
   @IsString()

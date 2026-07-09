@@ -70,7 +70,7 @@ export default function PricingPage() {
                 ))}
               </ul>
               <Link
-                href="/register?role=JOB_SEEKER"
+                href="/register?role=TEACHER"
                 className="block w-full text-center bg-brand-primary hover:bg-brand-primary-dark text-white font-semibold py-3 rounded-xl transition-colors"
               >
                 Get started free
@@ -231,7 +231,7 @@ export default function PricingPage() {
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
-            href="/register?role=JOB_SEEKER"
+            href="/register?role=TEACHER"
             className="inline-flex items-center gap-2 justify-center bg-white text-brand-primary font-semibold px-8 py-3 rounded-xl hover:bg-blue-50 transition-colors"
           >
             Find teaching jobs — free <ArrowRight className="w-4 h-4" />

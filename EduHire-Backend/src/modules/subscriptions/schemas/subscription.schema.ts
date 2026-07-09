@@ -6,8 +6,8 @@ export type SubscriptionDocument = HydratedDocument<Subscription>;
 
 @Schema({ timestamps: true, collection: 'subscriptions' })
 export class Subscription {
-  @Prop({ type: Types.ObjectId, ref: 'Hospital', required: true, index: true })
-  hospitalId!: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'School', required: true, index: true })
+  schoolId!: Types.ObjectId;
 
   @Prop({ type: String, enum: SubscriptionStatus, default: SubscriptionStatus.ACTIVE, index: true })
   status!: SubscriptionStatus;
@@ -26,4 +26,4 @@ export class Subscription {
 }
 
 export const SubscriptionSchema = SchemaFactory.createForClass(Subscription);
-SubscriptionSchema.index({ hospitalId: 1, status: 1, expiresAt: 1 });
+SubscriptionSchema.index({ schoolId: 1, status: 1, expiresAt: 1 });

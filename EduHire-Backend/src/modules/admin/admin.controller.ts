@@ -1,10 +1,15 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
 import { IsInt, IsString, Min, MinLength } from 'class-validator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ParseObjectIdPipe } from '../../common/pipes/parse-object-id.pipe';
 import { Role } from '../../shared/enums';
 import { AuditService } from '../audit/audit.service';
+import { EmailTemplatesService } from '../email-templates/email-templates.service';
+import { CreateEmailTemplateDto } from '../email-templates/dto/create-email-template.dto';
+import { UpdateEmailTemplateDto } from '../email-templates/dto/update-email-template.dto';
+import { LegalContentService } from '../legal-content/legal-content.service';
+import { UpdateLegalPageDto } from '../legal-content/dto/update-legal-page.dto';
 import { SystemConfigService } from '../system-config/system-config.service';
 import { AdminService } from './admin.service';
 import { CreateAdminUserDto } from './dto/create-admin-user.dto';
@@ -28,6 +33,8 @@ export class AdminController {
     private readonly adminService: AdminService,
     private readonly systemConfigService: SystemConfigService,
     private readonly auditService: AuditService,
+    private readonly emailTemplatesService: EmailTemplatesService,
+    private readonly legalContentService: LegalContentService,
   ) {}
 
   @Get('stats')
@@ -51,6 +58,7 @@ export class AdminController {
     @Query('city') city?: string,
     @Query('joinedFrom') joinedFrom?: string,
     @Query('joinedTo') joinedTo?: string,
+    @Query('includeDeleted') includeDeleted?: string,
   ) {
     const isActiveBool = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
     return this.adminService.listUsers(
@@ -62,6 +70,7 @@ export class AdminController {
       city,
       joinedFrom,
       joinedTo,
+      includeDeleted === 'true',
     );
   }
 
@@ -77,8 +86,20 @@ export class AdminController {
     return this.adminService.activateUser(id, user.sub, user.email);
   }
 
-  @Get('hospitals')
-  listHospitals(
+  @Delete('users/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteUser(@Param('id', ParseObjectIdPipe) id: string, @CurrentUser() user: { sub: string; email: string }) {
+    return this.adminService.deleteUser(id, user.sub, user.email);
+  }
+
+  @Patch('users/:id/restore')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  restoreUser(@Param('id', ParseObjectIdPipe) id: string, @CurrentUser() user: { sub: string; email: string }) {
+    return this.adminService.restoreUser(id, user.sub, user.email);
+  }
+
+  @Get('schools')
+  listSchools(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('verified') verified?: string,
@@ -87,7 +108,7 @@ export class AdminController {
     @Query('registeredTo') registeredTo?: string,
   ) {
     const verifiedBool = verified === 'true' ? true : verified === 'false' ? false : undefined;
-    return this.adminService.listHospitals(
+    return this.adminService.listSchools(
       Number(page) || 1,
       Number(limit) || 20,
       verifiedBool,
@@ -97,16 +118,16 @@ export class AdminController {
     );
   }
 
-  @Patch('hospitals/:id/verify')
+  @Patch('schools/:id/verify')
   @HttpCode(HttpStatus.NO_CONTENT)
-  verifyHospital(@Param('id', ParseObjectIdPipe) id: string, @CurrentUser() user: { sub: string; email: string }) {
-    return this.adminService.verifyHospital(id, user.sub, user.email);
+  verifySchool(@Param('id', ParseObjectIdPipe) id: string, @CurrentUser() user: { sub: string; email: string }) {
+    return this.adminService.verifySchool(id, user.sub, user.email);
   }
 
-  @Patch('hospitals/:id/reject')
+  @Patch('schools/:id/reject')
   @HttpCode(HttpStatus.NO_CONTENT)
-  rejectHospital(@Param('id', ParseObjectIdPipe) id: string, @CurrentUser() user: { sub: string; email: string }) {
-    return this.adminService.rejectHospital(id, user.sub, user.email);
+  rejectSchool(@Param('id', ParseObjectIdPipe) id: string, @CurrentUser() user: { sub: string; email: string }) {
+    return this.adminService.rejectSchool(id, user.sub, user.email);
   }
 
   // ── Audit log ───────────────────────────────────────────────────────────────
@@ -166,5 +187,55 @@ export class AdminController {
     @CurrentUser() user: { sub: string; email: string },
   ) {
     return this.systemConfigService.setSecret(key, dto.value, user.sub, user.email);
+  }
+
+  // ── Email Templates ─────────────────────────────────────────────────────────
+
+  @Get('config/email-templates')
+  getEmailTemplates() {
+    return this.emailTemplatesService.findAll();
+  }
+
+  @Patch('config/email-templates/:key')
+  updateEmailTemplate(
+    @Param('key') key: string,
+    @Body() dto: UpdateEmailTemplateDto,
+    @CurrentUser() user: { sub: string; email: string },
+  ) {
+    return this.emailTemplatesService.update(key, dto, user.sub, user.email);
+  }
+
+  @Post('config/email-templates')
+  @HttpCode(HttpStatus.CREATED)
+  createEmailTemplate(
+    @Body() dto: CreateEmailTemplateDto,
+    @CurrentUser() user: { sub: string; email: string },
+  ) {
+    return this.emailTemplatesService.create(dto, user.sub, user.email);
+  }
+
+  @Delete('config/email-templates/:key')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteEmailTemplate(
+    @Param('key') key: string,
+    @CurrentUser() user: { sub: string; email: string },
+  ) {
+    return this.emailTemplatesService.remove(key, user.sub, user.email);
+  }
+
+  // ── Legal pages (Terms / Privacy Policy) ────────────────────────────────────
+
+  @Get('config/legal-pages')
+  getLegalPages() {
+    return this.legalContentService.findAll();
+  }
+
+  @Patch('config/legal-pages/:key')
+  updateLegalPage(
+    @Param('key') key: string,
+    @Body() dto: UpdateLegalPageDto,
+    @CurrentUser() user: { sub: string; email: string },
+  ) {
+    return this.legalContentService.update(key, dto, user.sub, user.email);
   }
 }

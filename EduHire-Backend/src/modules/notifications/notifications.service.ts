@@ -4,8 +4,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
 import { Model, Types } from 'mongoose';
 import * as webpush from 'web-push';
-import { JobType, Role, NotificationKind } from '../../shared/enums';
-import { Hospital, HospitalDocument } from '../hospitals/schemas/hospital.schema';
+import { Role, NotificationKind } from '../../shared/enums';
+import { School, SchoolDocument } from '../schools/schemas/school.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { SystemConfigService } from '../system-config/system-config.service';
 import { EmailService } from './email.service';
@@ -19,7 +19,7 @@ export class NotificationsService {
 
   constructor(
     @InjectModel(Notification.name) private notifModel: Model<NotificationDocument>,
-    @InjectModel(Hospital.name) private hospitalModel: Model<HospitalDocument>,
+    @InjectModel(School.name) private schoolModel: Model<SchoolDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private gateway: NotificationsGateway,
     private emailService: EmailService,
@@ -122,26 +122,26 @@ export class NotificationsService {
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
-  private async getRecruiterIdForHospital(hospitalId: string): Promise<string | null> {
-    const hospital = await this.hospitalModel
-      .findById(hospitalId)
+  private async getRecruiterIdForSchool(schoolId: string): Promise<string | null> {
+    const school = await this.schoolModel
+      .findById(schoolId)
       .select('adminUserId')
       .lean()
       .exec();
-    return hospital?.adminUserId?.toString() ?? null;
+    return school?.adminUserId?.toString() ?? null;
   }
 
   // ── Event listeners ───────────────────────────────────────────────────────────
 
   @OnEvent('application.new')
-  async onApplicationNew(payload: { hospitalId: string; seekerId: string; jobId: string; applicationId: string; jobTitle?: string }) {
-    const recruiterId = await this.getRecruiterIdForHospital(payload.hospitalId);
+  async onApplicationNew(payload: { schoolId: string; seekerId: string; jobId: string; applicationId: string; jobTitle?: string }) {
+    const recruiterId = await this.getRecruiterIdForSchool(payload.schoolId);
     if (recruiterId) {
       await this.notify(
         recruiterId,
         NotificationKind.NEW_INTEREST,
         'New interest in your job posting',
-        'A doctor has expressed interest. Review their profile in Applicants.',
+        'A teacher has expressed interest. Review their profile in Applicants.',
         `/recruiter/applicants?job=${payload.jobId}`,
       );
     }
@@ -151,7 +151,7 @@ export class NotificationsService {
     if (seeker?.email) {
       this.emailService.sendApplicationReceivedEmail(
         seeker.email,
-        (seeker.seekerProfile as { fullName?: string } | null)?.fullName ?? 'Doctor',
+        (seeker.seekerProfile as { fullName?: string } | null)?.fullName ?? 'Teacher',
         payload.jobTitle ?? 'the position',
       ).catch(() => {});
     }
@@ -168,7 +168,7 @@ export class NotificationsService {
       payload.seekerId,
       NotificationKind.APPLICATION_SHORTLISTED,
       'You have been shortlisted! 🎉',
-      'Pay ₹99 within 48 hours to confirm your interview and reveal hospital details.',
+      'Pay ₹99 within 48 hours to confirm your interview and reveal school details.',
       `/applications`,
     );
   }
@@ -176,7 +176,7 @@ export class NotificationsService {
   @OnEvent('application.paid')
   async onApplicationPaid(payload: {
     seekerId: string;
-    hospitalId: string;
+    schoolId: string;
     jobId: string;
     applicationId: string;
     jobTitle?: string;
@@ -186,31 +186,36 @@ export class NotificationsService {
       payload.seekerId,
       NotificationKind.PAYMENT_SUCCESS,
       'Payment successful!',
-      'Hospital contact details are now revealed. Check your applications.',
+      'School contact details are now revealed. Check your applications.',
       '/applications',
     );
 
     // Notify recruiter
-    const recruiterId = await this.getRecruiterIdForHospital(payload.hospitalId);
+    const recruiterId = await this.getRecruiterIdForSchool(payload.schoolId);
     if (recruiterId) {
       await this.notify(
         recruiterId,
         NotificationKind.APPLICANT_PAID,
         'An applicant has confirmed interest 💳',
-        'A shortlisted doctor paid ₹99. Their contact details are now visible to you in Applicants.',
+        'A shortlisted teacher paid ₹99. Their contact details are now visible to you in Applicants.',
         `/recruiter/applicants?job=${payload.jobId}`,
       );
+
+      const recruiter = await this.userModel.findById(recruiterId).select('email').lean().exec();
+      if (recruiter?.email) {
+        this.emailService.sendApplicantPaidEmail(recruiter.email, payload.jobTitle ?? 'the position').catch(() => {});
+      }
     }
 
     // Payment confirmation email to seeker
     const seeker = await this.userModel.findById(payload.seekerId).select('email seekerProfile').lean().exec();
-    const hospital = await this.hospitalModel.findById(payload.hospitalId).select('name').lean().exec();
+    const school = await this.schoolModel.findById(payload.schoolId).select('name').lean().exec();
     if (seeker?.email) {
       this.emailService.sendPaymentConfirmationEmail(
         seeker.email,
-        (seeker.seekerProfile as { fullName?: string } | null)?.fullName ?? 'Doctor',
+        (seeker.seekerProfile as { fullName?: string } | null)?.fullName ?? 'Teacher',
         payload.jobTitle ?? 'the position',
-        hospital?.name ?? 'the hospital',
+        school?.name ?? 'the school',
       ).catch(() => {});
     }
   }
@@ -221,7 +226,7 @@ export class NotificationsService {
       payload.seekerId,
       NotificationKind.APPLICATION_WON,
       'Congratulations! You got the job! 🎊',
-      'The hospital has confirmed your hire. Check your applications for details.',
+      'The school has confirmed your hire. Check your applications for details.',
       '/applications',
     );
 
@@ -230,7 +235,7 @@ export class NotificationsService {
     if (seeker?.email) {
       this.emailService.sendApplicationWonEmail(
         seeker.email,
-        (seeker.seekerProfile as { fullName?: string } | null)?.fullName ?? 'Doctor',
+        (seeker.seekerProfile as { fullName?: string } | null)?.fullName ?? 'Teacher',
         payload.jobTitle ?? 'the position',
       ).catch(() => {});
     }
@@ -254,7 +259,7 @@ export class NotificationsService {
       payload.seekerId,
       NotificationKind.APPLICATION_CLOSED,
       'Application closed',
-      payload.reason ?? 'Your application has been closed by the hospital.',
+      payload.reason ?? 'Your application has been closed by the school.',
       '/applications',
     );
 
@@ -263,26 +268,34 @@ export class NotificationsService {
     if (seeker?.email) {
       this.emailService.sendApplicationClosedEmail(
         seeker.email,
-        (seeker.seekerProfile as { fullName?: string } | null)?.fullName ?? 'Doctor',
+        (seeker.seekerProfile as { fullName?: string } | null)?.fullName ?? 'Teacher',
         payload.jobTitle ?? 'the position',
         payload.reason,
       ).catch(() => {});
     }
   }
 
-  @OnEvent('hospital.verified')
-  async onHospitalVerified(payload: { hospitalId: string; recruiterId: string }) {
+  @OnEvent('school.verified')
+  async onSchoolVerified(payload: { schoolId: string; recruiterId: string }) {
     await this.notify(
       payload.recruiterId,
-      NotificationKind.HOSPITAL_VERIFIED,
-      'Your hospital is verified! ✅',
-      'Admin has approved your hospital profile. You can now post jobs and view applicants.',
+      NotificationKind.SCHOOL_VERIFIED,
+      'Your school is verified! ✅',
+      'Admin has approved your school profile. You can now post jobs and view applicants.',
       '/recruiter/jobs',
     );
+
+    const recruiter = await this.userModel.findById(payload.recruiterId).select('email recruiterProfile').lean().exec();
+    if (recruiter?.email) {
+      this.emailService.sendSchoolVerifiedEmail(
+        recruiter.email,
+        (recruiter.recruiterProfile as { fullName?: string } | null)?.fullName ?? 'there',
+      ).catch(() => {});
+    }
   }
 
-  @OnEvent('hospital.registered')
-  async onHospitalRegistered(payload: { hospitalId: string; hospitalName: string }) {
+  @OnEvent('school.registered')
+  async onSchoolRegistered(payload: { schoolId: string; schoolName: string }) {
     // Notify all active admins
     const admins = await this.userModel
       .find({ role: Role.ADMIN, isActive: true, deletedAt: null })
@@ -294,36 +307,42 @@ export class NotificationsService {
       admins.map((admin) =>
         this.notify(
           admin._id.toString(),
-          NotificationKind.HOSPITAL_REGISTERED,
-          'New hospital registration',
-          `"${payload.hospitalName}" has registered and is awaiting verification.`,
-          '/admin/hospitals',
+          NotificationKind.SCHOOL_REGISTERED,
+          'New school registration',
+          `"${payload.schoolName}" has registered and is awaiting verification.`,
+          '/admin/schools',
         ),
       ),
     );
   }
 
   @OnEvent('subscription.activated')
-  onSubscriptionActivated(payload: { hospitalId: string }) {
-    this.logger.log(`Subscription activated for hospital ${payload.hospitalId}`);
+  async onSubscriptionActivated(payload: { schoolId: string; amountPaise?: number; expiresAt?: Date }) {
+    this.logger.log(`Subscription activated for school ${payload.schoolId}`);
+
+    const school = await this.schoolModel.findById(payload.schoolId).select('adminUserId').lean().exec();
+    if (!school?.adminUserId) return;
+    const recruiter = await this.userModel.findById(school.adminUserId).select('email recruiterProfile').lean().exec();
+    if (!recruiter?.email) return;
+
+    this.emailService.sendSubscriptionActivatedEmail(
+      recruiter.email,
+      (recruiter.recruiterProfile as { fullName?: string } | null)?.fullName ?? 'there',
+      payload.expiresAt ?? new Date(),
+      payload.amountPaise,
+    ).catch(() => {});
   }
 
   @OnEvent('job.activated')
-  async onJobActivated(payload: { jobId: string; type: JobType; city: string; title: string; department?: string; jobLocation?: [number, number] | null }) {
-    const alertField = payload.type === JobType.SOS ? 'alertSosJobs' : 'alertFtJobs';
-    const isSos = payload.type === JobType.SOS;
-
-    // Build base filter — for SOS, only notify seekers with an active subscription
+  async onJobActivated(payload: { jobId: string; city: string; title: string; department?: string; jobLocation?: [number, number] | null }) {
+    // Build base filter — all active teachers who opted into new-job alerts
     const seekerFilter: Record<string, unknown> = {
-      role: Role.JOB_SEEKER,
+      role: Role.TEACHER,
       'seekerProfile.desiredCities': { $in: [payload.city] },
-      [alertField]: true,
+      alertNewJobs: true,
       deletedAt: null,
       isActive: true,
     };
-    if (isSos) {
-      seekerFilter['seekerSosSubscribedUntil'] = { $gt: new Date() };
-    }
 
     // ── In-app + web push notifications (all matching seekers) ───────────────
     // Note: pushSubscription filter removed — notify() → sendWebPush() handles
@@ -347,74 +366,15 @@ export class NotificationsService {
           this.notify(
             seeker._id.toString(),
             NotificationKind.NEW_JOB_IN_LOCATION,
-            `New ${isSos ? 'SOS ' : ''}job in ${payload.city}`,
+            `New job in ${payload.city}`,
             `${payload.title} — a new opportunity matching your location preference.`,
             `/jobs/${payload.jobId}`,
           ),
         ),
       );
 
-      // Email alert for SOS jobs only — fire-and-forget per seeker
-      if (isSos) {
-        for (const seeker of seekers) {
-          const email = (seeker as { email?: string }).email;
-          const name = (seeker.seekerProfile as { fullName?: string } | null)?.fullName ?? 'there';
-          if (email) {
-            this.emailService.sendSosJobAlertEmail(
-              email,
-              name,
-              payload.title,
-              payload.city,
-              `https://rxjobs4u.in/jobs/${payload.jobId}`,
-            ).catch((err: unknown) => this.logger.error(`SOS job alert email failed for ${email}: ${String(err)}`));
-          }
-        }
-      }
-
       if (seekers.length < BATCH) break;
       skip += BATCH;
-    }
-
-    // ── WhatsApp SOS alerts (SOS only, verified WhatsApp numbers) ────────────
-    if (payload.type === JobType.SOS) {
-      let waSkip = 0;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const waSeek = await this.userModel
-          .find({
-            role: Role.JOB_SEEKER,
-            'seekerProfile.desiredCities': { $in: [payload.city] },
-            'seekerProfile.whatsappVerified': true,
-            'seekerProfile.whatsappNumber': { $ne: null },
-            alertSosJobs: true,
-            seekerSosSubscribedUntil: { $gt: new Date() },
-            deletedAt: null,
-            isActive: true,
-          })
-          .select('seekerProfile.whatsappNumber')
-          .lean()
-          .skip(waSkip)
-          .limit(BATCH)
-          .exec();
-
-        if (waSeek.length === 0) break;
-
-        await Promise.allSettled(
-          waSeek.map((s) => {
-            const num = (s.seekerProfile as { whatsappNumber?: string } | null)?.whatsappNumber;
-            if (!num) return Promise.resolve();
-            return this.whatsAppService.sendSosAlert(num, {
-              jobId: payload.jobId,
-              title: payload.title,
-              city: payload.city,
-              department: payload.department ?? '',
-            }).catch((err: unknown) => this.logger.error(`WhatsApp SOS alert failed: ${String(err)}`));
-          }),
-        );
-
-        if (waSeek.length < BATCH) break;
-        waSkip += BATCH;
-      }
     }
 
     // ── Radius-based alerts (seekers near the job, not already matched by city name) ──
@@ -423,7 +383,7 @@ export class NotificationsService {
       const radiusM = radiusKm * 1_000;
 
       const radiusFilter: Record<string, unknown> = {
-        role: Role.JOB_SEEKER,
+        role: Role.TEACHER,
         'seekerProfile.location': {
           $nearSphere: {
             $geometry: { type: 'Point', coordinates: payload.jobLocation },
@@ -431,13 +391,10 @@ export class NotificationsService {
           },
         },
         'seekerProfile.desiredCities': { $nin: [payload.city] }, // skip already-notified by city match
-        [alertField]: true,
+        alertNewJobs: true,
         deletedAt: null,
         isActive: true,
       };
-      if (isSos) {
-        radiusFilter['seekerSosSubscribedUntil'] = { $gt: new Date() };
-      }
 
       let rSkip = 0;
       // eslint-disable-next-line no-constant-condition
@@ -457,7 +414,7 @@ export class NotificationsService {
             this.notify(
               seeker._id.toString(),
               NotificationKind.NEW_JOB_IN_LOCATION,
-              `New ${isSos ? 'SOS ' : ''}job near you`,
+              `New job near you`,
               `${payload.title} in ${payload.city} — within ${radiusKm} km of your saved location.`,
               `/jobs/${payload.jobId}`,
             ),

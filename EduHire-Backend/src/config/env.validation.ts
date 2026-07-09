@@ -36,13 +36,13 @@ export const envValidationSchema = Joi.object({
 
   // Public-facing FE URL used to construct outbound alert links (email, WhatsApp).
   // Defaults to the prod domain so a missing env value still produces valid links.
-  PUBLIC_FRONTEND_URL: Joi.string().uri().default('https://rxjobs4u.com'),
+  PUBLIC_FRONTEND_URL: Joi.string().uri().default('https://schoolteacher.co.in'),
 
   // MongoDB Atlas — required in prod; dev falls back to localhost
   MONGO_DB_USERNAME: prodRequiredString,
   MONGO_DB_PASSWORD: prodRequiredString,
   MONGO_DB_HOST: prodRequiredString,
-  MONGO_DB_NAME: Joi.string().default('rxjobs4u'),
+  MONGO_DB_NAME: Joi.string().default('eduhire'),
 
   // JWT — ALWAYS required, both secrets ≥32 chars, and they MUST differ
   JWT_ACCESS_SECRET: Joi.string().min(32).required(),
@@ -93,7 +93,7 @@ export const envValidationSchema = Joi.object({
   AWS_ACCESS_KEY_ID: prodRequiredString,
   AWS_SECRET_ACCESS_KEY: prodRequiredString,
 
-  // Wylto WhatsApp (OTP + SOS alerts) — optional; admin can set via API Keys panel
+  // Wylto WhatsApp (OTP + new job alerts) — optional; admin can set via API Keys panel
   WYLTO_API_TOKEN: Joi.string().allow('').optional(),
 
   // Razorpay (required in prod)

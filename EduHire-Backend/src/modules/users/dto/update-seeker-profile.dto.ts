@@ -12,7 +12,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { Academics, Availability, AvailableTimings, JobType, MaritalStatus, SalaryRange, TypeOfPractice } from '../../../shared/enums';
+import { Academics, Availability, AvailableTimings, MaritalStatus, SalaryRange, TypeOfPractice } from '../../../shared/enums';
 
 export class UpdateSeekerProfileDto {
   @IsOptional()
@@ -66,11 +66,6 @@ export class UpdateSeekerProfileDto {
   desiredCities?: string[];
 
   @IsOptional()
-  @IsArray()
-  @IsEnum(JobType, { each: true })
-  desiredJobTypes?: JobType[];
-
-  @IsOptional()
   @IsInt()
   @Min(0)
   @Max(60)
@@ -106,11 +101,11 @@ export class UpdateSeekerProfileDto {
   @IsOptional()
   @IsString()
   @MaxLength(200)
-  placeOfPractice?: string;
+  currentSchool?: string;
 
   @IsOptional()
   @IsEnum(TypeOfPractice)
-  typeOfPractice?: TypeOfPractice;
+  employmentType?: TypeOfPractice;
 
   @IsOptional()
   @IsArray()
@@ -141,12 +136,12 @@ export class UpdateSeekerProfileDto {
 
   @IsOptional()
   @IsBoolean()
-  isRegisteredInCouncil?: boolean;
+  isRegisteredWithBoard?: boolean;
 
   @IsOptional()
   @IsString()
   @MaxLength(200)
-  medicalCouncilName?: string;
+  boardRegistrationName?: string;
 
   @IsOptional()
   @IsNumber()

@@ -24,7 +24,7 @@ export class Payment {
   @Prop({ type: String, default: null, sparse: true })
   razorpayPaymentId!: string | null;
 
-  // Entity this payment is for (jobId, applicationId, or hospitalId for subscriptions)
+  // Entity this payment is for (jobId, applicationId, or schoolId for subscriptions)
   @Prop({ type: Types.ObjectId, default: null, index: true })
   entityId!: Types.ObjectId | null;
 

@@ -13,9 +13,9 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { HospitalDepartment } from '../../../shared/enums';
+import { Subject } from '../../../shared/enums';
 
-export class CreateHospitalDto {
+export class CreateSchoolDto {
   @IsString()
   @MinLength(2)
   @MaxLength(200)
@@ -64,17 +64,17 @@ export class CreateHospitalDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  noOfOperationTheatres?: number;
+  noOfClassrooms?: number;
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  hospitalInfra?: string[];
+  campusFacilities?: string[];
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  noOfCabinsAndBeds?: number;
+  noOfLabsOrSpecialRooms?: number;
 
   @IsOptional()
   @IsArray()
@@ -90,12 +90,12 @@ export class CreateHospitalDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  hospitalStrength?: number;
+  schoolStrength?: number;
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  noOfBeds?: number;
+  studentCapacity?: number;
 
   @IsOptional()
   @IsArray()
@@ -104,8 +104,8 @@ export class CreateHospitalDto {
 
   @IsOptional()
   @IsArray()
-  @IsEnum(HospitalDepartment, { each: true })
-  departments?: HospitalDepartment[];
+  @IsEnum(Subject, { each: true })
+  departments?: Subject[];
 
   @IsOptional()
   @IsNumber()

@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { redactPhone } from '../../common/utils/redact';
 import { SystemConfigService } from '../system-config/system-config.service';
 
-export interface SosJobPayload {
+export interface JobAlertPayload {
   jobId: string;
   title: string;
   city: string;
@@ -14,12 +15,12 @@ export class WhatsAppService {
 
   constructor(private readonly systemConfig: SystemConfigService) {}
 
-  async sendSosAlert(whatsappNumber: string, job: SosJobPayload): Promise<void> {
+  async sendJobAlert(whatsappNumber: string, job: JobAlertPayload): Promise<void> {
     const token = await this.systemConfig.getSecret('WHATSAPP_TOKEN').catch(() => null);
     const phoneNumberId = await this.systemConfig.getSecret('WHATSAPP_PHONE_NUMBER_ID').catch(() => null);
 
     if (!token || !phoneNumberId) {
-      this.logger.warn(`[WhatsApp] Not configured — skipping SOS alert to ${whatsappNumber}`);
+      this.logger.warn(`[WhatsApp] Not configured — skipping job alert to ${redactPhone(whatsappNumber)}`);
       return;
     }
 
@@ -38,7 +39,7 @@ export class WhatsAppService {
           to: whatsappNumber.replace('+', ''),
           type: 'template',
           template: {
-            name: 'sos_job_alert',
+            name: 'new_job_alert',
             language: { code: 'en' },
             components: [
               {
@@ -54,7 +55,7 @@ export class WhatsAppService {
         }),
       },
     ).catch((err: unknown) => {
-      this.logger.error(`[WhatsApp] Failed to send SOS alert to ${whatsappNumber}: ${String(err)}`);
+      this.logger.error(`[WhatsApp] Failed to send job alert to ${redactPhone(whatsappNumber)}: ${String(err)}`);
     });
   }
 }

@@ -3,7 +3,7 @@ import { SubscriptionStatus } from '../shared/enums';
 
 export interface Subscription {
   _id: string;
-  hospitalId: string;
+  schoolId: string;
   status: SubscriptionStatus;
   expiresAt: string;
   createdAt: string;

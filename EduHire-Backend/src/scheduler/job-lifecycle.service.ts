@@ -14,12 +14,12 @@ export class JobLifecycleService {
     private paymentsService: PaymentsService,
   ) {}
 
-  // Every 5 minutes: expire SOS/full-time jobs past their TTL
+  // Every 5 minutes: expire jobs past their TTL
   @Cron(CronExpression.EVERY_5_MINUTES)
   async sweepExpiredJobs() {
-    const { sosDisabled, fullTimeExpired } = await this.jobsService.runExpirySweep();
-    if (sosDisabled > 0 || fullTimeExpired > 0) {
-      this.logger.log(`Expiry sweep: SOS disabled=${sosDisabled}, FT expired=${fullTimeExpired}`);
+    const { expired } = await this.jobsService.runExpirySweep();
+    if (expired > 0) {
+      this.logger.log(`Expiry sweep: ${expired} jobs expired`);
     }
   }
 

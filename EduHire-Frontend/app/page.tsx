@@ -64,7 +64,7 @@ export default function LandingPage() {
       gradient: 'linear-gradient(90deg, #fbbf24, #f59e0b)',
       subtext: 'Verified schools, real classrooms, zero fees. Build your profile and get discovered.',
       ctaLabel: 'Create your free profile',
-      ctaHref: '/register?role=JOB_SEEKER',
+      ctaHref: '/register?role=TEACHER',
     },
     school: {
       headlineLead: 'Hire great teachers,',
@@ -406,7 +406,7 @@ export default function LandingPage() {
           {/* Audience-aware CTA */}
           <div className="mt-12 flex justify-center will-reveal">
             {audience === 'teacher' ? (
-              <Link href="/register?role=JOB_SEEKER"
+              <Link href="/register?role=TEACHER"
                 className="btn-glow inline-flex items-center gap-2 font-bold px-8 py-3.5 rounded-xl text-white text-sm"
                 style={{ background: 'linear-gradient(135deg, #3949ab, #5c6bc0)', boxShadow: '0 4px 20px rgba(57,73,171,0.35)' }}>
                 Join as Teacher — Free
@@ -499,7 +499,7 @@ export default function LandingPage() {
           </div>
 
           <div className="text-center mt-10 will-reveal">
-            <Link href="/register?role=JOB_SEEKER"
+            <Link href="/register?role=TEACHER"
               className="inline-flex items-center gap-2 text-sm font-bold"
               style={{ color: '#3949ab' }}>
               Browse all teaching jobs
@@ -526,7 +526,7 @@ export default function LandingPage() {
                 Teachers from across India have been enquiring about opportunities in Europe, South East Asia, and beyond.
                 Register your interest and we&apos;ll reach out when matching roles go live.
               </p>
-              <Link href="/register?role=JOB_SEEKER"
+              <Link href="/register?role=TEACHER"
                 className="inline-flex items-center gap-2 font-bold px-7 py-3 rounded-xl text-sm"
                 style={{ background: '#ffffff', color: '#1a237e', boxShadow: '0 4px 20px rgba(0,0,0,0.30)' }}>
                 Register Interest — Free
@@ -654,7 +654,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/register?role=JOB_SEEKER"
+              <Link href="/register?role=TEACHER"
                 className="btn-glow w-full inline-flex items-center justify-center gap-2 font-bold py-3.5 rounded-xl text-white text-sm"
                 style={{ background: 'linear-gradient(135deg, #3949ab, #5c6bc0)' }}>
                 Get Started — Free
@@ -735,7 +735,7 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-wrap gap-4 justify-center">
-            <Link href="/register?role=JOB_SEEKER"
+            <Link href="/register?role=TEACHER"
               className="btn-glow inline-flex items-center gap-2 font-bold px-8 py-4 rounded-xl text-white text-sm"
               style={{ background: 'linear-gradient(135deg, #3949ab, #5c6bc0)', boxShadow: '0 6px 24px rgba(57,73,171,0.35)' }}>
               Find Teaching Jobs
@@ -768,8 +768,8 @@ export default function LandingPage() {
               <p className="text-xs font-bold text-white uppercase tracking-wider mb-3">Teachers</p>
               <ul className="space-y-2">
                 {[
-                  { label: 'Browse jobs', href: '/register?role=JOB_SEEKER' },
-                  { label: 'Create profile', href: '/register?role=JOB_SEEKER' },
+                  { label: 'Browse jobs', href: '/register?role=TEACHER' },
+                  { label: 'Create profile', href: '/register?role=TEACHER' },
                   { label: 'Sign in', href: '/login' },
                 ].map(({ label, href }) => (
                   <li key={label}><Link href={href} className="text-xs font-medium hover:text-white transition-colors" style={{ color: '#94a3b8' }}>{label}</Link></li>

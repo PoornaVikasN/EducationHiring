@@ -13,7 +13,7 @@ export const uploadsApi = {
     apiClient.post<PresignResponse>('/uploads/presign', { kind, contentType, size }),
 };
 
-// Mirrors rxjobs4u-backend/src/modules/uploads/dto/presign.dto.ts.
+// Mirrors eduhire-backend/src/modules/uploads/dto/presign.dto.ts.
 // BE is source of truth — if you change those, mirror here so the user gets a
 // fast client-side rejection instead of a 400 round-trip.
 const MIME_ALLOWLIST: Record<UploadKind, readonly string[]> = {
@@ -21,7 +21,7 @@ const MIME_ALLOWLIST: Record<UploadKind, readonly string[]> = {
   [UploadKind.LOGO]:           ['image/jpeg', 'image/png', 'image/webp'],
   [UploadKind.CERTIFICATE]:    ['application/pdf', 'image/jpeg', 'image/png'],
   [UploadKind.DOCUMENT]:       ['application/pdf', 'image/jpeg', 'image/png'],
-  [UploadKind.HOSPITAL_PHOTO]: ['image/jpeg', 'image/png', 'image/webp'],
+  [UploadKind.SCHOOL_PHOTO]: ['image/jpeg', 'image/png', 'image/webp'],
   [UploadKind.INTRO_VIDEO]:    ['video/mp4', 'video/quicktime'],
 };
 
@@ -30,7 +30,7 @@ const SIZE_LIMITS_BYTES: Record<UploadKind, number> = {
   [UploadKind.LOGO]:           2 * 1024 * 1024,
   [UploadKind.CERTIFICATE]:    5 * 1024 * 1024,
   [UploadKind.DOCUMENT]:       5 * 1024 * 1024,
-  [UploadKind.HOSPITAL_PHOTO]: 5 * 1024 * 1024,
+  [UploadKind.SCHOOL_PHOTO]: 5 * 1024 * 1024,
   [UploadKind.INTRO_VIDEO]:    10 * 1024 * 1024,
 };
 
@@ -39,7 +39,7 @@ const KIND_DISPLAY: Record<UploadKind, string> = {
   [UploadKind.LOGO]:           'Logo',
   [UploadKind.CERTIFICATE]:    'Certificate',
   [UploadKind.DOCUMENT]:       'Document',
-  [UploadKind.HOSPITAL_PHOTO]: 'Hospital photo',
+  [UploadKind.SCHOOL_PHOTO]: 'School photo',
   [UploadKind.INTRO_VIDEO]:    'Intro video',
 };
 

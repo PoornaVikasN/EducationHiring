@@ -19,12 +19,15 @@ import { Textarea } from '../../../../../common-components/ui/textarea';
 import { jobsApi } from '../../../../../lib/api/jobs';
 import { uploadFile } from '../../../../../lib/api/uploads';
 import { useToast } from '../../../../../hooks/use-toast';
-import { UploadKind } from '../../../../../lib/shared/enums';
-import { DEGREE_OPTIONS, DEPARTMENT_REQUIREMENTS_OPTIONS, EXPERTISE_OPTIONS, JOB_TIMING_DISPLAY_OPTIONS } from '../../../../../lib/shared/constants';
+import { JobDepartment, Subject, TeacherPost, UploadKind } from '../../../../../lib/shared/enums';
+import { DEGREE_OPTIONS, JOB_TIMING_DISPLAY_OPTIONS } from '../../../../../lib/shared/constants';
 import { createJobSchema, type CreateJobFormValues } from '../../../../../lib/validations/jobs';
+import { enumComboboxOptions, enumLabel } from '../../../../../lib/utils/enum-options';
 
-const DEPARTMENT_OPTIONS = ['Pre-Primary', 'Primary', 'Secondary', 'Senior Secondary', 'Arts & Crafts', 'Computer Science', 'Physical Education', 'Administration', 'Library', 'Counseling', 'Other'].map((d) => ({ value: d, label: d }));
-const ROLE_OPTIONS = ['SGT (Standard Grade Teacher)', 'TGT (Trained Graduate Teacher)', 'PGT (Post Graduate Teacher)', 'Pre-Primary Teacher', 'Head Master / HM', 'Principal', 'Vice Principal', 'Special Educator', 'Lab Assistant', 'Librarian', 'Counselor', 'IIT/JEE Faculty', 'NEET Faculty', 'Other'].map((r) => ({ value: r, label: r }));
+const DEPARTMENT_OPTIONS = enumComboboxOptions(JobDepartment);
+const ROLE_OPTIONS = enumComboboxOptions(TeacherPost);
+const SUBJECT_OPTIONS = Object.values(Subject);
+const JOB_DEPARTMENT_OPTIONS = Object.values(JobDepartment);
 
 export default function EditJobPage() {
   const params = useParams<{ id: string }>();
@@ -52,7 +55,6 @@ export default function EditJobPage() {
     const existingDoc = job.jobDocumentUrl ?? null;
     setExistingDocUrl(existingDoc);
     reset({
-      type: job.type,
       title: job.title,
       description: job.description,
       requirements: Array.isArray(job.requirements) ? job.requirements.join('\n') : job.requirements,
@@ -156,7 +158,7 @@ export default function EditJobPage() {
               <Combobox
                 options={DEPARTMENT_OPTIONS}
                 value={watch('department') ?? ''}
-                onValueChange={(v) => setValue('department', v, { shouldDirty: true })}
+                onValueChange={(v) => setValue('department', v as JobDepartment, { shouldDirty: true })}
                 placeholder="Select department"
                 searchPlaceholder="Search department…"
               />
@@ -167,7 +169,7 @@ export default function EditJobPage() {
               <Combobox
                 options={ROLE_OPTIONS}
                 value={watch('role') ?? ''}
-                onValueChange={(v) => setValue('role', v, { shouldDirty: true })}
+                onValueChange={(v) => setValue('role', v as TeacherPost, { shouldDirty: true })}
                 placeholder="Select role"
                 searchPlaceholder="Search role…"
               />
@@ -258,9 +260,10 @@ export default function EditJobPage() {
           <div className="space-y-1.5">
             <Label>Department Requirements</Label>
             <ExpertiseSelector
-              options={DEPARTMENT_REQUIREMENTS_OPTIONS}
+              options={JOB_DEPARTMENT_OPTIONS}
+              formatLabel={enumLabel}
               value={watch('departmentRequirements') ?? []}
-              onValueChange={(v) => setValue('departmentRequirements', v, { shouldDirty: true })}
+              onValueChange={(v) => setValue('departmentRequirements', v as JobDepartment[], { shouldDirty: true })}
               searchPlaceholder="Search departments…"
               placeholder="Select required departments"
             />
@@ -269,9 +272,10 @@ export default function EditJobPage() {
           <div className="space-y-1.5">
             <Label>Specializations Required</Label>
             <ExpertiseSelector
-              options={EXPERTISE_OPTIONS}
+              options={SUBJECT_OPTIONS}
+              formatLabel={enumLabel}
               value={watch('specializations') ?? []}
-              onValueChange={(v) => setValue('specializations', v, { shouldDirty: true })}
+              onValueChange={(v) => setValue('specializations', v as Subject[], { shouldDirty: true })}
               searchPlaceholder="Search specializations…"
               placeholder="Select required specializations"
             />

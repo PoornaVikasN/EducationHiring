@@ -23,7 +23,7 @@ export default function SchoolChatPage() {
   const socketRef = useRef<Socket | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Load PAID/WON applications for this school
+  // Load chat-unlocked applications for this school (SHORTLISTED/PAID + WON, gated server-side)
   useEffect(() => {
     applicationsApi
       .recruiterChats()

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Academics, Availability, AvailableTimings, Gender, HospitalDepartment, MaritalStatus, SalaryRange, TypeOfPractice } from '../shared/enums';
+import { Academics, Availability, AvailableTimings, Gender, MaritalStatus, SalaryRange, Subject, TypeOfPractice } from '../shared/enums';
 
 export const seekerProfileSchema = z.object({
   fullName: z.string().min(2, 'Name is required').max(80),
@@ -31,7 +31,7 @@ export const seekerProfileSchema = z.object({
 
 export type SeekerProfileFormValues = z.infer<typeof seekerProfileSchema>;
 
-export const hospitalProfileSchema = z.object({
+export const schoolProfileSchema = z.object({
   name: z.string().min(2, 'School name is required').max(120),
   registrationNumber: z.string().min(3, 'Affiliation number / recognition number is required'),
   address: z.string().min(5, 'Address is required'),
@@ -42,15 +42,15 @@ export const hospitalProfileSchema = z.object({
   contactEmail: z.string().email('Enter a valid email'),
   description: z.string().max(1000).optional().or(z.literal('')),
   website: z.string().url('Enter a valid URL').optional().or(z.literal('')),
-  noOfOperationTheatres: z.number().min(0).optional(),
-  hospitalInfra: z.array(z.string()).optional(),
-  noOfCabinsAndBeds: z.number().min(0).optional(),
+  noOfClassrooms: z.number().min(0).optional(),
+  campusFacilities: z.array(z.string()).optional(),
+  noOfLabsOrSpecialRooms: z.number().min(0).optional(),
   photos: z.array(z.string().url()).max(3).optional(),
   scopeOfServices: z.string().max(1000).optional().or(z.literal('')),
-  hospitalStrength: z.number().min(0).optional(),
-  noOfBeds: z.number().min(0).optional(),
+  schoolStrength: z.number().min(0).optional(),
+  studentCapacity: z.number().min(0).optional(),
   accreditations: z.array(z.string()).optional(),
-  departments: z.array(z.nativeEnum(HospitalDepartment)).optional(),
+  departments: z.array(z.nativeEnum(Subject)).optional(),
 });
 
-export type HospitalProfileFormValues = z.infer<typeof hospitalProfileSchema>;
+export type SchoolProfileFormValues = z.infer<typeof schoolProfileSchema>;

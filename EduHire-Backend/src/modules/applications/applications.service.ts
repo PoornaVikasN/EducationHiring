@@ -8,12 +8,13 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { ApplicationState, JobStatus, JobType, Role } from '../../shared/enums';
+import { ApplicationState, JobStatus, Role } from '../../shared/enums';
 import { SHORTLIST_PAY_WINDOW_MS } from '../../shared/constants/pricing';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
-import { Hospital, HospitalDocument } from '../hospitals/schemas/hospital.schema';
+import { School, SchoolDocument } from '../schools/schemas/school.schema';
 import { Job, JobDocument } from '../jobs/schemas/job.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
+import { SystemConfigService } from '../system-config/system-config.service';
 import { Application, ApplicationDocument } from './schemas/application.schema';
 import { DecisionDto, ShowInterestDto } from './dto/application.dto';
 
@@ -22,16 +23,17 @@ export class ApplicationsService {
   constructor(
     @InjectModel(Application.name) private appModel: Model<ApplicationDocument>,
     @InjectModel(Job.name) private jobModel: Model<JobDocument>,
-    @InjectModel(Hospital.name) private hospitalModel: Model<HospitalDocument>,
+    @InjectModel(School.name) private schoolModel: Model<SchoolDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private eventEmitter: EventEmitter2,
+    private systemConfig: SystemConfigService,
   ) {}
 
-  // ── Seeker: show interest ─────────────────────────────────────────────────────
+  // ── Teacher: show interest ────────────────────────────────────────────────────
 
   async showInterest(currentUser: JwtPayload, jobId: string, dto: ShowInterestDto): Promise<ApplicationDocument> {
-    if (currentUser.role !== Role.JOB_SEEKER) {
-      throw new ForbiddenException('Only job seekers can apply');
+    if (currentUser.role !== Role.TEACHER) {
+      throw new ForbiddenException('Only teachers can apply');
     }
 
     const job = await this.jobModel
@@ -50,14 +52,14 @@ export class ApplicationsService {
 
     const application = await this.appModel.create({
       jobId: new Types.ObjectId(jobId),
-      hospitalId: job.hospitalId,
+      schoolId: job.schoolId,
       seekerId: new Types.ObjectId(currentUser.sub),
       state: ApplicationState.INTERESTED,
       coverNote: dto.coverNote ?? null,
     });
 
     this.eventEmitter.emit('application.new', {
-      hospitalId: job.hospitalId.toString(),
+      schoolId: job.schoolId.toString(),
       seekerId: currentUser.sub,
       jobId,
       applicationId: application._id.toString(),
@@ -67,7 +69,7 @@ export class ApplicationsService {
     return application;
   }
 
-  // ── Seeker: my applications ───────────────────────────────────────────────────
+  // ── Teacher: my applications ──────────────────────────────────────────────────
 
   async myApplications(currentUser: JwtPayload) {
     return this.appModel.aggregate([
@@ -83,46 +85,46 @@ export class ApplicationsService {
           localField: 'jobId',
           foreignField: '_id',
           as: 'job',
-          pipeline: [{ $project: { title: 1, type: 1, city: 1, state: 1, department: 1, role: 1, status: 1 } }],
+          pipeline: [{ $project: { title: 1, city: 1, state: 1, department: 1, role: 1, status: 1 } }],
         },
       },
       { $unwind: { path: '$job', preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: 'hospitals',
-          localField: 'hospitalId',
+          from: 'schools',
+          localField: 'schoolId',
           foreignField: '_id',
-          as: 'hospital',
+          as: 'school',
           pipeline: [{
             $project: {
               name: 1, city: 1, state: 1, logoUrl: 1, address: 1, pincode: 1,
               description: 1, website: 1, isVerified: 1,
-              hospitalInfra: 1, noOfOperationTheatres: 1, noOfCabinsAndBeds: 1,
+              campusFacilities: 1, noOfClassrooms: 1, noOfLabsOrSpecialRooms: 1,
               email: '$contactEmail',
               phone: '$contactPhone',
             },
           }],
         },
       },
-      { $unwind: { path: '$hospital', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: '$school', preserveNullAndEmptyArrays: true } },
       { $sort: { createdAt: -1 } },
       {
         $project: {
-          jobId: 1, hospitalId: 1,
+          jobId: 1, schoolId: 1,
           state: 1, coverNote: 1, shortlistedAt: 1, paymentDueBy: 1, paidAt: 1,
-          hospitalRevealed: 1, decisionReason: 1, decisionAt: 1, createdAt: 1,
+          schoolRevealed: 1, decisionReason: 1, decisionAt: 1, createdAt: 1,
           job: 1,
-          // Hospital name + basic info always visible (Option B: only contact details hidden until payment)
-          hospital: {
+          // School name + basic info always visible (Option B: only contact details hidden until payment)
+          school: {
             $cond: {
-              if: { $or: [{ $eq: ['$hospitalRevealed', true] }, { $eq: ['$job.type', JobType.SOS] }] },
-              then: '$hospital',
+              if: { $eq: ['$schoolRevealed', true] },
+              then: '$school',
               else: {
-                name: '$hospital.name',
-                city: '$hospital.city',
-                state: '$hospital.state',
-                logoUrl: '$hospital.logoUrl',
-                isVerified: '$hospital.isVerified',
+                name: '$school.name',
+                city: '$school.city',
+                state: '$school.state',
+                logoUrl: '$school.logoUrl',
+                isVerified: '$school.isVerified',
               },
             },
           },
@@ -134,16 +136,16 @@ export class ApplicationsService {
   // ── Recruiter: list applicants for a job ──────────────────────────────────────
 
   async jobApplicants(currentUser: JwtPayload, jobId: string) {
-    // Verify recruiter owns the job's hospital
-    const hospital = await this.hospitalModel
+    // Verify recruiter owns the job's school
+    const school = await this.schoolModel
       .findOne({ adminUserId: new Types.ObjectId(currentUser.sub), deletedAt: null })
       .lean()
       .exec();
 
-    if (!hospital) throw new ForbiddenException('Hospital profile not found');
+    if (!school) throw new ForbiddenException('School profile not found');
 
     const job = await this.jobModel
-      .findOne({ _id: jobId, hospitalId: hospital._id, deletedAt: null })
+      .findOne({ _id: jobId, schoolId: school._id, deletedAt: null })
       .lean()
       .exec();
 
@@ -175,8 +177,8 @@ export class ApplicationsService {
               'seekerProfile.maritalStatus': 1,
               'seekerProfile.whatsappNumber': 1,
               'seekerProfile.pincode': 1,
-              'seekerProfile.placeOfPractice': 1,
-              'seekerProfile.typeOfPractice': 1,
+              'seekerProfile.currentSchool': 1,
+              'seekerProfile.employmentType': 1,
               'seekerProfile.academics': 1,
               'seekerProfile.expectedSalaryLakhs': 1,
               'seekerProfile.availableTimings': 1,
@@ -196,15 +198,15 @@ export class ApplicationsService {
   // ── Recruiter: shortlist ──────────────────────────────────────────────────────
 
   async shortlist(currentUser: JwtPayload, jobId: string, applicationId: string): Promise<ApplicationDocument> {
-    const hospital = await this.hospitalModel
+    const school = await this.schoolModel
       .findOne({ adminUserId: new Types.ObjectId(currentUser.sub), deletedAt: null })
       .lean()
       .exec();
 
-    if (!hospital) throw new ForbiddenException('Hospital profile not found');
+    if (!school) throw new ForbiddenException('School profile not found');
 
     const job = await this.jobModel
-      .findOne({ _id: jobId, hospitalId: hospital._id, status: JobStatus.ACTIVE, deletedAt: null })
+      .findOne({ _id: jobId, schoolId: school._id, status: JobStatus.ACTIVE, deletedAt: null })
       .lean()
       .exec();
 
@@ -215,12 +217,6 @@ export class ApplicationsService {
       .exec();
 
     if (!app) throw new NotFoundException('Application not found or already actioned');
-
-    // SOS: no payment — shortlist goes straight to WON logic? No — for SOS shortlist → WON separately
-    // Actually for SOS we just allow the recruiter to mark WON directly (no payment step)
-    if (job.type === JobType.SOS) {
-      throw new BadRequestException('Use mark-won for SOS jobs directly');
-    }
 
     const paymentDueBy = new Date(Date.now() + SHORTLIST_PAY_WINDOW_MS);
     const updated = await this.appModel
@@ -253,15 +249,15 @@ export class ApplicationsService {
   // ── Recruiter: mark WON ───────────────────────────────────────────────────────
 
   async markWon(currentUser: JwtPayload, jobId: string, applicationId: string, dto: DecisionDto): Promise<void> {
-    const hospital = await this.hospitalModel
+    const school = await this.schoolModel
       .findOne({ adminUserId: new Types.ObjectId(currentUser.sub), deletedAt: null })
       .lean()
       .exec();
 
-    if (!hospital) throw new ForbiddenException('Hospital profile not found');
+    if (!school) throw new ForbiddenException('School profile not found');
 
     const job = await this.jobModel
-      .findOne({ _id: jobId, hospitalId: hospital._id, deletedAt: null })
+      .findOne({ _id: jobId, schoolId: school._id, deletedAt: null })
       .lean()
       .exec();
 
@@ -273,11 +269,7 @@ export class ApplicationsService {
 
     if (!app) throw new NotFoundException('Application not found');
 
-    // For full-time: must be PAID. For SOS: must be INTERESTED or SHORTLISTED.
-    const allowedStates =
-      job.type === JobType.SOS
-        ? [ApplicationState.INTERESTED, ApplicationState.SHORTLISTED]
-        : [ApplicationState.PAID];
+    const allowedStates = [ApplicationState.PAID];
 
     if (!allowedStates.includes(app.state)) {
       throw new BadRequestException(`Application must be in ${allowedStates.join(' or ')} state`);
@@ -314,7 +306,7 @@ export class ApplicationsService {
 
     this.eventEmitter.emit('application.won', {
       seekerId: app.seekerId.toString(),
-      hospitalId: hospital._id.toString(),
+      schoolId: school._id.toString(),
       jobId,
       applicationId,
       jobTitle: job.title,
@@ -324,12 +316,12 @@ export class ApplicationsService {
   // ── Recruiter: mark CLOSED (decline) ─────────────────────────────────────────
 
   async markClosed(currentUser: JwtPayload, jobId: string, applicationId: string, dto: DecisionDto): Promise<void> {
-    const hospital = await this.hospitalModel
+    const school = await this.schoolModel
       .findOne({ adminUserId: new Types.ObjectId(currentUser.sub), deletedAt: null })
       .lean()
       .exec();
 
-    if (!hospital) throw new ForbiddenException('Hospital profile not found');
+    if (!school) throw new ForbiddenException('School profile not found');
 
     const app = await this.appModel
       .findOne({ _id: applicationId, jobId: new Types.ObjectId(jobId) })
@@ -344,7 +336,7 @@ export class ApplicationsService {
     await this.appModel.findByIdAndUpdate(applicationId, {
       $set: {
         state: ApplicationState.CLOSED,
-        decisionReason: dto.reason ?? 'Declined by hospital',
+        decisionReason: dto.reason ?? 'Declined by school',
         decisionAt: new Date(),
       },
     });
@@ -359,21 +351,26 @@ export class ApplicationsService {
     });
   }
 
-  // ── Recruiter: all PAID/WON applications (for chat list) ─────────────────────
+  // ── Recruiter: all chat-unlocked applications (for chat list) ────────────────
+  // Matches ChatService.verifyAccess's gating: SHORTLISTED (+WON) by default,
+  // or PAID (+WON) when TEACHER_PAID_ENABLED is on.
 
-  async paidForHospital(currentUser: JwtPayload) {
-    const hospital = await this.hospitalModel
+  async paidForSchool(currentUser: JwtPayload) {
+    const school = await this.schoolModel
       .findOne({ adminUserId: new Types.ObjectId(currentUser.sub), deletedAt: null })
       .lean()
       .exec();
 
-    if (!hospital) throw new ForbiddenException('Hospital profile not found');
+    if (!school) throw new ForbiddenException('School profile not found');
+
+    const teacherPaidEnabled = await this.systemConfig.getSettingBoolean('TEACHER_PAID_ENABLED', false);
+    const unlockState = teacherPaidEnabled ? ApplicationState.PAID : ApplicationState.SHORTLISTED;
 
     return this.appModel.aggregate([
       {
         $match: {
-          hospitalId: hospital._id,
-          state: { $in: [ApplicationState.PAID, ApplicationState.WON] },
+          schoolId: school._id,
+          state: { $in: [unlockState, ApplicationState.WON] },
           deletedAt: null,
         },
       },
@@ -435,13 +432,13 @@ export class ApplicationsService {
         state: ApplicationState.PAID,
         paidAt: new Date(),
         razorpayPaymentId: paymentId,
-        hospitalRevealed: true,
+        schoolRevealed: true,
       },
     });
 
     this.eventEmitter.emit('application.paid', {
       seekerId: app.seekerId.toString(),
-      hospitalId: app.hospitalId.toString(),
+      schoolId: app.schoolId.toString(),
       jobId: app.jobId.toString(),
       applicationId,
     });

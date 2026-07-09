@@ -1,11 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { HospitalDepartment, VerificationStatus } from '../../../shared/enums';
+import { Subject, VerificationStatus } from '../../../shared/enums';
 
-export type HospitalDocument = HydratedDocument<Hospital>;
+export type SchoolDocument = HydratedDocument<School>;
 
-@Schema({ timestamps: true, collection: 'hospitals' })
-export class Hospital {
+@Schema({ timestamps: true, collection: 'schools' })
+export class School {
   @Prop({ type: String, required: true, trim: true })
   name!: string;
 
@@ -43,13 +43,13 @@ export class Hospital {
   website!: string | null;
 
   @Prop({ type: Number, default: null })
-  noOfOperationTheatres!: number | null;
+  noOfClassrooms!: number | null;
 
   @Prop({ type: [String], default: [] })
-  hospitalInfra!: string[];
+  campusFacilities!: string[];
 
   @Prop({ type: Number, default: null })
-  noOfCabinsAndBeds!: number | null;
+  noOfLabsOrSpecialRooms!: number | null;
 
   @Prop({ type: [String], default: [] })
   photos!: string[];
@@ -58,16 +58,16 @@ export class Hospital {
   scopeOfServices!: string | null;
 
   @Prop({ type: Number, default: null })
-  hospitalStrength!: number | null;
+  schoolStrength!: number | null;
 
   @Prop({ type: Number, default: null })
-  noOfBeds!: number | null;
+  studentCapacity!: number | null;
 
   @Prop({ type: [String], default: [] })
   accreditations!: string[];
 
-  @Prop({ type: [String], enum: Object.values(HospitalDepartment), default: [] })
-  departments!: HospitalDepartment[];
+  @Prop({ type: [String], enum: Object.values(Subject), default: [] })
+  departments!: Subject[];
 
   @Prop({ type: Boolean, default: false })
   isVerified!: boolean;
@@ -85,7 +85,7 @@ export class Hospital {
   location?: { type: 'Point'; coordinates: [number, number] };
 }
 
-export const HospitalSchema = SchemaFactory.createForClass(Hospital);
+export const SchoolSchema = SchemaFactory.createForClass(School);
 
-HospitalSchema.index({ city: 1, isVerified: 1 });
-HospitalSchema.index({ location: '2dsphere' }, { sparse: true });
+SchoolSchema.index({ city: 1, isVerified: 1 });
+SchoolSchema.index({ location: '2dsphere' }, { sparse: true });

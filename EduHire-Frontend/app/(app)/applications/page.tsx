@@ -13,6 +13,7 @@ import { useRazorpay } from '../../../hooks/use-razorpay';
 import { useToast } from '../../../hooks/use-toast';
 import { usePublicPricing, formatRupees } from '../../../hooks/use-public-pricing';
 import { APPLICATION_FEE_PAISE } from '../../../lib/shared/constants';
+import { enumLabel } from '../../../lib/utils/enum-options';
 
 // ── Progress steps ─────────────────────────────────────────────────────────────
 
@@ -97,20 +98,20 @@ function ClosedReasonBanner({ reason }: { reason?: string }) {
   );
 }
 
-// ── Hospital reveal card ───────────────────────────────────────────────────────
+// ── School reveal card ───────────────────────────────────────────────────────
 
-function HospitalRevealCard({ hospital }: { hospital: NonNullable<Application['hospital']> }) {
+function SchoolRevealCard({ school }: { school: NonNullable<Application['school']> }) {
   return (
     <div className="border border-brand-primary/25 rounded-2xl overflow-hidden mt-4">
       {/* Header */}
       <div className="bg-gradient-to-r from-brand-primary/10 to-teal-50 px-4 py-3 flex items-center gap-3 border-b border-brand-primary/15">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-teal-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
-          {hospital.name[0].toUpperCase()}
+          {school.name[0].toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-semibold text-text-primary">{hospital.name}</span>
-            {hospital.isVerified && (
+            <span className="text-sm font-semibold text-text-primary">{school.name}</span>
+            {school.isVerified && (
               <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
                 <CheckCircle className="w-2.5 h-2.5" /> Verified
               </span>
@@ -118,60 +119,60 @@ function HospitalRevealCard({ hospital }: { hospital: NonNullable<Application['h
           </div>
           <p className="text-xs text-text-muted mt-0.5">
             <MapPin className="w-3 h-3 inline mr-0.5" />
-            {hospital.city}, {hospital.state}{hospital.pincode ? ` — ${hospital.pincode}` : ''}
+            {school.city}, {school.state}{school.pincode ? ` — ${school.pincode}` : ''}
           </p>
         </div>
       </div>
 
       <div className="p-4 space-y-3 text-xs">
         {/* Description */}
-        {hospital.description && (
-          <p className="text-text-muted leading-relaxed">{hospital.description}</p>
+        {school.description && (
+          <p className="text-text-muted leading-relaxed">{school.description}</p>
         )}
 
         {/* School stats */}
-        {(hospital.noOfOperationTheatres != null || hospital.noOfCabinsAndBeds != null) && (
+        {(school.noOfClassrooms != null || school.noOfLabsOrSpecialRooms != null) && (
           <div className="grid grid-cols-2 gap-2">
-            {hospital.noOfOperationTheatres != null && (
+            {school.noOfClassrooms != null && (
               <div className="bg-bg-page rounded-xl px-2.5 py-2 text-center">
                 <p className="text-[10px] text-text-muted mb-0.5">Classrooms</p>
-                <p className="font-semibold text-text-primary">{hospital.noOfOperationTheatres}</p>
+                <p className="font-semibold text-text-primary">{school.noOfClassrooms}</p>
               </div>
             )}
-            {hospital.noOfCabinsAndBeds != null && (
+            {school.noOfLabsOrSpecialRooms != null && (
               <div className="bg-bg-page rounded-xl px-2.5 py-2 text-center">
                 <p className="text-[10px] text-text-muted mb-0.5">Labs</p>
-                <p className="font-semibold text-text-primary">{hospital.noOfCabinsAndBeds}</p>
+                <p className="font-semibold text-text-primary">{school.noOfLabsOrSpecialRooms}</p>
               </div>
             )}
           </div>
         )}
 
         {/* Address */}
-        {hospital.address && (
+        {school.address && (
           <div className="flex items-start gap-1.5 text-text-muted">
             <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            <span>{hospital.address}</span>
+            <span>{school.address}</span>
           </div>
         )}
 
         {/* Contact */}
-        {(hospital.phone || hospital.email || hospital.website) && (
+        {(school.phone || school.email || school.website) && (
           <div className="border-t border-border-default pt-3 space-y-2">
             <p className="text-[11px] font-semibold text-text-primary uppercase tracking-wide">Contact</p>
-            {hospital.phone && (
-              <a href={`tel:${hospital.phone}`} className="flex items-center gap-2 text-brand-primary hover:underline font-medium">
-                <Phone className="w-3.5 h-3.5 shrink-0" /> {hospital.phone}
+            {school.phone && (
+              <a href={`tel:${school.phone}`} className="flex items-center gap-2 text-brand-primary hover:underline font-medium">
+                <Phone className="w-3.5 h-3.5 shrink-0" /> {school.phone}
               </a>
             )}
-            {hospital.email && (
-              <a href={`mailto:${hospital.email}`} className="flex items-center gap-2 text-brand-primary hover:underline font-medium">
-                <Mail className="w-3.5 h-3.5 shrink-0" /> {hospital.email}
+            {school.email && (
+              <a href={`mailto:${school.email}`} className="flex items-center gap-2 text-brand-primary hover:underline font-medium">
+                <Mail className="w-3.5 h-3.5 shrink-0" /> {school.email}
               </a>
             )}
-            {hospital.website && (
-              <a href={hospital.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-brand-primary hover:underline font-medium">
-                <Globe className="w-3.5 h-3.5 shrink-0" /> {hospital.website}
+            {school.website && (
+              <a href={school.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-brand-primary hover:underline font-medium">
+                <Globe className="w-3.5 h-3.5 shrink-0" /> {school.website}
               </a>
             )}
           </div>
@@ -219,7 +220,7 @@ function ApplicationCard({ app, onPay }: { app: Application; onPay: (app: Applic
             </Link>
             <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1">
               <Building2 className="w-3 h-3 shrink-0" />
-              {app.hospital?.name ?? 'School'} · <MapPin className="w-3 h-3 shrink-0" />{app.job?.city}, {app.job?.state}
+              {app.school?.name ?? 'School'} · <MapPin className="w-3 h-3 shrink-0" />{app.job?.city}, {app.job?.state}
             </p>
           </div>
           <StateBadge state={app.state} appFee={appFee} />
@@ -233,12 +234,12 @@ function ApplicationCard({ app, onPay }: { app: Application; onPay: (app: Applic
           </span>
           {app.job?.department && (
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-bg-page border border-border-default text-text-muted">
-              {app.job.department}
+              {enumLabel(app.job.department)}
             </span>
           )}
           {app.job?.role && (
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-bg-page border border-border-default text-text-muted">
-              {app.job.role}
+              {enumLabel(app.job.role)}
             </span>
           )}
           <span className="text-[11px] px-2 py-0.5 rounded-full bg-bg-page border border-border-default text-text-muted">
@@ -290,10 +291,10 @@ function ApplicationCard({ app, onPay }: { app: Application; onPay: (app: Applic
           </div>
         )}
 
-        {/* Hospital reveal (PAID or WON) */}
+        {/* School reveal (PAID or WON) */}
         {(app.state === ApplicationState.PAID || app.state === ApplicationState.WON) &&
-          app.hospitalRevealed && app.hospital && (
-          <HospitalRevealCard hospital={app.hospital} />
+          app.schoolRevealed && app.school && (
+          <SchoolRevealCard school={app.school} />
         )}
       </div>
     </div>

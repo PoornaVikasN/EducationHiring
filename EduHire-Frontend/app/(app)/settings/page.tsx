@@ -48,9 +48,8 @@ export default function SettingsPage() {
   const [showNew, setShowNew] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [activeTab, setActiveTab] = useState<'password' | 'alerts' | 'disputes' | 'danger'>('password');
-  const [alertSos, setAlertSos] = useState(user?.alertSosJobs ?? true);
-  const [alertFt, setAlertFt] = useState(user?.alertFtJobs ?? true);
-  const isSeeker = user?.role === Role.JOB_SEEKER;
+  const [alertFt, setAlertFt] = useState(user?.alertNewJobs ?? true);
+  const isSeeker = user?.role === Role.TEACHER;
 
   const pwForm = useForm<PwForm>({ resolver: zodResolver(pwSchema) });
   const disputeForm = useForm<DisputeForm>({ resolver: zodResolver(disputeSchema) });
@@ -88,7 +87,7 @@ export default function SettingsPage() {
   });
 
   const alertsMutation = useMutation({
-    mutationFn: (data: { alertSosJobs?: boolean; alertFtJobs?: boolean }) =>
+    mutationFn: (data: { alertNewJobs?: boolean }) =>
       usersApi.updateSettings(data),
     onSuccess: () => toast({ title: 'Alert preferences saved' }),
     onError: () => toast({ title: 'Save failed', variant: 'destructive' }),
@@ -198,28 +197,14 @@ export default function SettingsPage() {
 
           <div className="flex items-center justify-between rounded-xl border border-border-default px-4 py-3">
             <div>
-              <p className="text-sm font-medium text-text-primary">SOS Job Alerts</p>
-              <p className="text-xs text-text-muted">Get notified when urgent SOS jobs are posted in your city</p>
-            </div>
-            <Switch
-              checked={alertSos}
-              onCheckedChange={(v) => {
-                setAlertSos(v);
-                alertsMutation.mutate({ alertSosJobs: v });
-              }}
-            />
-          </div>
-
-          <div className="flex items-center justify-between rounded-xl border border-border-default px-4 py-3">
-            <div>
-              <p className="text-sm font-medium text-text-primary">Full-time Job Alerts</p>
-              <p className="text-xs text-text-muted">Get notified when full-time jobs are posted in your city</p>
+              <p className="text-sm font-medium text-text-primary">Job Alerts</p>
+              <p className="text-xs text-text-muted">Get notified when new jobs are posted in your city</p>
             </div>
             <Switch
               checked={alertFt}
               onCheckedChange={(v) => {
                 setAlertFt(v);
-                alertsMutation.mutate({ alertFtJobs: v });
+                alertsMutation.mutate({ alertNewJobs: v });
               }}
             />
           </div>

@@ -1,7 +1,7 @@
-// Mirrored from rxjobs4u-backend/src/shared/enums/index.ts — BE is source of truth
+// Mirrored from eduhire-backend/src/shared/enums/index.ts — BE is source of truth
 
 export enum Role {
-  JOB_SEEKER = 'JOB_SEEKER',
+  TEACHER = 'TEACHER',
   RECRUITER = 'RECRUITER',
   ADMIN = 'ADMIN',
 }
@@ -27,14 +27,7 @@ export enum Availability {
   NOT_LOOKING = 'NOT_LOOKING',
 }
 
-export enum JobType {
-  SOS = 'SOS',
-  FULL_TIME = 'FULL_TIME',
-}
-
 export enum JobStatus {
-  PENDING_PAYMENT = 'PENDING_PAYMENT',
-  PENDING_SUBSCRIPTION = 'PENDING_SUBSCRIPTION',
   ACTIVE = 'ACTIVE',
   FILLED = 'FILLED',
   EXPIRED = 'EXPIRED',
@@ -51,10 +44,8 @@ export enum ApplicationState {
 }
 
 export enum PaymentKind {
-  JOB_POST = 'JOB_POST',
   APPLICATION = 'APPLICATION',
   SUBSCRIPTION = 'SUBSCRIPTION',
-  SEEKER_SOS_SUBSCRIPTION = 'SEEKER_SOS_SUBSCRIPTION',
   BOOST = 'BOOST',
 }
 
@@ -92,8 +83,8 @@ export enum NotificationKind {
   JOB_AUTO_DISABLED = 'JOB_AUTO_DISABLED',
   SUB_RENEWED = 'SUB_RENEWED',
   SUB_RENEWAL_FAILED = 'SUB_RENEWAL_FAILED',
-  HOSPITAL_VERIFIED = 'HOSPITAL_VERIFIED',
-  HOSPITAL_REGISTERED = 'HOSPITAL_REGISTERED',
+  SCHOOL_VERIFIED = 'SCHOOL_VERIFIED',
+  SCHOOL_REGISTERED = 'SCHOOL_REGISTERED',
   SYSTEM_ALERT = 'SYSTEM_ALERT',
 }
 
@@ -102,7 +93,7 @@ export enum UploadKind {
   LOGO = 'logo',
   CERTIFICATE = 'certificate',
   DOCUMENT = 'document',
-  HOSPITAL_PHOTO = 'hospital_photo',
+  SCHOOL_PHOTO = 'school_photo',
   INTRO_VIDEO = 'intro_video',
 }
 
@@ -138,15 +129,64 @@ export enum SalaryRange {
   ABOVE_2L      = 'ABOVE_2L',
 }
 
-export enum HospitalDepartment {
-  LAB               = 'LAB',
-  PHARMACY          = 'PHARMACY',
-  RADIOLOGY         = 'RADIOLOGY',
-  OPERATION_THEATRE = 'OPERATION_THEATRE',
-  ICU               = 'ICU',
-  EMERGENCY         = 'EMERGENCY',
-  CANTEEN           = 'CANTEEN',
-  HOSTEL            = 'HOSTEL',
+export enum Subject {
+  PRIMARY                = 'PRIMARY',
+  ENGLISH                = 'ENGLISH',
+  MATHEMATICS            = 'MATHEMATICS',
+  SCIENCE                = 'SCIENCE',
+  PHYSICS                = 'PHYSICS',
+  CHEMISTRY              = 'CHEMISTRY',
+  BIOLOGY                = 'BIOLOGY',
+  SOCIAL_STUDIES         = 'SOCIAL_STUDIES',
+  HINDI                  = 'HINDI',
+  COMPUTER_SCIENCE       = 'COMPUTER_SCIENCE',
+  TELUGU                 = 'TELUGU',
+  HISTORY                = 'HISTORY',
+  GEOGRAPHY              = 'GEOGRAPHY',
+  ECONOMICS              = 'ECONOMICS',
+  BUSINESS_STUDIES       = 'BUSINESS_STUDIES',
+  ACCOUNTANCY            = 'ACCOUNTANCY',
+  INFORMATION_TECHNOLOGY = 'INFORMATION_TECHNOLOGY',
+  ART_CRAFTS             = 'ART_CRAFTS',
+  MUSIC                  = 'MUSIC',
+  DANCE                  = 'DANCE',
+  ENVIRONMENTAL_SCIENCE  = 'ENVIRONMENTAL_SCIENCE',
+  PRE_PRIMARY_EDUCATION  = 'PRE_PRIMARY_EDUCATION',
+  SPECIAL_EDUCATION      = 'SPECIAL_EDUCATION',
+  SCHOOL_ADMINISTRATION  = 'SCHOOL_ADMINISTRATION',
+  COUNSELING             = 'COUNSELING',
+  OTHERS                 = 'OTHERS',
+}
+
+export enum TeacherPost {
+  SGT                 = 'SGT',
+  TGT                 = 'TGT',
+  PGT                 = 'PGT',
+  PRE_PRIMARY_TEACHER = 'PRE_PRIMARY_TEACHER',
+  HM                  = 'HM',
+  PRINCIPAL           = 'PRINCIPAL',
+  VICE_PRINCIPAL      = 'VICE_PRINCIPAL',
+  SPECIAL_EDUCATOR    = 'SPECIAL_EDUCATOR',
+  LAB_ASSISTANT       = 'LAB_ASSISTANT',
+  LIBRARIAN           = 'LIBRARIAN',
+  COUNSELOR           = 'COUNSELOR',
+  IIT_JEE_FACULTY     = 'IIT_JEE_FACULTY',
+  NEET_FACULTY        = 'NEET_FACULTY',
+  OTHER               = 'OTHER',
+}
+
+export enum JobDepartment {
+  PRE_PRIMARY        = 'PRE_PRIMARY',
+  PRIMARY            = 'PRIMARY',
+  SECONDARY          = 'SECONDARY',
+  SENIOR_SECONDARY   = 'SENIOR_SECONDARY',
+  ARTS_CRAFTS        = 'ARTS_CRAFTS',
+  COMPUTER_SCIENCE   = 'COMPUTER_SCIENCE',
+  PHYSICAL_EDUCATION = 'PHYSICAL_EDUCATION',
+  ADMINISTRATION     = 'ADMINISTRATION',
+  LIBRARY            = 'LIBRARY',
+  COUNSELING         = 'COUNSELING',
+  OTHER              = 'OTHER',
 }
 
 export enum AvailableTimings {

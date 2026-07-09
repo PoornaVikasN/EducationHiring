@@ -6,6 +6,7 @@ export enum UploadKind {
   LOGO = 'logo',
   CERTIFICATE = 'certificate',
   DOCUMENT = 'document',
+  SCHOOL_PHOTO = 'school_photo',
   INTRO_VIDEO = 'intro_video',
 }
 
@@ -14,6 +15,7 @@ const MIME_ALLOWLIST: Record<UploadKind, string[]> = {
   [UploadKind.LOGO]: ['image/jpeg', 'image/png', 'image/webp'],
   [UploadKind.CERTIFICATE]: ['application/pdf'],
   [UploadKind.DOCUMENT]: ['application/pdf', 'image/jpeg', 'image/png'],
+  [UploadKind.SCHOOL_PHOTO]: ['image/jpeg', 'image/png', 'image/webp'],
   [UploadKind.INTRO_VIDEO]: ['video/mp4', 'video/quicktime'],
 };
 
@@ -22,6 +24,7 @@ const SIZE_LIMITS: Record<UploadKind, number> = {
   [UploadKind.LOGO]: 2 * 1024 * 1024,
   [UploadKind.CERTIFICATE]: 5 * 1024 * 1024,
   [UploadKind.DOCUMENT]: 5 * 1024 * 1024,
+  [UploadKind.SCHOOL_PHOTO]: 5 * 1024 * 1024,
   [UploadKind.INTRO_VIDEO]: 10 * 1024 * 1024,
 };
 

@@ -1,7 +1,7 @@
 import { apiClient } from '../api-client';
-import { HospitalDepartment, VerificationStatus } from '../shared/enums';
+import { Subject, VerificationStatus } from '../shared/enums';
 
-export interface Hospital {
+export interface School {
   _id: string;
   adminUserId: string;
   name: string;
@@ -15,21 +15,21 @@ export interface Hospital {
   contactPhone: string;
   contactEmail: string;
   website?: string | null;
-  noOfOperationTheatres?: number | null;
-  hospitalInfra: string[];
-  noOfCabinsAndBeds?: number | null;
+  noOfClassrooms?: number | null;
+  campusFacilities: string[];
+  noOfLabsOrSpecialRooms?: number | null;
   photos?: string[];
   scopeOfServices?: string | null;
-  hospitalStrength?: number | null;
-  noOfBeds?: number | null;
+  schoolStrength?: number | null;
+  studentCapacity?: number | null;
   accreditations?: string[];
-  departments?: HospitalDepartment[];
+  departments?: Subject[];
   verificationStatus?: VerificationStatus;
   isVerified: boolean;
   createdAt: string;
 }
 
-export interface CreateHospitalPayload {
+export interface CreateSchoolPayload {
   name: string;
   registrationNumber: string;
   address: string;
@@ -41,29 +41,29 @@ export interface CreateHospitalPayload {
   description?: string;
   website?: string;
   logoUrl?: string;
-  noOfOperationTheatres?: number;
-  hospitalInfra?: string[];
-  noOfCabinsAndBeds?: number;
+  noOfClassrooms?: number;
+  campusFacilities?: string[];
+  noOfLabsOrSpecialRooms?: number;
   photos?: string[];
   scopeOfServices?: string;
-  hospitalStrength?: number;
-  noOfBeds?: number;
+  schoolStrength?: number;
+  studentCapacity?: number;
   accreditations?: string[];
-  departments?: HospitalDepartment[];
+  departments?: Subject[];
   latitude?: number;
   longitude?: number;
 }
 
-export const hospitalsApi = {
-  create: (data: CreateHospitalPayload) =>
-    apiClient.post<Hospital>('/hospitals', data),
+export const schoolsApi = {
+  create: (data: CreateSchoolPayload) =>
+    apiClient.post<School>('/schools', data),
 
   getMine: () =>
-    apiClient.get<Hospital>('/hospitals/mine'),
+    apiClient.get<School>('/schools/mine'),
 
   getById: (id: string) =>
-    apiClient.get<Hospital>(`/hospitals/${id}`),
+    apiClient.get<School>(`/schools/${id}`),
 
-  update: (id: string, data: Partial<CreateHospitalPayload>) =>
-    apiClient.patch<Hospital>(`/hospitals/${id}`, data),
+  update: (id: string, data: Partial<CreateSchoolPayload>) =>
+    apiClient.patch<School>(`/schools/${id}`, data),
 };

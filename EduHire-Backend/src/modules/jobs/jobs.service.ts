@@ -10,16 +10,16 @@ import { Model, Types } from 'mongoose';
 import {
   ApplicationState,
   JobStatus,
-  JobType,
   Role,
   SubscriptionStatus,
 } from '../../shared/enums';
-import { FULL_TIME_TTL_MS, SOS_TTL_MS } from '../../shared/constants/pricing';
+import { JOB_TTL_MS } from '../../shared/constants/pricing';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { Application, ApplicationDocument } from '../applications/schemas/application.schema';
-import { Hospital, HospitalDocument } from '../hospitals/schemas/hospital.schema';
+import { School, SchoolDocument } from '../schools/schemas/school.schema';
 import { Subscription, SubscriptionDocument } from '../subscriptions/schemas/subscription.schema';
 import { AuditService } from '../audit/audit.service';
+import { SystemConfigService } from '../system-config/system-config.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { JobsQueryDto } from './dto/jobs-query.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
@@ -29,11 +29,12 @@ import { Job, JobDocument } from './schemas/job.schema';
 export class JobsService {
   constructor(
     @InjectModel(Job.name) private jobModel: Model<JobDocument>,
-    @InjectModel(Hospital.name) private hospitalModel: Model<HospitalDocument>,
+    @InjectModel(School.name) private schoolModel: Model<SchoolDocument>,
     @InjectModel(Subscription.name) private subscriptionModel: Model<SubscriptionDocument>,
     @InjectModel(Application.name) private appModel: Model<ApplicationDocument>,
     private eventEmitter: EventEmitter2,
     private auditService: AuditService,
+    private systemConfigService: SystemConfigService,
   ) {}
 
   // ── Create ────────────────────────────────────────────────────────────────────
@@ -43,34 +44,49 @@ export class JobsService {
       throw new ForbiddenException('Only recruiters can post jobs');
     }
 
-    const hospital = await this.hospitalModel
+    const school = await this.schoolModel
       .findOne({ adminUserId: new Types.ObjectId(currentUser.sub), deletedAt: null })
       .lean()
       .exec();
 
-    if (!hospital) {
-      throw new BadRequestException('Complete your hospital profile before posting jobs');
+    if (!school) {
+      throw new BadRequestException('Complete your school profile before posting jobs');
     }
 
-    const ttl = dto.type === JobType.SOS ? SOS_TTL_MS : FULL_TIME_TTL_MS;
-    const expiresAt = new Date(Date.now() + ttl);
+    const expiresAt = new Date(Date.now() + JOB_TTL_MS);
 
-    // SOS: needs active subscription; go ACTIVE immediately if sub valid, else PENDING_SUBSCRIPTION
-    // Full-time: needs ₹299 payment; go PENDING_PAYMENT
-    let initialStatus: JobStatus;
-    if (dto.type === JobType.SOS) {
+    // Determine whether this posting goes live immediately: paid gating can be
+    // switched off entirely, or the school can have an active subscription, or
+    // still be within its free-tier monthly quota.
+    const paidEnabled = await this.systemConfigService.getSettingBoolean('SCHOOL_PAID_ENABLED', true);
+
+    if (paidEnabled) {
       const activeSub = await this.subscriptionModel
         .findOne({
-          hospitalId: hospital._id,
+          schoolId: school._id,
           status: SubscriptionStatus.ACTIVE,
           expiresAt: { $gt: new Date() },
           deletedAt: null,
         })
         .lean()
         .exec();
-      initialStatus = activeSub ? JobStatus.ACTIVE : JobStatus.PENDING_SUBSCRIPTION;
-    } else {
-      initialStatus = JobStatus.PENDING_PAYMENT;
+
+      if (!activeSub) {
+        const freeTierLimit = await this.systemConfigService.getSettingNumber('FREE_TIER_JOB_LIMIT', 2);
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const jobsThisMonth = await this.jobModel.countDocuments({
+          schoolId: school._id,
+          createdAt: { $gte: monthStart },
+          deletedAt: null,
+        });
+
+        if (jobsThisMonth >= freeTierLimit) {
+          throw new BadRequestException(
+            'Free posting limit reached this month — subscribe for unlimited job posts',
+          );
+        }
+      }
     }
 
     const location =
@@ -79,9 +95,8 @@ export class JobsService {
         : null;
 
     const job = await this.jobModel.create({
-      type: dto.type,
-      status: initialStatus,
-      hospitalId: hospital._id,
+      status: JobStatus.ACTIVE,
+      schoolId: school._id,
       title: dto.title,
       description: dto.description,
       requirements: dto.requirements ?? [],
@@ -105,16 +120,13 @@ export class JobsService {
       openPositions: dto.openPositions ?? 1,
     });
 
-    if (initialStatus === JobStatus.ACTIVE) {
-      this.eventEmitter.emit('job.activated', {
-        jobId: job._id.toString(),
-        type: job.type,
-        city: job.city,
-        title: job.title,
-        department: job.department,
-        jobLocation: (job.location as { coordinates?: [number, number] } | null | undefined)?.coordinates ?? null,
-      });
-    }
+    this.eventEmitter.emit('job.activated', {
+      jobId: job._id.toString(),
+      city: job.city,
+      title: job.title,
+      department: job.department,
+      jobLocation: (job.location as { coordinates?: [number, number] } | null | undefined)?.coordinates ?? null,
+    });
 
     return job;
   }
@@ -126,7 +138,6 @@ export class JobsService {
       status: JobStatus.ACTIVE,
       deletedAt: null,
     };
-    if (query.type) match['type'] = query.type;
     if (query.city) match['city'] = { $regex: new RegExp(query.city, 'i') };
     if (query.department) match['department'] = { $regex: new RegExp(query.department, 'i') };
     if (query.role) match['role'] = { $regex: new RegExp(query.role, 'i') };
@@ -147,23 +158,22 @@ export class JobsService {
         { $match: match },
         {
           $lookup: {
-            from: 'hospitals',
-            localField: 'hospitalId',
+            from: 'schools',
+            localField: 'schoolId',
             foreignField: '_id',
-            as: 'hospital',
+            as: 'school',
             pipeline: [{ $project: { name: 1, city: 1, logoUrl: 1, isVerified: 1 } }],
           },
         },
-        { $unwind: { path: '$hospital', preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: '$school', preserveNullAndEmptyArrays: true } },
         { $sort: { createdAt: -1 } },
         { $skip: skip },
         { $limit: query.limit },
-        // Don't expose salary for full-time until PAID — strip fields for public list
         {
           $project: {
-            type: 1, status: 1, title: 1, description: 1, requirements: 1,
+            status: 1, title: 1, description: 1, requirements: 1,
             city: 1, state: 1, department: 1, role: 1, experienceMin: 1, experienceMax: 1,
-            expiresAt: 1, createdAt: 1, hospital: 1,
+            expiresAt: 1, createdAt: 1, school: 1,
             salaryMin: 1, salaryMax: 1,
           },
         },
@@ -189,14 +199,14 @@ export class JobsService {
       { $match: { _id: new Types.ObjectId(id), status: JobStatus.ACTIVE, deletedAt: null } },
       {
         $lookup: {
-          from: 'hospitals',
-          localField: 'hospitalId',
+          from: 'schools',
+          localField: 'schoolId',
           foreignField: '_id',
-          as: 'hospital',
+          as: 'school',
           pipeline: [{ $project: { name: 1, city: 1, state: 1, logoUrl: 1, isVerified: 1, address: 1 } }],
         },
       },
-      { $unwind: { path: '$hospital', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: '$school', preserveNullAndEmptyArrays: true } },
     ]);
 
     if (!result) throw new NotFoundException('Job not found or no longer active');
@@ -206,14 +216,14 @@ export class JobsService {
   // ── Recruiter: single job by id (any status) ─────────────────────────────────
 
   async findMyJobById(currentUser: JwtPayload, jobId: string): Promise<JobDocument> {
-    const hospital = await this.hospitalModel
+    const school = await this.schoolModel
       .findOne({ adminUserId: new Types.ObjectId(currentUser.sub), deletedAt: null })
       .lean()
       .exec();
-    if (!hospital) throw new NotFoundException('Hospital profile not found');
+    if (!school) throw new NotFoundException('School profile not found');
 
     const job = await this.jobModel
-      .findOne({ _id: new Types.ObjectId(jobId), hospitalId: hospital._id, deletedAt: null })
+      .findOne({ _id: new Types.ObjectId(jobId), schoolId: school._id, deletedAt: null })
       .exec();
     if (!job) throw new NotFoundException('Job not found');
     return job;
@@ -222,18 +232,17 @@ export class JobsService {
   // ── Recruiter: my jobs ────────────────────────────────────────────────────────
 
   async findMyJobs(currentUser: JwtPayload, query: JobsQueryDto) {
-    const hospital = await this.hospitalModel
+    const school = await this.schoolModel
       .findOne({ adminUserId: new Types.ObjectId(currentUser.sub), deletedAt: null })
       .lean()
       .exec();
 
-    if (!hospital) return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+    if (!school) return { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
 
     const match: Record<string, unknown> = {
-      hospitalId: hospital._id,
+      schoolId: school._id,
       deletedAt: null,
     };
-    if (query.type) match['type'] = query.type;
 
     const skip = (query.page - 1) * query.limit;
     const [results, total] = await Promise.all([
@@ -259,12 +268,12 @@ export class JobsService {
     const job = await this.jobModel.findOne({ _id: jobId, deletedAt: null }).exec();
     if (!job) throw new NotFoundException('Job not found');
 
-    const hospital = await this.hospitalModel
+    const school = await this.schoolModel
       .findOne({ adminUserId: new Types.ObjectId(currentUser.sub), deletedAt: null })
       .lean()
       .exec();
 
-    if (!hospital || job.hospitalId.toString() !== (hospital._id as Types.ObjectId).toString()) {
+    if (!school || job.schoolId.toString() !== (school._id as Types.ObjectId).toString()) {
       throw new ForbiddenException('Not authorised to update this job');
     }
 
@@ -274,7 +283,6 @@ export class JobsService {
     }
     delete update['longitude'];
     delete update['latitude'];
-    delete update['type']; // type is immutable once created
 
     const updated = await this.jobModel
       .findByIdAndUpdate(jobId, { $set: update }, { returnDocument: 'after' })
@@ -290,12 +298,12 @@ export class JobsService {
     const job = await this.jobModel.findOne({ _id: jobId, deletedAt: null }).exec();
     if (!job) throw new NotFoundException('Job not found');
 
-    const hospital = await this.hospitalModel
+    const school = await this.schoolModel
       .findOne({ adminUserId: new Types.ObjectId(currentUser.sub), deletedAt: null })
       .lean()
       .exec();
 
-    if (!hospital || job.hospitalId.toString() !== (hospital._id as Types.ObjectId).toString()) {
+    if (!school || job.schoolId.toString() !== (school._id as Types.ObjectId).toString()) {
       throw new ForbiddenException('Not authorised to delete this job');
     }
 
@@ -318,7 +326,6 @@ export class JobsService {
 
   async adminFindAll(query: JobsQueryDto) {
     const match: Record<string, unknown> = { deletedAt: null };
-    if (query.type) match['type'] = query.type;
     if (query.status) match['status'] = query.status;
     if (query.city) match['city'] = { $regex: new RegExp(query.city, 'i') };
     if (query.dateFrom || query.dateTo) {
@@ -338,14 +345,14 @@ export class JobsService {
         { $match: match },
         {
           $lookup: {
-            from: 'hospitals',
-            localField: 'hospitalId',
+            from: 'schools',
+            localField: 'schoolId',
             foreignField: '_id',
-            as: 'hospital',
+            as: 'school',
             pipeline: [{ $project: { name: 1, city: 1 } }],
           },
         },
-        { $unwind: { path: '$hospital', preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: '$school', preserveNullAndEmptyArrays: true } },
         { $sort: { createdAt: -1 } },
         { $skip: skip },
         { $limit: query.limit },
@@ -388,60 +395,28 @@ export class JobsService {
 
   // ── Expiry sweep (called by scheduler) ───────────────────────────────────────
 
-  async runExpirySweep(): Promise<{ sosDisabled: number; fullTimeExpired: number }> {
+  async runExpirySweep(): Promise<{ expired: number }> {
     const now = new Date();
 
-    const [sosResult, ftResult] = await Promise.all([
-      this.jobModel.updateMany(
-        { type: JobType.SOS, status: JobStatus.ACTIVE, expiresAt: { $lte: now }, deletedAt: null },
-        { $set: { status: JobStatus.AUTO_DISABLED } },
-      ),
-      this.jobModel.updateMany(
-        { type: JobType.FULL_TIME, status: JobStatus.ACTIVE, expiresAt: { $lte: now }, deletedAt: null },
-        { $set: { status: JobStatus.EXPIRED } },
-      ),
-    ]);
-
-    return {
-      sosDisabled: sosResult.modifiedCount,
-      fullTimeExpired: ftResult.modifiedCount,
-    };
-  }
-
-  // ── Activate SOS jobs for newly subscribed hospital ──────────────────────────
-
-  async activatePendingSosJobs(hospitalId: Types.ObjectId): Promise<number> {
     const result = await this.jobModel.updateMany(
-      { hospitalId, type: JobType.SOS, status: JobStatus.PENDING_SUBSCRIPTION, deletedAt: null },
-      { $set: { status: JobStatus.ACTIVE, expiresAt: new Date(Date.now() + SOS_TTL_MS) } },
+      { status: JobStatus.ACTIVE, expiresAt: { $lte: now }, deletedAt: null },
+      { $set: { status: JobStatus.EXPIRED } },
     );
-    return result.modifiedCount;
+
+    return { expired: result.modifiedCount };
   }
 
-  // ── Activate full-time job after payment ─────────────────────────────────────
-
-  async activateAfterPayment(jobId: string, paymentId: string): Promise<void> {
-    await this.jobModel.findByIdAndUpdate(jobId, {
-      $set: {
-        status: JobStatus.ACTIVE,
-        postPaymentId: paymentId,
-        expiresAt: new Date(Date.now() + FULL_TIME_TTL_MS),
-      },
-    });
-  }
-
-  // ── Boost (re-activate expired full-time) ────────────────────────────────────
+  // ── Boost (re-activate an expired job) ────────────────────────────────────────
 
   async boostJob(jobId: string): Promise<void> {
     const job = await this.jobModel.findOne({ _id: jobId, deletedAt: null }).exec();
     if (!job) throw new NotFoundException('Job not found');
-    if (job.type !== JobType.FULL_TIME) throw new BadRequestException('Only full-time jobs can be boosted');
 
     await this.jobModel.findByIdAndUpdate(jobId, {
       $set: {
         status: JobStatus.ACTIVE,
         isBoosted: true,
-        expiresAt: new Date(Date.now() + FULL_TIME_TTL_MS),
+        expiresAt: new Date(Date.now() + JOB_TTL_MS),
       },
     });
   }

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Hospital, HospitalSchema } from '../hospitals/schemas/hospital.schema';
+import { School, SchoolSchema } from '../schools/schemas/school.schema';
 import { Subscription, SubscriptionSchema } from './schemas/subscription.schema';
 import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
@@ -9,7 +9,7 @@ import { SubscriptionsService } from './subscriptions.service';
   imports: [
     MongooseModule.forFeature([
       { name: Subscription.name, schema: SubscriptionSchema },
-      { name: Hospital.name, schema: HospitalSchema },
+      { name: School.name, schema: SchoolSchema },
     ]),
   ],
   controllers: [SubscriptionsController],

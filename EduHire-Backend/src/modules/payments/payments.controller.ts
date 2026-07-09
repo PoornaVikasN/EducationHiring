@@ -19,7 +19,7 @@ import { PaymentsService } from './payments.service';
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
-  // Create Razorpay order (seeker for application, recruiter for job-post/boost/subscription)
+  // Create Razorpay order (teacher for application fee, recruiter for boost/subscription)
   @Post('order')
   createOrder(@CurrentUser() user: JwtPayload, @Body() dto: CreateOrderDto) {
     return this.paymentsService.createOrder(user, dto);
@@ -31,26 +31,6 @@ export class PaymentsController {
   @HttpCode(HttpStatus.OK)
   verify(@Body() dto: WebhookDto) {
     return this.paymentsService.handleWebhook(
-      dto.razorpay_order_id,
-      dto.razorpay_payment_id,
-      dto.razorpay_signature,
-    );
-  }
-
-  // Seeker SOS subscription — create order (requires seeker auth)
-  @Post('seeker-sos-subscribe')
-  @Roles(Role.JOB_SEEKER)
-  createSeekerSosOrder(@CurrentUser() user: JwtPayload) {
-    return this.paymentsService.createSeekerSosOrder(user);
-  }
-
-  // Seeker SOS subscription — verify + activate
-  @Post('seeker-sos-subscribe/verify')
-  @HttpCode(HttpStatus.OK)
-  @Roles(Role.JOB_SEEKER)
-  verifySeekerSosSub(@CurrentUser() user: JwtPayload, @Body() dto: WebhookDto) {
-    return this.paymentsService.verifySeekerSosSub(
-      user,
       dto.razorpay_order_id,
       dto.razorpay_payment_id,
       dto.razorpay_signature,

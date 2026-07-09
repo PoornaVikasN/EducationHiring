@@ -10,9 +10,7 @@ export interface SafeUser {
   phoneVerified: boolean;
   seekerProfile: unknown;
   recruiterProfile: unknown;
-  seekerSosSubscribedUntil?: string | null;
-  alertSosJobs?: boolean;
-  alertFtJobs?: boolean;
+  alertNewJobs: boolean;
 }
 
 export interface AuthResponse {

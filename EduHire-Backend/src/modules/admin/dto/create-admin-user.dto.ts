@@ -2,8 +2,8 @@ import { IsEmail, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'cla
 import { Role } from '../../../shared/enums';
 
 export class CreateAdminUserDto {
-  @IsEnum([Role.JOB_SEEKER, Role.RECRUITER, Role.ADMIN], { message: 'Role must be JOB_SEEKER, RECRUITER, or ADMIN' })
-  role!: Role.JOB_SEEKER | Role.RECRUITER | Role.ADMIN;
+  @IsEnum([Role.TEACHER, Role.RECRUITER, Role.ADMIN], { message: 'Role must be TEACHER, RECRUITER, or ADMIN' })
+  role!: Role.TEACHER | Role.RECRUITER | Role.ADMIN;
 
   @IsEmail()
   email!: string;

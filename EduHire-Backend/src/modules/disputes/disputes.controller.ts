@@ -21,13 +21,13 @@ export class DisputesController {
   constructor(private readonly disputesService: DisputesService) {}
 
   @Post()
-  @Roles(Role.JOB_SEEKER, Role.RECRUITER)
+  @Roles(Role.TEACHER, Role.RECRUITER)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateDisputeDto) {
     return this.disputesService.create(user, dto);
   }
 
   @Get('mine')
-  @Roles(Role.JOB_SEEKER, Role.RECRUITER)
+  @Roles(Role.TEACHER, Role.RECRUITER)
   findMine(@CurrentUser() user: JwtPayload) {
     return this.disputesService.findMine(user);
   }

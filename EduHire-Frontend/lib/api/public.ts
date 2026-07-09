@@ -12,4 +12,6 @@ export interface PublicPricingConfig {
 export const publicApi = {
   getPricing: () =>
     axios.get<PublicPricingConfig[]>(`${API_BASE_URL}/public/pricing`),
+  getSettings: () =>
+    axios.get<PublicPricingConfig[]>(`${API_BASE_URL}/public/settings`),
 };

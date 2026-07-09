@@ -6,9 +6,12 @@ import {
   Post,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
+import { CsrfGuard } from '../../common/guards/csrf.guard';
 import { AuthService } from './auth.service';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
@@ -27,10 +30,18 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
-    return this.authService.login(dto, res);
+  login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.authService.login(dto, res, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent']?.toString(),
+    });
   }
 
   @Public()
@@ -44,6 +55,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('otp/send')
   @HttpCode(HttpStatus.OK)
   sendOtp(@Body() dto: SendOtpDto) {
@@ -51,13 +63,18 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('otp/verify')
   @HttpCode(HttpStatus.OK)
   verifyOtp(
     @Body() dto: VerifyOtpDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.verifyOtp(dto, res);
+    return this.authService.verifyOtp(dto, res, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent']?.toString(),
+    });
   }
 
   @Public()
@@ -79,6 +96,8 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(CsrfGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   refresh(
@@ -93,6 +112,8 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(CsrfGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   logout(

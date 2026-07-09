@@ -15,8 +15,10 @@ import { Role } from '../../shared/enums';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { SystemConfigService } from '../system-config/system-config.service';
 import { Otp, OtpDocument } from '../auth/schemas/otp.schema';
-import { Hospital, HospitalDocument } from '../hospitals/schemas/hospital.schema';
+import { School, SchoolDocument } from '../schools/schemas/school.schema';
 import { Job, JobDocument } from '../jobs/schemas/job.schema';
+import { UploadKind } from '../uploads/dto/presign.dto';
+import { UploadsService } from '../uploads/uploads.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateRecruiterProfileDto } from './dto/update-recruiter-profile.dto';
 import { UpdateSeekerProfileDto } from './dto/update-seeker-profile.dto';
@@ -31,11 +33,12 @@ export class UsersService {
 
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Hospital.name) private hospitalModel: Model<HospitalDocument>,
+    @InjectModel(School.name) private schoolModel: Model<SchoolDocument>,
     @InjectModel(Job.name) private jobModel: Model<JobDocument>,
     @InjectModel(Otp.name) private otpModel: Model<OtpDocument>,
     private config: ConfigService,
     private systemConfig: SystemConfigService,
+    private uploads: UploadsService,
   ) {}
 
   async getMe(currentUser: JwtPayload): Promise<UserDocument> {
@@ -51,8 +54,23 @@ export class UsersService {
     currentUser: JwtPayload,
     dto: UpdateSeekerProfileDto,
   ): Promise<UserDocument> {
-    if (currentUser.role !== Role.JOB_SEEKER) {
-      throw new ForbiddenException('Only job seekers can update this profile');
+    if (currentUser.role !== Role.TEACHER) {
+      throw new ForbiddenException('Only teachers can update this profile');
+    }
+
+    // Verify any S3-backed URL fields actually exist in our bucket with the right
+    // content-type/size. Without this, a client can claim someone else's S3 key
+    // (or a non-existent one) and we'd silently persist the lie.
+    if (dto.resumeUrl) {
+      await this.uploads.verifyUploadKey(dto.resumeUrl, UploadKind.RESUME);
+    }
+    if (dto.certUrls?.length) {
+      for (const url of dto.certUrls) {
+        await this.uploads.verifyUploadKey(url, UploadKind.DOCUMENT);
+      }
+    }
+    if (dto.introVideoUrl) {
+      await this.uploads.verifyUploadKey(dto.introVideoUrl, UploadKind.INTRO_VIDEO);
     }
 
     const update: Record<string, unknown> = {};
@@ -123,7 +141,12 @@ export class UsersService {
     if (!valid) throw new UnauthorizedException('Current password is incorrect');
 
     const hash = await bcrypt.hash(dto.newPassword, 12);
-    await this.userModel.updateOne({ _id: user._id }, { $set: { passwordHash: hash } }).exec();
+    await this.userModel
+      .updateOne(
+        { _id: user._id },
+        { $set: { passwordHash: hash }, $inc: { tokenVersion: 1 } },
+      )
+      .exec();
     return { message: 'Password updated' };
   }
 
@@ -136,14 +159,14 @@ export class UsersService {
       )
       .exec();
 
-    // Cascade soft-delete all jobs belonging to this recruiter's hospital(s)
-    const hospitalIds = await this.hospitalModel
+    // Cascade soft-delete all jobs belonging to this recruiter's school(s)
+    const schoolIds = await this.schoolModel
       .find({ adminUserId: currentUser.sub, deletedAt: null })
       .distinct('_id')
       .exec();
-    if (hospitalIds.length) {
+    if (schoolIds.length) {
       await this.jobModel.updateMany(
-        { hospitalId: { $in: hospitalIds }, deletedAt: null },
+        { schoolId: { $in: schoolIds }, deletedAt: null },
         { $set: { deletedAt: now } },
       );
     }
@@ -164,8 +187,7 @@ export class UsersService {
 
   async updateSettings(userId: string, dto: UpdateUserSettingsDto): Promise<{ message: string }> {
     const update: Record<string, boolean> = {};
-    if (dto.alertSosJobs !== undefined) update.alertSosJobs = dto.alertSosJobs;
-    if (dto.alertFtJobs !== undefined) update.alertFtJobs = dto.alertFtJobs;
+    if (dto.alertNewJobs !== undefined) update.alertNewJobs = dto.alertNewJobs;
     await this.userModel.updateOne({ _id: userId, deletedAt: null }, { $set: update }).exec();
     return { message: 'Settings updated' };
   }

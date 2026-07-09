@@ -284,11 +284,11 @@ export default function SeekerDashboardPage() {
             {recentApps.map((app) => (
               <Link key={app._id} href="/applications" className="flex items-center gap-3 p-3 rounded-xl hover:bg-bg-page transition-colors">
                 <div className="w-9 h-9 rounded-xl bg-brand-primary-light flex items-center justify-center text-brand-primary font-bold text-sm shrink-0">
-                  {(app.hospital?.name ?? 'H')[0].toUpperCase()}
+                  {(app.school?.name ?? 'H')[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-text-primary truncate">{app.job?.title ?? 'Job'}</p>
-                  <p className="text-xs text-text-muted">{app.hospital?.name ?? 'School'}</p>
+                  <p className="text-xs text-text-muted">{app.school?.name ?? 'School'}</p>
                 </div>
                 <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${stateBadgeCls[app.state]}`}>
                   {stateLabel[app.state]}

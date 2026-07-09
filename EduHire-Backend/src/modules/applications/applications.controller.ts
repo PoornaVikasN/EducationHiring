@@ -12,7 +12,7 @@ export class ApplicationsController {
   constructor(private readonly applicationsService: ApplicationsService) {}
 
   // Seeker: show interest in a job
-  @Roles(Role.JOB_SEEKER)
+  @Roles(Role.TEACHER)
   @Post('jobs/:jobId/apply')
   apply(
     @CurrentUser() user: JwtPayload,
@@ -23,7 +23,7 @@ export class ApplicationsController {
   }
 
   // Seeker: my applications
-  @Roles(Role.JOB_SEEKER)
+  @Roles(Role.TEACHER)
   @Get('applications/my')
   myApplications(@CurrentUser() user: JwtPayload) {
     return this.applicationsService.myApplications(user);
@@ -33,7 +33,7 @@ export class ApplicationsController {
   @Roles(Role.RECRUITER)
   @Get('applications/recruiter-chats')
   recruiterChats(@CurrentUser() user: JwtPayload) {
-    return this.applicationsService.paidForHospital(user);
+    return this.applicationsService.paidForSchool(user);
   }
 
   // Recruiter: list applicants for a job

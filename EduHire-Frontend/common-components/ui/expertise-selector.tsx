@@ -13,6 +13,8 @@ interface ExpertiseSelectorProps {
   searchPlaceholder?: string;
   className?: string;
   allowCustom?: boolean;
+  /** Optional display formatter — options/value stay raw strings, only the rendered label changes (e.g. enum values -> title case). */
+  formatLabel?: (option: string) => string;
 }
 
 export function ExpertiseSelector({
@@ -23,7 +25,9 @@ export function ExpertiseSelector({
   searchPlaceholder = 'Search...',
   className,
   allowCustom = false,
+  formatLabel,
 }: ExpertiseSelectorProps) {
+  const label = formatLabel ?? ((o: string) => o);
   const [search, setSearch] = React.useState('');
 
   const addCustom = (text: string) => {
@@ -45,7 +49,7 @@ export function ExpertiseSelector({
   const selected = options.filter((o) => value.includes(o));
   const unselected = options
     .filter((o) => !value.includes(o))
-    .filter((o) => !search || o.toLowerCase().includes(search.toLowerCase()))
+    .filter((o) => !search || label(o).toLowerCase().includes(search.toLowerCase()))
     .slice(0, 20);
 
   const visible = [...selected, ...unselected];
@@ -108,7 +112,7 @@ export function ExpertiseSelector({
               )}
             >
               {active ? <Check className="size-3" /> : <Plus className="size-3" />}
-              {option}
+              {label(option)}
             </button>
           );
         })}

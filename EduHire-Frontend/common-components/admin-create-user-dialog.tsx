@@ -13,7 +13,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 
 const schema = z.object({
-  role: z.enum([Role.JOB_SEEKER, Role.RECRUITER, Role.ADMIN]),
+  role: z.enum([Role.TEACHER, Role.RECRUITER, Role.ADMIN]),
   fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100).optional().or(z.literal('')),
   email: z.string().email('Enter a valid email address'),
   phone: z
@@ -43,7 +43,7 @@ export function AdminCreateUserDialog({ open, onOpenChange, onSuccess }: Props) 
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
-    defaultValues: { role: Role.JOB_SEEKER },
+    defaultValues: { role: Role.TEACHER },
   });
 
   const selectedRole = watch('role');
@@ -81,7 +81,7 @@ export function AdminCreateUserDialog({ open, onOpenChange, onSuccess }: Props) 
         {/* Role toggle */}
         <div className="flex gap-2">
           {([
-            { value: Role.JOB_SEEKER, label: 'Teacher' },
+            { value: Role.TEACHER, label: 'Teacher' },
             { value: Role.RECRUITER, label: 'School' },
             { value: Role.ADMIN, label: '🔑 Admin' },
           ] as { value: Role; label: string }[]).map(({ value, label }) => (
@@ -101,7 +101,7 @@ export function AdminCreateUserDialog({ open, onOpenChange, onSuccess }: Props) 
         {/* Admin warning */}
         {selectedRole === Role.ADMIN && (
           <div className="rounded-xl bg-purple-50 border border-purple-200 px-3 py-2.5 text-xs text-purple-700 leading-relaxed">
-            ⚠️ This creates an account with <strong>full admin access</strong> — pricing, API keys, users, hospitals, and jobs. Share credentials securely and use with caution.
+            ⚠️ This creates an account with <strong>full admin access</strong> — pricing, API keys, users, schools, and jobs. Share credentials securely and use with caution.
           </div>
         )}
 

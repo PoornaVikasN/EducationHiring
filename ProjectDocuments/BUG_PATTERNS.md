@@ -467,4 +467,13 @@ relevant Zod schema as resolver. Zero casts at the call sites.
 
 ---
 
-*Last updated: 2026-07-05 (41 patterns — BE: 23, FE: 16, X: 3). Add new patterns here as they're discovered; also update `memory/feedback_phase3a_bug_patterns.md` and the relevant guide's bug-prevention section.*
+## Preventive patterns inherited from RxJobs4U — 2026-07-06/07 (not yet hit here — Auth/Admin modules aren't built yet)
+
+### BE-24 — Google-only signup with no way to set a password short of Forgot Password
+**Problem (in RxJobs4U, the sibling project):** `changePassword()` hard-threw `BadRequestException('Password login not set up for this account')` whenever `user.passwordHash` was `null` — which is exactly the state of every Google OAuth signup. The Settings page always rendered a "Change Password" form with a required Current Password field, so a Google-only user had no way to add password-login from Settings at all; the only path was logging out and using Forgot Password (which works, since `resetPassword()` never checks the existing hash).
+**Fix (applied in RxJobs4U 2026-07-06):** `changePassword()` now only requires/verifies `currentPassword` when `passwordHash` already exists; skips straight to hashing+saving the new password otherwise. `hasPassword: boolean` added to `SafeUser` and `GET /users/me` so the FE can render two modes: "Set Password" (new + confirm only) vs "Change Password" (current + new + confirm).
+**Rule for EduHire:** when the Auth/Users module is built (Phase 1), implement `changePassword()` with this branch from day 1 — see `DECISIONS.md` D41. Don't ship the naive "always require current password" version and rediscover this gap after Google sign-in is live.
+
+---
+
+*Last updated: 2026-07-07 (42 patterns — BE: 24, FE: 16, X: 3). Add new patterns here as they're discovered; also update `memory/feedback_phase3a_bug_patterns.md` and the relevant guide's bug-prevention section.*

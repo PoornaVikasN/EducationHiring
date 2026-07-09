@@ -11,16 +11,13 @@ import { Model, Types } from 'mongoose';
 import Razorpay from 'razorpay';
 import {
   ApplicationState,
-  JobStatus,
-  JobType,
-  NotificationKind,
   PaymentKind,
   PaymentStatus,
   SubscriptionStatus,
 } from '../../shared/enums';
-import { SUBSCRIPTION_CYCLE_DAYS } from '../../shared/constants/pricing';
+import { JOB_TTL_MS, SUBSCRIPTION_CYCLE_DAYS } from '../../shared/constants/pricing';
 import { Application, ApplicationDocument } from '../applications/schemas/application.schema';
-import { Hospital, HospitalDocument } from '../hospitals/schemas/hospital.schema';
+import { School, SchoolDocument } from '../schools/schemas/school.schema';
 import { Job, JobDocument } from '../jobs/schemas/job.schema';
 import { Subscription, SubscriptionDocument } from '../subscriptions/schemas/subscription.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
@@ -28,6 +25,7 @@ import { SystemConfigService } from '../system-config/system-config.service';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { Payment, PaymentDocument } from './schemas/payment.schema';
+import { safeEqual } from '../../common/utils/crypto.util';
 
 @Injectable()
 export class PaymentsService {
@@ -37,7 +35,7 @@ export class PaymentsService {
     @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
     @InjectModel(Application.name) private appModel: Model<ApplicationDocument>,
     @InjectModel(Job.name) private jobModel: Model<JobDocument>,
-    @InjectModel(Hospital.name) private hospitalModel: Model<HospitalDocument>,
+    @InjectModel(School.name) private schoolModel: Model<SchoolDocument>,
     @InjectModel(Subscription.name) private subscriptionModel: Model<SubscriptionDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private eventEmitter: EventEmitter2,
@@ -97,7 +95,7 @@ export class PaymentsService {
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest('hex');
 
-    if (expected !== razorpaySignature) {
+    if (!safeEqual(expected, razorpaySignature)) {
       throw new BadRequestException('Invalid payment signature');
     }
 
@@ -123,48 +121,21 @@ export class PaymentsService {
     const entityId = payment.entityId?.toString() ?? '';
 
     switch (payment.kind) {
-      case PaymentKind.JOB_POST: {
-        // Activate the full-time job
-        const { FULL_TIME_TTL_MS } = await import('../../shared/constants/pricing');
-        const activatedJob = await this.jobModel.findByIdAndUpdate(
-          entityId,
-          {
-            $set: {
-              status: 'ACTIVE',
-              postPaymentId: razorpayPaymentId,
-              expiresAt: new Date(Date.now() + FULL_TIME_TTL_MS),
-            },
-          },
-          { returnDocument: 'after' },
-        ).lean().exec();
-        if (activatedJob) {
-          this.eventEmitter.emit('job.activated', {
-            jobId: entityId,
-            type: activatedJob.type,
-            city: activatedJob.city,
-            title: activatedJob.title,
-            department: activatedJob.department,
-            jobLocation: (activatedJob.location as { coordinates?: [number, number] } | null | undefined)?.coordinates ?? null,
-          });
-        }
-        break;
-      }
-
       case PaymentKind.APPLICATION: {
-        // Seeker paid ₹99 — mark app PAID + reveal hospital
+        // Teacher paid ₹99 — mark app PAID + reveal school
         await this.appModel.findByIdAndUpdate(entityId, {
           $set: {
             state: ApplicationState.PAID,
             paidAt: new Date(),
             razorpayPaymentId,
-            hospitalRevealed: true,
+            schoolRevealed: true,
           },
         });
         const app = await this.appModel.findById(entityId).lean().exec();
         if (app) {
           this.eventEmitter.emit('application.paid', {
             seekerId: app.seekerId.toString(),
-            hospitalId: app.hospitalId.toString(),
+            schoolId: app.schoolId.toString(),
             jobId: app.jobId.toString(),
             applicationId: entityId,
           });
@@ -173,18 +144,18 @@ export class PaymentsService {
       }
 
       case PaymentKind.SUBSCRIPTION: {
-        // SOS monthly subscription
-        const hospital = await this.hospitalModel.findById(entityId).lean().exec();
-        if (!hospital) break;
+        // School's monthly unlimited-posting subscription
+        const school = await this.schoolModel.findById(entityId).lean().exec();
+        if (!school) break;
 
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + SUBSCRIPTION_CYCLE_DAYS);
 
         await this.subscriptionModel.findOneAndUpdate(
-          { hospitalId: hospital._id },
+          { schoolId: school._id },
           {
             $set: {
-              hospitalId: hospital._id,
+              schoolId: school._id,
               status: SubscriptionStatus.ACTIVE,
               expiresAt,
               razorpayPaymentId,
@@ -195,131 +166,25 @@ export class PaymentsService {
           { upsert: true, returnDocument: 'after' },
         );
 
-        // Activate any PENDING_SUBSCRIPTION SOS jobs for this hospital
-        const { SOS_TTL_MS } = await import('../../shared/constants/pricing');
-        const pendingSosJobs = await this.jobModel
-          .find({ hospitalId: hospital._id, type: JobType.SOS, status: JobStatus.PENDING_SUBSCRIPTION, deletedAt: null })
-          .select('_id type city title department location')
-          .lean()
-          .exec();
-        if (pendingSosJobs.length > 0) {
-          await this.jobModel.updateMany(
-            { hospitalId: hospital._id, type: JobType.SOS, status: JobStatus.PENDING_SUBSCRIPTION, deletedAt: null },
-            { $set: { status: JobStatus.ACTIVE, expiresAt: new Date(Date.now() + SOS_TTL_MS) } },
-          );
-          for (const sosJob of pendingSosJobs) {
-            this.eventEmitter.emit('job.activated', {
-              jobId: sosJob._id.toString(),
-              type: sosJob.type,
-              city: sosJob.city,
-              title: sosJob.title,
-              department: sosJob.department,
-              jobLocation: (sosJob.location as { coordinates?: [number, number] } | null | undefined)?.coordinates ?? null,
-            });
-          }
-        }
-        this.eventEmitter.emit('subscription.activated', { hospitalId: entityId });
+        this.eventEmitter.emit('subscription.activated', { schoolId: entityId, amountPaise: payment.amountPaise, expiresAt });
         break;
       }
 
       case PaymentKind.BOOST: {
-        const { FULL_TIME_TTL_MS } = await import('../../shared/constants/pricing');
         await this.jobModel.findByIdAndUpdate(entityId, {
           $set: {
             status: 'ACTIVE',
             isBoosted: true,
-            expiresAt: new Date(Date.now() + FULL_TIME_TTL_MS),
+            expiresAt: new Date(Date.now() + JOB_TTL_MS),
           },
         });
         this.eventEmitter.emit('job.boosted', { jobId: entityId, userId: payment.userId.toString() });
         break;
       }
 
-      case PaymentKind.SEEKER_SOS_SUBSCRIPTION: {
-        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-        const user = await this.userModel.findByIdAndUpdate(
-          payment.userId,
-          { $set: { seekerSosSubscribedUntil: new Date(Date.now() + thirtyDaysMs) } },
-        ).exec();
-        if (!user) break;
-        this.eventEmitter.emit('notification.send', {
-          userId: user._id.toString(),
-          kind: NotificationKind.PAYMENT_SUCCESS,
-          message: 'SOS access activated for 30 days.',
-        });
-        break;
-      }
-
       default:
         this.logger.warn(`Unknown payment kind: ${payment.kind}`);
     }
-  }
-
-  // ── Seeker SOS Subscription ───────────────────────────────────────────────────
-
-  async createSeekerSosOrder(currentUser: JwtPayload) {
-    const amountPaise = await this.systemConfig.getPricePaise('APPLICATION_FEE_PAISE');
-    const rzp = await this.getRazorpay();
-    const razorpayOrder = await rzp.orders.create({
-      amount: amountPaise,
-      currency: 'INR',
-      receipt: `rx_seeker_sos_${currentUser.sub.slice(-6)}_${Date.now()}`,
-    });
-
-    const payment = await this.paymentModel.create({
-      userId: new Types.ObjectId(currentUser.sub),
-      kind: PaymentKind.SEEKER_SOS_SUBSCRIPTION,
-      amountPaise: amountPaise,
-      status: PaymentStatus.PENDING,
-      razorpayOrderId: razorpayOrder.id,
-    });
-
-    return {
-      orderId: razorpayOrder.id,
-      paymentId: payment._id.toString(),
-      amount: amountPaise,
-      currency: 'INR',
-      keyId: (await this.systemConfig.getSecret('RAZORPAY_KEY_ID')) ?? '',
-    };
-  }
-
-  async verifySeekerSosSub(
-    currentUser: JwtPayload,
-    razorpayOrderId: string,
-    razorpayPaymentId: string,
-    razorpaySignature: string,
-  ): Promise<{ message: string }> {
-    const secret = (await this.systemConfig.getSecret('RAZORPAY_KEY_SECRET')) ?? '';
-    const expected = crypto
-      .createHmac('sha256', secret)
-      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-      .digest('hex');
-
-    if (expected !== razorpaySignature) {
-      throw new BadRequestException('Invalid payment signature');
-    }
-
-    const payment = await this.paymentModel.findOne({ razorpayOrderId }).exec();
-    if (!payment) throw new NotFoundException('Payment record not found');
-    if (payment.status === PaymentStatus.PAID) return { message: 'Already activated' };
-
-    await this.paymentModel.findByIdAndUpdate(payment._id, {
-      $set: { status: PaymentStatus.PAID, razorpayPaymentId, fulfilledAt: new Date() },
-    });
-
-    const user = await this.userModel.findByIdAndUpdate(
-      currentUser.sub,
-      { $set: { seekerSosSubscribedUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } },
-    ).exec();
-    if (!user) throw new NotFoundException('User not found');
-
-    this.eventEmitter.emit('notification.send', {
-      userId: currentUser.sub,
-      kind: NotificationKind.PAYMENT_SUCCESS,
-      message: 'SOS access activated for 30 days.',
-    });
-
-    return { message: 'SOS subscription activated' };
   }
 
   // ── Admin: list payments ──────────────────────────────────────────────────────
@@ -400,7 +265,6 @@ export class PaymentsService {
 
   private async resolveAmount(kind: PaymentKind): Promise<number> {
     switch (kind) {
-      case PaymentKind.JOB_POST:
       case PaymentKind.SUBSCRIPTION:
         return this.systemConfig.getPricePaise('RECRUITER_MONTHLY_PAISE');
       case PaymentKind.APPLICATION:

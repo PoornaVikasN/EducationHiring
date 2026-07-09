@@ -23,7 +23,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const { login } = useAuth();
   const [serverError, setServerError] = useState('');
-  const [googleRole, setGoogleRole] = useState<Role.JOB_SEEKER | Role.RECRUITER>(Role.JOB_SEEKER);
+  const [googleRole, setGoogleRole] = useState<Role.TEACHER | Role.RECRUITER>(Role.TEACHER);
 
   const {
     register,

@@ -13,8 +13,8 @@ const ACTION_COLORS: Record<string, string> = {
   USER_SUSPENDED: 'bg-red-100 text-red-700',
   USER_ACTIVATED: 'bg-green-100 text-green-700',
   USER_CREATED: 'bg-teal-100 text-teal-700',
-  HOSPITAL_VERIFIED: 'bg-green-100 text-green-700',
-  HOSPITAL_REJECTED: 'bg-red-100 text-red-700',
+  SCHOOL_VERIFIED: 'bg-green-100 text-green-700',
+  SCHOOL_REJECTED: 'bg-red-100 text-red-700',
   JOB_DISABLED: 'bg-orange-100 text-orange-700',
 };
 
@@ -33,8 +33,8 @@ function formatChange(log: AuditLog): string {
   if (log.action === 'USER_SUSPENDED') return 'Active → Suspended';
   if (log.action === 'USER_ACTIVATED') return 'Suspended → Active';
   if (log.action === 'USER_CREATED') return `Created (${after?.role ?? ''})`;
-  if (log.action === 'HOSPITAL_VERIFIED') return `${before?.status ?? '?'} → Verified`;
-  if (log.action === 'HOSPITAL_REJECTED') return `${before?.status ?? '?'} → Rejected`;
+  if (log.action === 'SCHOOL_VERIFIED') return `${before?.status ?? '?'} → Verified`;
+  if (log.action === 'SCHOOL_REJECTED') return `${before?.status ?? '?'} → Rejected`;
   if (log.action === 'JOB_DISABLED') return `${before?.status ?? '?'} → Disabled`;
   return JSON.stringify(after ?? {});
 }
@@ -54,7 +54,7 @@ const ENTITY_OPTIONS = [
   { value: 'ALL', label: 'All Entities' },
   { value: 'price', label: 'Pricing' },
   { value: 'user', label: 'Users' },
-  { value: 'hospital', label: 'Schools' },
+  { value: 'school', label: 'Schools' },
   { value: 'api_key', label: 'API Keys' },
   { value: 'job', label: 'Jobs' },
 ];

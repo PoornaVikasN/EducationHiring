@@ -18,7 +18,7 @@ export const registerSchema = z.object({
   email: z.string().email('Enter a valid email address'),
   phone: phoneSchema,
   password: z.string().min(10, 'Password must be at least 10 characters').max(64),
-  role: z.enum([Role.JOB_SEEKER, Role.RECRUITER], { message: 'Select a role' }),
+  role: z.enum([Role.TEACHER, Role.RECRUITER], { message: 'Select a role' }),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 

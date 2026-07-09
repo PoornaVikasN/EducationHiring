@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Application, ApplicationSchema } from '../applications/schemas/application.schema';
-import { Hospital, HospitalSchema } from '../hospitals/schemas/hospital.schema';
+import { School, SchoolSchema } from '../schools/schemas/school.schema';
 import { Subscription, SubscriptionSchema } from '../subscriptions/schemas/subscription.schema';
 import { AuditModule } from '../audit/audit.module';
+import { SystemConfigModule } from '../system-config/system-config.module';
 import { JobsController } from './jobs.controller';
 import { JobsService } from './jobs.service';
 import { Job, JobSchema } from './schemas/job.schema';
@@ -12,11 +13,12 @@ import { Job, JobSchema } from './schemas/job.schema';
   imports: [
     MongooseModule.forFeature([
       { name: Job.name, schema: JobSchema },
-      { name: Hospital.name, schema: HospitalSchema },
+      { name: School.name, schema: SchoolSchema },
       { name: Subscription.name, schema: SubscriptionSchema },
       { name: Application.name, schema: ApplicationSchema },
     ]),
     AuditModule,
+    SystemConfigModule,
   ],
   controllers: [JobsController],
   providers: [JobsService],

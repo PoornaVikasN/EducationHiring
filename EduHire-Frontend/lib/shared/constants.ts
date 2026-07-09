@@ -5,8 +5,6 @@ import { JobStatus, SalaryRange } from './enums';
 
 export const JOB_STATUS_BADGE: Record<JobStatus, { label: string; cls: string }> = {
   [JobStatus.ACTIVE]:               { label: 'Active',            cls: 'bg-green-100 text-green-700' },
-  [JobStatus.PENDING_PAYMENT]:      { label: 'Awaiting Payment',  cls: 'bg-amber-100 text-amber-700' },
-  [JobStatus.PENDING_SUBSCRIPTION]: { label: 'Needs Subscription',cls: 'bg-orange-100 text-orange-700' },
   [JobStatus.FILLED]:               { label: 'Filled',            cls: 'bg-blue-100 text-blue-600' },
   [JobStatus.EXPIRED]:              { label: 'Expired',           cls: 'bg-slate-100 text-slate-500' },
   [JobStatus.AUTO_DISABLED]:        { label: 'Closed',            cls: 'bg-slate-100 text-slate-500' },
@@ -22,7 +20,7 @@ export const SALARY_RANGE_LABELS: Record<SalaryRange, string> = {
   [SalaryRange.ABOVE_2L]:      '> ₹2 Lakh / month',
 };
 
-export const HOSPITAL_ACCREDITATION_OPTIONS = [
+export const SCHOOL_ACCREDITATION_OPTIONS = [
   'CBSE Affiliated', 'ICSE / ISC', 'IB (International Baccalaureate)', 'Cambridge (IGCSE/A-Level)',
   'State Board (TS)', 'State Board (AP)', 'NIOS', 'Minority Institution', 'ISO 9001', 'Others',
 ];
@@ -50,7 +48,7 @@ export const DEGREE_OPTIONS = [
   'B.P.Ed', 'M.P.Ed', 'B.A B.Ed', 'B.Sc B.Ed', 'PhD', 'Others',
 ];
 
-export const HOSPITAL_INFRA_OPTIONS = [
+export const SCHOOL_INFRA_OPTIONS = [
   'Smart Boards', 'Projectors', 'Computer Lab', 'Science Lab', 'Language Lab',
   'Library', 'Sports Ground', 'Indoor Sports Hall', 'Swimming Pool',
   'Auditorium', 'Canteen', 'Hostel', 'Transport', 'AC Classrooms',

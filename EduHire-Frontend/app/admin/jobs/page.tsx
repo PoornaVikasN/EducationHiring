@@ -13,29 +13,28 @@ import { ConfirmDialog } from '../../../common-components/ui/confirm-dialog';
 import { DatePicker } from '../../../common-components/ui/date-picker';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../common-components/ui/dialog';
 import { Input } from '../../../common-components/ui/input';
+import { enumLabel } from '../../../lib/utils/enum-options';
 import { Label } from '../../../common-components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../common-components/ui/select';
 import { useToast } from '../../../hooks/use-toast';
 import { useDebouncedValue } from '../../../hooks/use-debounced-value';
-import { JobStatus, JobType } from '../../../lib/shared/enums';
+import { JobStatus } from '../../../lib/shared/enums';
 import { JOB_STATUS_BADGE } from '../../../lib/shared/constants';
 import { downloadCsv } from '../../../lib/utils/export-csv';
 
 const STATUS_BADGE = JOB_STATUS_BADGE;
 
 interface Filters {
-  type: string;
   status: string;
   city: string;
   dateFrom: string;
   dateTo: string;
 }
 
-const DEFAULT_FILTERS: Filters = { type: 'ALL', status: 'ALL', city: '', dateFrom: '', dateTo: '' };
+const DEFAULT_FILTERS: Filters = { status: 'ALL', city: '', dateFrom: '', dateTo: '' };
 
 function activeFilterCount(f: Filters) {
   let n = 0;
-  if (f.type !== 'ALL') n++;
   if (f.status !== 'ALL') n++;
   if (f.city) n++;
   if (f.dateFrom || f.dateTo) n++;
@@ -59,13 +58,10 @@ function JobRow({
     >
       <td className="px-4 py-3">
         <p className="text-sm font-medium text-text-primary">{job.title}</p>
-        <p className="text-xs text-text-muted">{job.hospital?.name ?? '—'}</p>
-      </td>
-      <td className="px-4 py-3 text-xs font-medium text-text-primary">
-{'Teaching'}
+        <p className="text-xs text-text-muted">{job.school?.name ?? '—'}</p>
       </td>
       <td className="px-4 py-3 text-xs text-text-muted">{job.city}, {job.state}</td>
-      <td className="px-4 py-3 text-xs text-text-muted">{job.role} · {job.department}</td>
+      <td className="px-4 py-3 text-xs text-text-muted">{enumLabel(job.role)} · {enumLabel(job.department)}</td>
       <td className="px-4 py-3 text-xs text-text-muted text-center">{job.filledPositions ?? 0}/{job.openPositions ?? 1}</td>
       <td className="px-4 py-3">
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
@@ -100,7 +96,6 @@ export default function AdminJobsPage() {
       page,
       limit: 10,
       search: debouncedSearch || undefined,
-      type: filters.type === 'ALL' ? undefined : filters.type as JobType,
       status: filters.status === 'ALL' ? undefined : filters.status as JobStatus,
       city: filters.city || undefined,
       dateFrom: filters.dateFrom || undefined,
@@ -122,9 +117,8 @@ export default function AdminJobsPage() {
   const handleExport = () => {
     downloadCsv('admin-jobs', data?.data ?? [], [
       { header: 'Title', key: 'title' },
-      { header: 'Type', key: (_j) => 'Teaching' },
       { header: 'Status', key: (j) => STATUS_BADGE[j.status]?.label ?? j.status },
-      { header: 'School', key: (j) => j.hospital?.name ?? '' },
+      { header: 'School', key: (j) => j.school?.name ?? '' },
       { header: 'City', key: 'city' },
       { header: 'Department', key: 'department' },
       { header: 'Role', key: 'role' },
@@ -178,7 +172,7 @@ export default function AdminJobsPage() {
               <table className="w-full min-w-[800px]">
                 <thead className="bg-bg-page border-b border-border-default">
                   <tr>
-                    {['Job', 'Type', 'Location', 'Role', 'Filled/Open', 'Status', 'Posted', 'Actions'].map((h) => (
+                    {['Job', 'Location', 'Role', 'Filled/Open', 'Status', 'Posted', 'Actions'].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
@@ -213,16 +207,6 @@ export default function AdminJobsPage() {
             <DialogTitle>Filter Jobs</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Type</Label>
-              <Select value={draft.type} onValueChange={(v) => setDraft((p) => ({ ...p, type: v }))}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Types</SelectItem>
-                  <SelectItem value={JobType.FULL_TIME}>Teaching</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Status</Label>
               <Select value={draft.status} onValueChange={(v) => setDraft((p) => ({ ...p, status: v }))}>

@@ -40,11 +40,30 @@ const SETTING_SEEDS: SettingSeed[] = [
     displayKind: 'number',
   },
   {
-    key: 'URGENT_ALERT_ALL_TEACHERS',
-    label: 'Broadcast URGENT postings to all teachers',
+    key: 'SCHOOL_PAID_ENABLED',
+    label: 'School job posting is paid',
     description:
-      'When ON (default), every urgent-subscribed teacher with alertUrgentPostings=true receives in-app + email on every new URGENT posting, regardless of their saved cities or location. When OFF, falls back to city-name + radius matching. Subscription + opt-in gates are always enforced.',
+      'When ON (default), schools without an active subscription are limited to the free-tier monthly job post quota (see FREE_TIER_JOB_LIMIT) and must subscribe for unlimited posts. When OFF, all job posts go live immediately regardless of subscription or free-tier usage.',
     valueNumber: 1,
+    minValue: 0,
+    maxValue: 1,
+    displayKind: 'boolean',
+  },
+  {
+    key: 'FREE_TIER_JOB_LIMIT',
+    label: 'Free Tier Job Post Limit',
+    description:
+      'Number of active job posts a school may create per calendar month without an active subscription, while SCHOOL_PAID_ENABLED is on.',
+    valueNumber: 2,
+    minValue: 0,
+    displayKind: 'number',
+  },
+  {
+    key: 'TEACHER_PAID_ENABLED',
+    label: 'Teacher shortlist fee is paid',
+    description:
+      'When ON, a shortlisted teacher must pay the application fee (see APPLICATION_FEE_PAISE) within the pay window to unlock school contact details and move to WON. When OFF (default), shortlisted teachers move straight through to WON/CLOSED with no payment step.',
+    valueNumber: 0,
     minValue: 0,
     maxValue: 1,
     displayKind: 'boolean',

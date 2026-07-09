@@ -5,6 +5,6 @@ export class GoogleAuthDto {
   @IsString()
   accessToken!: string;
 
-  @IsEnum([Role.JOB_SEEKER, Role.RECRUITER], { message: 'Role must be JOB_SEEKER or RECRUITER' })
-  role!: Role.JOB_SEEKER | Role.RECRUITER;
+  @IsEnum([Role.TEACHER, Role.RECRUITER], { message: 'Role must be TEACHER or RECRUITER' })
+  role!: Role.TEACHER | Role.RECRUITER;
 }

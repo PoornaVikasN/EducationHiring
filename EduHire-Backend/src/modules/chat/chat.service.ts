@@ -3,7 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ApplicationState, Role } from '../../shared/enums';
 import { Application } from '../applications/schemas/application.schema';
-import { Hospital } from '../hospitals/schemas/hospital.schema';
+import { School } from '../schools/schemas/school.schema';
+import { SystemConfigService } from '../system-config/system-config.service';
 import { ChatMessage } from './chat.schema';
 
 @Injectable()
@@ -11,7 +12,8 @@ export class ChatService {
   constructor(
     @InjectModel(ChatMessage.name) private chatModel: Model<ChatMessage>,
     @InjectModel(Application.name) private appModel: Model<Application>,
-    @InjectModel(Hospital.name) private hospitalModel: Model<Hospital>,
+    @InjectModel(School.name) private schoolModel: Model<School>,
+    private systemConfig: SystemConfigService,
   ) {}
 
   async verifyAccess(applicationId: string, userId: string, role: string): Promise<void> {
@@ -21,21 +23,34 @@ export class ChatService {
       .exec();
     if (!app) throw new NotFoundException('Application not found');
 
-    if (app.state !== ApplicationState.PAID && app.state !== ApplicationState.WON) {
-      throw new ForbiddenException('Chat unlocks after the teacher confirms interest (₹99 payment)');
+    // Chat unlocks at SHORTLISTED when the teacher-fee toggle is off (default flow:
+    // INTERESTED → SHORTLISTED → WON | CLOSED), or at PAID when the toggle is on
+    // (flow: INTERESTED → SHORTLISTED → PAID → WON | CLOSED). WON always qualifies.
+    // See DECISIONS.md §2 and D38 (corrected — was previously hardcoded to PAID/WON only,
+    // which meant chat could never unlock while TEACHER_PAID_ENABLED is false/default).
+    const teacherPaidEnabled = await this.systemConfig.getSettingBoolean('TEACHER_PAID_ENABLED', false);
+    const unlockState = teacherPaidEnabled ? ApplicationState.PAID : ApplicationState.SHORTLISTED;
+    const unlocked = app.state === unlockState || app.state === ApplicationState.WON;
+
+    if (!unlocked) {
+      throw new ForbiddenException(
+        teacherPaidEnabled
+          ? 'Chat unlocks after the teacher confirms interest with payment'
+          : 'Chat unlocks once the school shortlists this application',
+      );
     }
 
-    if (role === Role.JOB_SEEKER) {
+    if (role === Role.TEACHER) {
       if (app.seekerId.toString() !== userId) throw new ForbiddenException('Not your application');
       return;
     }
 
     if (role === Role.RECRUITER) {
-      const hospital = await this.hospitalModel
+      const school = await this.schoolModel
         .findOne({ adminUserId: new Types.ObjectId(userId), deletedAt: null })
         .lean()
         .exec();
-      if (!hospital || !app.hospitalId.equals(hospital._id)) {
+      if (!school || !app.schoolId.equals(school._id)) {
         throw new ForbiddenException('Not your application');
       }
       return;

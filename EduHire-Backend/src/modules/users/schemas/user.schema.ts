@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { Academics, Availability, AvailableTimings, JobType, MaritalStatus, Role, SalaryRange, TypeOfPractice } from '../../../shared/enums';
+import { Academics, Availability, AvailableTimings, MaritalStatus, Role, SalaryRange, TypeOfPractice } from '../../../shared/enums';
 
 // ── Embedded sub-schemas ──────────────────────────────────────────────────────
 
@@ -39,9 +39,6 @@ class SeekerProfile {
   @Prop({ type: [String], default: [] })
   desiredCities!: string[];
 
-  @Prop({ type: [String], enum: JobType, default: [] })
-  desiredJobTypes!: JobType[];
-
   @Prop({ type: Number, default: null })
   experienceYears!: number | null;
 
@@ -67,10 +64,10 @@ class SeekerProfile {
   pincode!: string | null;
 
   @Prop({ type: String, default: null })
-  placeOfPractice!: string | null;
+  currentSchool!: string | null;
 
   @Prop({ type: String, enum: TypeOfPractice, default: null })
-  typeOfPractice!: TypeOfPractice | null;
+  employmentType!: TypeOfPractice | null;
 
   @Prop({ type: [String], default: [] })
   expertise!: string[];
@@ -91,10 +88,10 @@ class SeekerProfile {
   indemnityInsurance!: boolean | null;
 
   @Prop({ type: Boolean, default: null })
-  isRegisteredInCouncil!: boolean | null;
+  isRegisteredWithBoard!: boolean | null;
 
   @Prop({ type: String, default: null })
-  medicalCouncilName!: string | null;
+  boardRegistrationName!: string | null;
 
   @Prop({ type: Object, default: null })
   location?: { type: 'Point'; coordinates: [number, number] } | null;
@@ -107,8 +104,8 @@ class RecruiterProfile {
   @Prop({ type: String, required: true })
   fullName!: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'Hospital', default: null, index: true })
-  hospitalId!: Types.ObjectId | null;
+  @Prop({ type: Types.ObjectId, ref: 'School', default: null, index: true })
+  schoolId!: Types.ObjectId | null;
 }
 
 const RecruiterProfileSchema = SchemaFactory.createForClass(RecruiterProfile);
@@ -156,16 +153,16 @@ export class User {
   @Prop({ type: String, default: null })
   pushSubscription!: string | null;
 
-  // Seeker SOS subscription — null means not subscribed / expired
-  @Prop({ type: Date, default: null })
-  seekerSosSubscribedUntil!: Date | null;
-
-  // Job alert preferences (seeker only)
+  // Job alert preference (seeker only) — new posting matching their desired cities / radius
   @Prop({ type: Boolean, default: true })
-  alertSosJobs!: boolean;
+  alertNewJobs!: boolean;
 
-  @Prop({ type: Boolean, default: true })
-  alertFtJobs!: boolean;
+  // Incremented on password change/reset and admin delete/restore to force-invalidate
+  // existing access tokens immediately (JWT strategy compares this against the `tv`
+  // claim on every request). Tokens issued before this field existed lack `tv`; treated
+  // as version 0 for backward compatibility.
+  @Prop({ type: Number, default: 0 })
+  tokenVersion!: number;
 
 }
 

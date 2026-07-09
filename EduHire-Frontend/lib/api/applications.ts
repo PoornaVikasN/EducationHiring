@@ -1,29 +1,28 @@
 import { apiClient } from '../api-client';
-import { Academics, ApplicationState, Availability, AvailableTimings, JobType, MaritalStatus, TypeOfPractice } from '../shared/enums';
+import { Academics, ApplicationState, Availability, AvailableTimings, MaritalStatus, TypeOfPractice } from '../shared/enums';
 
 export interface Application {
   _id: string;
   jobId: string;
-  hospitalId: string;
+  schoolId: string;
   seekerId: string;
   state: ApplicationState;
   coverNote?: string;
   shortlistedAt?: string;
   paymentDueBy?: string;
   paidAt?: string;
-  hospitalRevealed: boolean;
+  schoolRevealed: boolean;
   decisionReason?: string;
   createdAt: string;
   job?: {
     _id: string;
     title: string;
-    type: JobType;
     city: string;
     state: string;
     role: string;
     department: string;
   };
-  hospital?: {
+  school?: {
     _id: string;
     name: string;
     logoUrl: string | null;
@@ -34,9 +33,9 @@ export interface Application {
     description?: string;
     website?: string;
     isVerified?: boolean;
-    hospitalInfra?: string;
-    noOfOperationTheatres?: number;
-    noOfCabinsAndBeds?: number;
+    campusFacilities?: string;
+    noOfClassrooms?: number;
+    noOfLabsOrSpecialRooms?: number;
     phone?: string;
     email?: string;
   };

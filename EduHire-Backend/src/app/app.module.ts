@@ -7,6 +7,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { loggerConfig } from '../config/logger.config';
+import { envValidationSchema } from '../config/env.validation';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AdminModule } from '../modules/admin/admin.module';
@@ -16,7 +17,7 @@ import { DisputesModule } from '../modules/disputes/disputes.module';
 import { PublicModule } from '../modules/public/public.module';
 import { ApplicationsModule } from '../modules/applications/applications.module';
 import { AuthModule } from '../modules/auth/auth.module';
-import { HospitalsModule } from '../modules/hospitals/hospitals.module';
+import { SchoolsModule } from '../modules/schools/schools.module';
 import { JobsModule } from '../modules/jobs/jobs.module';
 import { NotificationsModule } from '../modules/notifications/notifications.module';
 import { PaymentsModule } from '../modules/payments/payments.module';
@@ -44,7 +45,12 @@ function buildMongoUri(): string {
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env'] }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env'],
+      validationSchema: envValidationSchema,
+      validationOptions: { abortEarly: false, allowUnknown: true },
+    }),
     LoggerModule.forRoot(loggerConfig),
     MongooseModule.forRoot(buildMongoUri()),
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
@@ -54,7 +60,7 @@ function buildMongoUri(): string {
     // Feature modules
     AuthModule,
     UsersModule,
-    HospitalsModule,
+    SchoolsModule,
     JobsModule,
     ApplicationsModule,
     PaymentsModule,

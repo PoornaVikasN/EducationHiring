@@ -5,15 +5,15 @@ import { Role } from '../../lib/shared/enums';
 
 interface RoleToggleProps {
   value: Role;
-  onChange: (role: Role.JOB_SEEKER | Role.RECRUITER) => void;
+  onChange: (role: Role.TEACHER | Role.RECRUITER) => void;
   teacherLabel?: string;
   schoolLabel?: string;
   size?: 'sm' | 'default' | 'lg';
 }
 
 export function RoleToggle({ value, onChange, teacherLabel = 'Teacher', schoolLabel = 'School', size = 'default' }: RoleToggleProps) {
-  const options: { role: Role.JOB_SEEKER | Role.RECRUITER; label: string }[] = [
-    { role: Role.JOB_SEEKER, label: teacherLabel },
+  const options: { role: Role.TEACHER | Role.RECRUITER; label: string }[] = [
+    { role: Role.TEACHER, label: teacherLabel },
     { role: Role.RECRUITER, label: schoolLabel },
   ];
 

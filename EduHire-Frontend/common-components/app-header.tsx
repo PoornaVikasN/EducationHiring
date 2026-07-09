@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth-context';
-import { hospitalsApi } from '@/lib/api/hospitals';
+import { schoolsApi } from '@/lib/api/schools';
 import { NotificationKind, Role, VerificationStatus } from '@/lib/shared/enums';
 import { useWebPush } from '@/hooks/use-web-push';
 
@@ -27,7 +27,7 @@ const RECRUITER_NAV: NavItem[] = [
   { label: 'My Jobs', href: '/recruiter/jobs' },
   { label: 'Applicants', href: '/recruiter/applicants' },
   { label: 'Messages', href: '/recruiter/chat' },
-  { label: 'School Profile', href: '/recruiter/hospital' },
+  { label: 'School Profile', href: '/recruiter/school' },
   { label: 'Subscription', href: '/recruiter/subscription' },
   { label: 'Settings', href: '/recruiter/settings' },
 ];
@@ -35,7 +35,7 @@ const RECRUITER_NAV: NavItem[] = [
 const ADMIN_NAV: NavItem[] = [
   { label: 'Dashboard', href: '/admin' },
   { label: 'Users', href: '/admin/users' },
-  { label: 'Schools', href: '/admin/hospitals' },
+  { label: 'Schools', href: '/admin/schools' },
   { label: 'Jobs', href: '/admin/jobs' },
   { label: 'Payments', href: '/admin/payments' },
   { label: 'Analytics', href: '/admin/analytics' },
@@ -62,25 +62,25 @@ export default function AppHeader() {
 
   useWebPush(user?.id);
 
-  const { data: hospital, isLoading: hospitalLoading } = useQuery({
-    queryKey: ['my-hospital'],
-    queryFn: () => hospitalsApi.getMine().then((r) => r.data).catch(() => null),
+  const { data: school, isLoading: schoolLoading } = useQuery({
+    queryKey: ['my-school'],
+    queryFn: () => schoolsApi.getMine().then((r) => r.data).catch(() => null),
     enabled: isRecruiter && !!user,
   });
 
-  // Disable all nav tabs for recruiter when: still loading (prevent flash), no hospital yet, or hospital unverified
-  // Only Dashboard and Hospital Profile are always accessible
-  const RECRUITER_ALLOWED = ['/recruiter/dashboard', '/recruiter/hospital'];
+  // Disable all nav tabs for recruiter when: still loading (prevent flash), no school yet, or school unverified
+  // Only Dashboard and School Profile are always accessible
+  const RECRUITER_ALLOWED = ['/recruiter/dashboard', '/recruiter/school'];
   const isNavDisabled = (href: string) =>
     isRecruiter &&
-    !hospitalLoading &&
-    (hospital == null || !hospital.isVerified) &&
+    !schoolLoading &&
+    (school == null || !school.isVerified) &&
     !RECRUITER_ALLOWED.some((p) => href.startsWith(p));
 
   const navDisabledTooltip =
-    hospital?.verificationStatus === VerificationStatus.REJECTED
+    school?.verificationStatus === VerificationStatus.REJECTED
       ? 'School profile rejected — update and resubmit to unlock'
-      : hospital?.verificationStatus === VerificationStatus.PENDING
+      : school?.verificationStatus === VerificationStatus.PENDING
       ? 'Awaiting admin verification — you will be notified once approved'
       : 'Set up your school profile to unlock all features';
 
@@ -187,8 +187,8 @@ export default function AppHeader() {
           <NotificationsBell
             accessToken={accessToken}
             onNotification={(notif) => {
-              if (notif.kind === NotificationKind.HOSPITAL_VERIFIED) {
-                qc.invalidateQueries({ queryKey: ['my-hospital'] });
+              if (notif.kind === NotificationKind.SCHOOL_VERIFIED) {
+                qc.invalidateQueries({ queryKey: ['my-school'] });
               }
             }}
           />

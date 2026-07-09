@@ -14,6 +14,7 @@ import { useAuth } from '../../../../lib/auth-context';
 import { formatLpa, APPLICATION_FEE_PAISE, JOB_STATUS_BADGE } from '../../../../lib/shared/constants';
 import { usePublicPricing, formatRupees } from '../../../../hooks/use-public-pricing';
 import { ApplicationState, JobStatus, Role } from '../../../../lib/shared/enums';
+import { enumLabel } from '../../../../lib/utils/enum-options';
 
 const APP_STATE_LABEL: Record<ApplicationState, string> = {
   [ApplicationState.INTERESTED]: 'Under review by school',
@@ -56,7 +57,7 @@ export default function JobDetailPage() {
     },
   });
 
-  const isSeeker = user?.role === Role.JOB_SEEKER;
+  const isSeeker = user?.role === Role.TEACHER;
 
 
   const { data: myApplications } = useQuery({
@@ -98,7 +99,7 @@ export default function JobDetailPage() {
       <div className="bg-bg-card border border-border-default rounded-2xl p-6">
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-xl bg-brand-primary-light flex items-center justify-center text-brand-primary font-bold text-xl shrink-0">
-            {(job.hospital?.name ?? 'H')[0].toUpperCase()}
+            {(job.school?.name ?? 'H')[0].toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -106,7 +107,7 @@ export default function JobDetailPage() {
               <StatusPill status={job.status} />
             </div>
             <p className="text-sm text-text-muted mt-1">
-              {job.hospital?.verified ? job.hospital.name : 'Verified School'} · {job.department}
+              {job.school?.verified ? job.school.name : 'Verified School'} · {enumLabel(job.department)}
             </p>
             <div className="flex items-center gap-4 mt-3 flex-wrap text-xs text-text-muted">
               <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{job.city}, {job.state}</span>
@@ -139,7 +140,7 @@ export default function JobDetailPage() {
           </div>
           <div className="text-center">
             <p className="text-xs text-text-muted mb-0.5">Role</p>
-            <p className="text-sm font-semibold text-text-primary">{job.role}</p>
+            <p className="text-sm font-semibold text-text-primary">{enumLabel(job.role)}</p>
           </div>
           <div className="text-center">
             <p className="text-xs text-text-muted mb-0.5">Positions</p>
@@ -169,21 +170,21 @@ export default function JobDetailPage() {
         )}
       </div>
 
-      {/* Hospital info */}
-      {job.hospital && (
+      {/* School info */}
+      {job.school && (
         <div className="bg-bg-card border border-border-default rounded-2xl p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
             <Building className="w-4 h-4" /> About the School
           </h2>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-brand-primary-light flex items-center justify-center text-brand-primary font-bold shrink-0">
-              {job.hospital.name[0].toUpperCase()}
+              {job.school.name[0].toUpperCase()}
             </div>
             <div>
-              <p className="text-sm font-semibold text-text-primary">{job.hospital.name}</p>
-              <p className="text-xs text-text-muted">{job.hospital.city}, {job.hospital.state}</p>
+              <p className="text-sm font-semibold text-text-primary">{job.school.name}</p>
+              <p className="text-xs text-text-muted">{job.school.city}, {job.school.state}</p>
             </div>
-            {job.hospital.verified && (
+            {job.school.verified && (
               <span className="ml-auto flex items-center gap-1 text-xs text-green-600 font-medium">
                 <CheckCircle className="w-3.5 h-3.5" /> Verified
               </span>

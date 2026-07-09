@@ -14,7 +14,9 @@ import * as crypto from 'crypto';
 import { Response } from 'express';
 import { Model } from 'mongoose';
 import { Role } from '../../shared/enums';
+import { redactEmail, redactPhone } from '../../common/utils/redact';
 import { normalizePhoneNumber as normalizePhone } from '../../utils/phone-normalizer';
+import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../notifications/email.service';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
@@ -32,6 +34,14 @@ const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
 const REFRESH_COOKIE = 'refresh_token';
 
+// Request context passed in from the controller — IP + user-agent — so anonymous
+// auth events (failed login, OTP lockout) can be audited with enough info to track
+// abuse. Optional everywhere; absent ctx just means the audit row lacks IP/UA.
+export interface AuthCtx {
+  ip?: string;
+  userAgent?: string;
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -44,6 +54,7 @@ export class AuthService {
     private jwtService: JwtService,
     private config: ConfigService,
     private emailService: EmailService,
+    private auditService: AuditService,
   ) {}
 
   // ── Register ────────────────────────────────────────────────────────────────
@@ -69,21 +80,21 @@ export class AuthService {
       phone,
       passwordHash,
       seekerProfile:
-        dto.role === Role.JOB_SEEKER
+        dto.role === Role.TEACHER
           ? {
               fullName: dto.fullName,
               headline: null, bio: null, resumeUrl: null, introVideoUrl: null, city: null, state: null, availability: null,
-              experienceYears: null, skills: [], certUrls: [], desiredCities: [], desiredJobTypes: [],
+              experienceYears: null, skills: [], certUrls: [], desiredCities: [],
               age: null, gender: null, maritalStatus: null, degrees: [],
-              whatsappNumber: null, whatsappVerified: false, pincode: null, placeOfPractice: null, typeOfPractice: null,
+              whatsappNumber: null, whatsappVerified: false, pincode: null, currentSchool: null, employmentType: null,
               expertise: [], academics: null, salaryRange: null,
               availableTimings: [], interestedToCover: [], indemnityInsurance: null,
-              isRegisteredInCouncil: null, medicalCouncilName: null,
+              isRegisteredWithBoard: null, boardRegistrationName: null,
             }
           : null,
       recruiterProfile:
         dto.role === Role.RECRUITER
-          ? { fullName: dto.fullName, hospitalId: null }
+          ? { fullName: dto.fullName, schoolId: null }
           : null,
     };
 
@@ -120,22 +131,37 @@ export class AuthService {
 
   // ── Login ───────────────────────────────────────────────────────────────────
 
-  async login(dto: LoginDto, res: Response): Promise<{ accessToken: string; user: SafeUser }> {
+  async login(
+    dto: LoginDto,
+    res: Response,
+    ctx: AuthCtx = {},
+  ): Promise<{ accessToken: string; user: SafeUser }> {
+    const masked = redactEmail(dto.email);
     const user = await this.userModel
       .findOne({ email: dto.email.toLowerCase(), deletedAt: null })
       .exec();
 
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (!user) {
+      this.auditService.logAuthEvent('AUTH_FAILED', masked, 'user_not_found', ctx.ip, ctx.userAgent);
+      throw new UnauthorizedException('Invalid credentials');
+    }
     if (!user.passwordHash) {
+      this.auditService.logAuthEvent('AUTH_FAILED', masked, 'password_login_not_set', ctx.ip, ctx.userAgent);
       throw new UnauthorizedException('This account uses Google sign-in. Please use the "Continue with Google" button below.');
     }
 
     if (!user.isActive) {
+      this.auditService.logAuthEvent('AUTH_FAILED', masked, 'account_disabled', ctx.ip, ctx.userAgent);
       throw new UnauthorizedException('Account is disabled');
     }
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+    if (!valid) {
+      this.auditService.logAuthEvent('AUTH_FAILED', masked, 'invalid_password', ctx.ip, ctx.userAgent);
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    this.auditService.logAuthEvent('LOGIN_SUCCESS', masked, 'password_login', ctx.ip, ctx.userAgent);
 
     return this.issueTokens(user, res);
   }
@@ -162,12 +188,12 @@ export class AuthService {
         emailVerified: true,
         passwordHash: null,
         seekerProfile:
-          dto.role === Role.JOB_SEEKER
-            ? { fullName: googleUser.name, skills: [], certUrls: [], desiredCities: [], desiredJobTypes: [], headline: null, bio: null, resumeUrl: null, city: null, state: null, availability: null, experienceYears: null }
+          dto.role === Role.TEACHER
+            ? { fullName: googleUser.name, skills: [], certUrls: [], desiredCities: [], headline: null, bio: null, resumeUrl: null, city: null, state: null, availability: null, experienceYears: null }
             : null,
         recruiterProfile:
           dto.role === Role.RECRUITER
-            ? { fullName: googleUser.name, hospitalId: null }
+            ? { fullName: googleUser.name, schoolId: null }
             : null,
       });
     } else if (!user.googleId) {
@@ -209,14 +235,14 @@ export class AuthService {
 
     // Send via email (primary)
     await this.emailService.sendOtpEmail(email, code).catch((err: unknown) => {
-      this.logger.warn(`OTP email failed for ${email}: ${String(err)}`);
+      this.logger.warn(`OTP email failed for ${redactEmail(email)}: ${String(err)}`);
     });
 
     // Send via SMS (secondary — if user has phone and MSG91 is configured)
     const user = await this.userModel.findOne({ email, deletedAt: null }).lean().exec();
     if (user?.phone) {
       await this.dispatchSms(user.phone, code).catch((err: unknown) => {
-        this.logger.warn(`OTP SMS failed for ${user.phone}: ${String(err)}`);
+        this.logger.warn(`OTP SMS failed for ${redactPhone(user.phone)}: ${String(err)}`);
       });
     }
 
@@ -224,22 +250,30 @@ export class AuthService {
     return { message: 'OTP sent', ...(isDev && { devOtp: code }) };
   }
 
-  async verifyOtp(dto: VerifyOtpDto, res: Response): Promise<{ accessToken: string; user: SafeUser }> {
+  async verifyOtp(
+    dto: VerifyOtpDto,
+    res: Response,
+    ctx: AuthCtx = {},
+  ): Promise<{ accessToken: string; user: SafeUser }> {
     const email = dto.email.toLowerCase().trim();
+    const masked = redactEmail(email);
     const keyHash = this.hashValue(email);
 
     const otpDoc = await this.otpModel.findOne({ phoneHash: keyHash }).exec();
     if (!otpDoc || otpDoc.expiresAt < new Date()) {
+      this.auditService.logAuthEvent('OTP_FAILED', masked, 'otp_expired_or_missing', ctx.ip, ctx.userAgent);
       throw new BadRequestException('OTP expired or not found. Please request a new one.');
     }
     if (otpDoc.attempts >= OTP_MAX_ATTEMPTS) {
       await this.otpModel.deleteOne({ phoneHash: keyHash });
+      this.auditService.logAuthEvent('OTP_LOCKED', masked, 'max_attempts_exceeded', ctx.ip, ctx.userAgent);
       throw new BadRequestException('Too many attempts. Please request a new OTP.');
     }
 
     const codeHash = this.hashValue(dto.code);
     if (codeHash !== otpDoc.codeHash) {
       await this.otpModel.updateOne({ phoneHash: keyHash }, { $inc: { attempts: 1 } });
+      this.auditService.logAuthEvent('OTP_FAILED', masked, 'invalid_code', ctx.ip, ctx.userAgent);
       throw new BadRequestException('Invalid OTP');
     }
 
@@ -360,7 +394,12 @@ export class AuthService {
     if (!user) throw new NotFoundException('Account not found.');
 
     const newHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
-    await this.userModel.findByIdAndUpdate(user._id, { $set: { passwordHash: newHash } }).exec();
+    await this.userModel
+      .findByIdAndUpdate(user._id, {
+        $set: { passwordHash: newHash },
+        $inc: { tokenVersion: 1 },
+      })
+      .exec();
 
     return { message: 'Password reset successfully. You can now log in with your new password.' };
   }
@@ -371,7 +410,12 @@ export class AuthService {
     user: UserDocument,
     res: Response,
   ): Promise<{ accessToken: string; user: SafeUser }> {
-    const payload = { sub: user._id.toString(), role: user.role, email: user.email ?? '' };
+    const payload = {
+      sub: user._id.toString(),
+      role: user.role,
+      email: user.email ?? '',
+      tv: user.tokenVersion ?? 0,
+    };
 
     const accessToken = this.jwtService.sign(payload);
 
@@ -458,9 +502,7 @@ export interface SafeUser {
   phoneVerified: boolean;
   seekerProfile: unknown;
   recruiterProfile: unknown;
-  seekerSosSubscribedUntil: Date | null;
-  alertSosJobs: boolean;
-  alertFtJobs: boolean;
+  alertNewJobs: boolean;
 }
 
 function toSafeUser(user: UserDocument): SafeUser {
@@ -473,8 +515,6 @@ function toSafeUser(user: UserDocument): SafeUser {
     phoneVerified: user.phoneVerified,
     seekerProfile: user.seekerProfile,
     recruiterProfile: user.recruiterProfile,
-    seekerSosSubscribedUntil: user.seekerSosSubscribedUntil,
-    alertSosJobs: user.alertSosJobs,
-    alertFtJobs: user.alertFtJobs,
+    alertNewJobs: user.alertNewJobs,
   };
 }

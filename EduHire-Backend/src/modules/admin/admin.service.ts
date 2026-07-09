@@ -3,13 +3,15 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { Model, Types } from 'mongoose';
-import { JobStatus, JobType, PaymentStatus, Role, VerificationStatus } from '../../shared/enums';
+import { ApplicationState, JobStatus, PaymentStatus, Role, SubscriptionStatus, VerificationStatus } from '../../shared/enums';
 import { normalizePhoneNumber } from '../../utils/phone-normalizer';
 import { AuditService } from '../audit/audit.service';
-import { Hospital, HospitalDocument } from '../hospitals/schemas/hospital.schema';
+import { School, SchoolDocument } from '../schools/schemas/school.schema';
 import { Job, JobDocument } from '../jobs/schemas/job.schema';
 import { Payment, PaymentDocument } from '../payments/schemas/payment.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
+import { Application, ApplicationDocument } from '../applications/schemas/application.schema';
+import { Subscription, SubscriptionDocument } from '../subscriptions/schemas/subscription.schema';
 import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 
 @Injectable()
@@ -18,9 +20,11 @@ export class AdminService {
 
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Hospital.name) private hospitalModel: Model<HospitalDocument>,
+    @InjectModel(School.name) private schoolModel: Model<SchoolDocument>,
     @InjectModel(Job.name) private jobModel: Model<JobDocument>,
     @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
+    @InjectModel(Application.name) private appModel: Model<ApplicationDocument>,
+    @InjectModel(Subscription.name) private subscriptionModel: Model<SubscriptionDocument>,
     private eventEmitter: EventEmitter2,
     private auditService: AuditService,
   ) {}
@@ -36,9 +40,10 @@ export class AdminService {
     city?: string,
     joinedFrom?: string,
     joinedTo?: string,
+    includeDeleted = false,
   ) {
     const skip = (page - 1) * limit;
-    const match: Record<string, unknown> = { deletedAt: null };
+    const match: Record<string, unknown> = includeDeleted ? {} : { deletedAt: null };
 
     if (search) {
       match['$or'] = [
@@ -61,7 +66,7 @@ export class AdminService {
       this.userModel
         .find(match)
         .select('-passwordHash')
-        .sort({ createdAt: -1 })
+        .sort(includeDeleted ? { deletedAt: 1, createdAt: -1 } : { createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean()
@@ -69,28 +74,28 @@ export class AdminService {
       this.userModel.countDocuments(match),
     ]);
 
-    // Resolve hospitalId → hospitalName for recruiters in one batch query
-    const hospitalIds = data
-      .filter((u: any) => u.role === Role.RECRUITER && u.recruiterProfile?.hospitalId)
-      .map((u: any) => new Types.ObjectId(u.recruiterProfile.hospitalId));
+    // Resolve schoolId → schoolName for recruiters in one batch query
+    const schoolIds = data
+      .filter((u: any) => u.role === Role.RECRUITER && u.recruiterProfile?.schoolId)
+      .map((u: any) => new Types.ObjectId(u.recruiterProfile.schoolId));
 
-    let hospitalMap = new Map<string, string>();
-    if (hospitalIds.length > 0) {
-      const hospitals = await this.hospitalModel
-        .find({ _id: { $in: hospitalIds } })
+    let schoolMap = new Map<string, string>();
+    if (schoolIds.length > 0) {
+      const schools = await this.schoolModel
+        .find({ _id: { $in: schoolIds } })
         .select('name')
         .lean()
         .exec();
-      hospitalMap = new Map(hospitals.map((h: any) => [h._id.toString(), h.name]));
+      schoolMap = new Map(schools.map((s: any) => [s._id.toString(), s.name]));
     }
 
     const enriched = data.map((u: any) => {
-      if (u.role === Role.RECRUITER && u.recruiterProfile?.hospitalId) {
+      if (u.role === Role.RECRUITER && u.recruiterProfile?.schoolId) {
         return {
           ...u,
           recruiterProfile: {
             ...u.recruiterProfile,
-            hospitalName: hospitalMap.get(u.recruiterProfile.hospitalId.toString()) ?? null,
+            schoolName: schoolMap.get(u.recruiterProfile.schoolId.toString()) ?? null,
           },
         };
       }
@@ -113,20 +118,20 @@ export class AdminService {
     const passwordHash = await bcrypt.hash(dto.password, 12);
     this.logger.log(`createUser: email=${dto.email.toLowerCase()} phone=${phone} role=${dto.role}`);
     const seekerProfile =
-      dto.role === Role.JOB_SEEKER
+      dto.role === Role.TEACHER
         ? {
             fullName: dto.fullName ?? '',
             headline: null, bio: null, resumeUrl: null, city: null, state: null, availability: null,
-            experienceYears: null, skills: [], certUrls: [], desiredCities: [], desiredJobTypes: [],
+            experienceYears: null, skills: [], certUrls: [], desiredCities: [],
             age: null, gender: null, maritalStatus: null, degrees: [],
-            whatsappNumber: null, pincode: null, placeOfPractice: null, typeOfPractice: null,
+            whatsappNumber: null, pincode: null, currentSchool: null, employmentType: null,
             expertise: [], academics: null, salaryRange: null,
             availableTimings: [], interestedToCover: [], indemnityInsurance: null,
-            isRegisteredInCouncil: null, medicalCouncilName: null,
+            isRegisteredWithBoard: null, boardRegistrationName: null,
           }
         : null;
     const recruiterProfile =
-      dto.role === Role.RECRUITER ? { fullName: dto.fullName ?? '', hospitalId: null } : null;
+      dto.role === Role.RECRUITER ? { fullName: dto.fullName ?? '', schoolId: null } : null;
     // Role.ADMIN: no profile needed — admin identity is email/phone
 
     const created = await this.userModel.create({
@@ -157,9 +162,76 @@ export class AdminService {
     this.auditService.log(adminId, adminEmail, 'USER_ACTIVATED', 'user', userId, (user as any).email ?? userId, { isActive: false }, { isActive: true });
   }
 
-  // ── Hospitals ─────────────────────────────────────────────────────────────────
+  /**
+   * Soft-deletes a user and cascades to everything they own. Payment and audit
+   * records are deliberately left untouched for compliance. Existing access
+   * tokens are rejected on the very next request since jwt.strategy re-checks
+   * `isActive`/`deletedAt` live on every call. tokenVersion is bumped too, as
+   * defense-in-depth belt-and-suspenders alongside that live check.
+   */
+  async deleteUser(userId: string, adminId: string, adminEmail: string): Promise<void> {
+    const user = await this.userModel.findOne({ _id: userId, deletedAt: null }).exec();
+    if (!user) throw new NotFoundException('User not found');
 
-  async listHospitals(
+    const now = new Date();
+    await this.userModel.findByIdAndUpdate(userId, {
+      $set: { deletedAt: now, isActive: false },
+      $inc: { tokenVersion: 1 },
+    });
+
+    if (user.role === Role.RECRUITER && user.recruiterProfile?.schoolId) {
+      const schoolId = user.recruiterProfile.schoolId;
+      await this.schoolModel.findByIdAndUpdate(schoolId, { $set: { deletedAt: now } });
+      await this.jobModel.updateMany(
+        { schoolId, status: JobStatus.ACTIVE, deletedAt: null },
+        { $set: { status: JobStatus.AUTO_DISABLED } },
+      );
+      const openStates = [ApplicationState.INTERESTED, ApplicationState.SHORTLISTED, ApplicationState.PAID];
+      await this.appModel.updateMany(
+        { schoolId, state: { $in: openStates } },
+        { $set: { state: ApplicationState.CLOSED, decisionReason: 'School account deleted by admin', decisionAt: now } },
+      );
+      await this.subscriptionModel.updateMany(
+        { schoolId, status: SubscriptionStatus.ACTIVE, deletedAt: null },
+        { $set: { status: SubscriptionStatus.CANCELLED } },
+      );
+    }
+
+    this.auditService.log(adminId, adminEmail, 'USER_DELETED', 'user', userId, (user as any).email ?? userId,
+      { deletedAt: null, isActive: true },
+      { deletedAt: now, isActive: false },
+    );
+  }
+
+  /**
+   * Restores a soft-deleted user. Cascades restore the owned school and its
+   * jobs (as AUTO_DISABLED — admin must manually reactivate each job).
+   * Applications/subscriptions closed at delete time are NOT restored;
+   * that's intentional, same as RxJobs4U's reference behaviour.
+   */
+  async restoreUser(userId: string, adminId: string, adminEmail: string): Promise<void> {
+    const user = await this.userModel.findOne({ _id: userId, deletedAt: { $ne: null } }).exec();
+    if (!user) throw new NotFoundException('Deleted user not found');
+
+    await this.userModel.findByIdAndUpdate(userId, {
+      $set: { deletedAt: null, isActive: true },
+      $inc: { tokenVersion: 1 },
+    });
+
+    if (user.role === Role.RECRUITER && user.recruiterProfile?.schoolId) {
+      // Jobs stay AUTO_DISABLED on restore — admin reactivates each one manually, same as delete-cascade leaves them.
+      await this.schoolModel.findByIdAndUpdate(user.recruiterProfile.schoolId, { $set: { deletedAt: null } });
+    }
+
+    this.auditService.log(adminId, adminEmail, 'USER_RESTORED', 'user', userId, (user as any).email ?? userId,
+      { deletedAt: user.deletedAt, isActive: false },
+      { deletedAt: null, isActive: true },
+    );
+  }
+
+  // ── Schools ───────────────────────────────────────────────────────────────────
+
+  async listSchools(
     page = 1,
     limit = 20,
     verified?: boolean,
@@ -180,34 +252,34 @@ export class AdminService {
     }
 
     const [data, total] = await Promise.all([
-      this.hospitalModel
+      this.schoolModel
         .find(match)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean()
         .exec(),
-      this.hospitalModel.countDocuments(match),
+      this.schoolModel.countDocuments(match),
     ]);
 
     return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
   }
 
-  async verifyHospital(hospitalId: string, adminId: string, adminEmail: string): Promise<void> {
-    const hospital = await this.hospitalModel.findOne({ _id: hospitalId, deletedAt: null }).exec();
-    if (!hospital) throw new NotFoundException('Hospital not found');
-    const prevStatus = (hospital as any).verificationStatus ?? 'PENDING';
-    await this.hospitalModel.findByIdAndUpdate(hospitalId, { $set: { isVerified: true, verificationStatus: VerificationStatus.VERIFIED } });
-    this.eventEmitter.emit('hospital.verified', { hospitalId, recruiterId: (hospital as any).adminUserId.toString() });
-    this.auditService.log(adminId, adminEmail, 'HOSPITAL_VERIFIED', 'hospital', hospitalId, (hospital as any).name, { status: prevStatus }, { status: 'VERIFIED' });
+  async verifySchool(schoolId: string, adminId: string, adminEmail: string): Promise<void> {
+    const school = await this.schoolModel.findOne({ _id: schoolId, deletedAt: null }).exec();
+    if (!school) throw new NotFoundException('School not found');
+    const prevStatus = (school as any).verificationStatus ?? 'PENDING';
+    await this.schoolModel.findByIdAndUpdate(schoolId, { $set: { isVerified: true, verificationStatus: VerificationStatus.VERIFIED } });
+    this.eventEmitter.emit('school.verified', { schoolId, recruiterId: (school as any).adminUserId.toString() });
+    this.auditService.log(adminId, adminEmail, 'SCHOOL_VERIFIED', 'school', schoolId, (school as any).name, { status: prevStatus }, { status: 'VERIFIED' });
   }
 
-  async rejectHospital(hospitalId: string, adminId: string, adminEmail: string): Promise<void> {
-    const hospital = await this.hospitalModel.findOne({ _id: hospitalId, deletedAt: null }).exec();
-    if (!hospital) throw new NotFoundException('Hospital not found');
-    const prevStatus = (hospital as any).verificationStatus ?? 'PENDING';
-    await this.hospitalModel.findByIdAndUpdate(hospitalId, { $set: { isVerified: false, verificationStatus: VerificationStatus.REJECTED } });
-    this.auditService.log(adminId, adminEmail, 'HOSPITAL_REJECTED', 'hospital', hospitalId, (hospital as any).name, { status: prevStatus }, { status: 'REJECTED' });
+  async rejectSchool(schoolId: string, adminId: string, adminEmail: string): Promise<void> {
+    const school = await this.schoolModel.findOne({ _id: schoolId, deletedAt: null }).exec();
+    if (!school) throw new NotFoundException('School not found');
+    const prevStatus = (school as any).verificationStatus ?? 'PENDING';
+    await this.schoolModel.findByIdAndUpdate(schoolId, { $set: { isVerified: false, verificationStatus: VerificationStatus.REJECTED } });
+    this.auditService.log(adminId, adminEmail, 'SCHOOL_REJECTED', 'school', schoolId, (school as any).name, { status: prevStatus }, { status: 'REJECTED' });
   }
 
   // ── Stats ──────────────────────────────────────────────────────────────────────
@@ -219,23 +291,19 @@ export class AdminService {
       totalUsers,
       totalSeekers,
       totalRecruiters,
-      totalHospitals,
+      totalSchools,
       activeJobs,
-      sosActiveJobs,
-      fullTimeActiveJobs,
-      pendingHospitals,
+      pendingSchools,
       filledJobs,
       revenueAll,
       revenueMonthly,
     ] = await Promise.all([
       this.userModel.countDocuments({ deletedAt: null }),
-      this.userModel.countDocuments({ role: Role.JOB_SEEKER, deletedAt: null }),
+      this.userModel.countDocuments({ role: Role.TEACHER, deletedAt: null }),
       this.userModel.countDocuments({ role: Role.RECRUITER, deletedAt: null }),
-      this.hospitalModel.countDocuments({ deletedAt: null }),
+      this.schoolModel.countDocuments({ deletedAt: null }),
       this.jobModel.countDocuments({ status: JobStatus.ACTIVE }),
-      this.jobModel.countDocuments({ status: JobStatus.ACTIVE, type: JobType.SOS }),
-      this.jobModel.countDocuments({ status: JobStatus.ACTIVE, type: JobType.FULL_TIME }),
-      this.hospitalModel.countDocuments({ verificationStatus: VerificationStatus.PENDING, deletedAt: null }),
+      this.schoolModel.countDocuments({ verificationStatus: VerificationStatus.PENDING, deletedAt: null }),
       this.jobModel.countDocuments({ status: JobStatus.FILLED }),
       this.paymentModel.aggregate([
         { $match: { status: PaymentStatus.PAID } },
@@ -254,11 +322,9 @@ export class AdminService {
       totalUsers,
       totalSeekers,
       totalRecruiters,
-      totalHospitals,
+      totalSchools,
       activeJobs,
-      sosActiveJobs,
-      fullTimeActiveJobs,
-      pendingHospitals,
+      pendingSchools,
       filledJobs,
       totalRevenuePaise,
       monthlyRevenuePaise,

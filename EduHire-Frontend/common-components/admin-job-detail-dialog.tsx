@@ -3,6 +3,7 @@
 import { Briefcase, Building2, ExternalLink } from 'lucide-react';
 import type { Job } from '../lib/api/jobs';
 import { JOB_STATUS_BADGE } from '../lib/shared/constants';
+import { enumLabel } from '../lib/utils/enum-options';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 
 const STATUS_BADGE = JOB_STATUS_BADGE;
@@ -55,11 +56,11 @@ export function AdminJobDetailDialog({ job, onOpenChange }: Props) {
                 </span>
                 <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
               </div>
-              {job.hospital && (
+              {job.school && (
                 <div className="flex items-center gap-1.5 text-xs text-text-muted">
                   <Building2 className="w-3.5 h-3.5" />
-                  <span>{job.hospital.name}</span>
-                  {job.hospital.verified && (
+                  <span>{job.school.name}</span>
+                  {job.school.verified && (
                     <span className="text-[10px] text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">Verified</span>
                   )}
                 </div>
@@ -72,8 +73,8 @@ export function AdminJobDetailDialog({ job, onOpenChange }: Props) {
           {/* Key details grid */}
           <div className="bg-bg-page border border-border-default rounded-xl p-3 space-y-2">
             <Row label="Location" value={`${job.city}, ${job.state}`} />
-            <Row label="Department" value={job.department} />
-            <Row label="Role" value={job.role} />
+            <Row label="Department" value={enumLabel(job.department)} />
+            <Row label="Role" value={enumLabel(job.role)} />
             <Row label="Experience" value={`${job.experienceMin}–${job.experienceMax} yrs`} />
             <Row label="Salary" value={formatLpa(job.salaryMin, job.salaryMax)} />
             <Row label="Open positions" value={job.openPositions ?? 1} />
@@ -118,7 +119,7 @@ export function AdminJobDetailDialog({ job, onOpenChange }: Props) {
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">Department Requirements</p>
               <div className="flex flex-wrap gap-1.5">
                 {job.departmentRequirements!.map((r) => (
-                  <span key={r} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{r}</span>
+                  <span key={r} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{enumLabel(r)}</span>
                 ))}
               </div>
             </div>
@@ -130,7 +131,7 @@ export function AdminJobDetailDialog({ job, onOpenChange }: Props) {
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">Specializations Required</p>
               <div className="flex flex-wrap gap-1.5">
                 {job.specializations!.map((s) => (
-                  <span key={s} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand-primary-light text-brand-primary">{s}</span>
+                  <span key={s} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand-primary-light text-brand-primary">{enumLabel(s)}</span>
                 ))}
               </div>
             </div>

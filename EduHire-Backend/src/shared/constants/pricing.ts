@@ -10,8 +10,7 @@ export const APPLICATION_FEE_PAISE = 9_900; // ₹99 — Teacher confirms interv
 export const SHORTLIST_PAY_WINDOW_MS = 48 * 60 * 60 * 1000; // 48h to pay or auto-close
 
 // --- Job lifecycle TTLs ---
-export const FULL_TIME_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30d active listing window
-export const SOS_TTL_MS = 24 * 60 * 60 * 1000; // legacy — SOS removed in SchoolTeacher, kept for TS compat
+export const JOB_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30d active listing window
 
 // --- Subscription cycle ---
 export const SUBSCRIPTION_CYCLE_DAYS = 30; // Billing cadence for school subscription

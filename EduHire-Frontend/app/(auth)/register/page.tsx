@@ -22,12 +22,12 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
-  const prefillRole = searchParams.get('role') === 'RECRUITER' ? Role.RECRUITER : Role.JOB_SEEKER;
+  const prefillRole = searchParams.get('role') === 'RECRUITER' ? Role.RECRUITER : Role.TEACHER;
 
   const [serverError, setServerError] = useState('');
   const [success, setSuccess] = useState(false);
   const [googleLinked, setGoogleLinked] = useState(false);
-  const [googleRole, setGoogleRole] = useState<Role.JOB_SEEKER | Role.RECRUITER>(prefillRole);
+  const [googleRole, setGoogleRole] = useState<Role.TEACHER | Role.RECRUITER>(prefillRole);
 
   const {
     register,

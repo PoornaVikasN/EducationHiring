@@ -65,8 +65,6 @@ export default function AdminAnalyticsPage() {
   const totalSeekers = stats?.totalSeekers ?? 0;
   const totalRecruiters = stats?.totalRecruiters ?? 0;
   const totalUsers = stats?.totalUsers ?? 0;
-  const sosActive = stats?.sosActiveJobs ?? 0;
-  const ftActive = stats?.fullTimeActiveJobs ?? 0;
   const filled = stats?.filledJobs ?? 0;
   const active = stats?.activeJobs ?? 0;
   const fillRate = (active + filled) > 0 ? Math.round((filled / (active + filled)) * 100) : 0;
@@ -84,10 +82,8 @@ export default function AdminAnalyticsPage() {
     ACTIVE: 'bg-green-500',
     FILLED: 'bg-blue-500',
     EXPIRED: 'bg-amber-500',
-    PENDING_PAYMENT: 'bg-slate-400',
     AUTO_DISABLED: 'bg-red-400',
     DISABLED_BY_ADMIN: 'bg-red-600',
-    PENDING_SUBSCRIPTION: 'bg-purple-400',
   };
 
   return (
@@ -154,11 +150,11 @@ export default function AdminAnalyticsPage() {
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-3 mb-4">
-                <KpiCard label="Active" value={ftActive + sosActive} color="text-green-600" />
+                <KpiCard label="Active" value={active} color="text-green-600" />
                 <KpiCard label="Filled" value={filled} color="text-blue-600" />
                 <KpiCard label="Fill Rate" value={`${fillRate}%`} color="text-brand-primary" />
               </div>
-              <SimpleBar label="Teaching Jobs" value={ftActive} max={Math.max(ftActive, 1)} color="bg-green-500" />
+              <SimpleBar label="Teaching Jobs" value={active} max={Math.max(active, 1)} color="bg-green-500" />
               <p className="text-[11px] text-text-muted">Fill rate = Filled / (Active + Filled)</p>
             </div>
           )}
@@ -203,7 +199,7 @@ export default function AdminAnalyticsPage() {
         <h2 className="font-bold text-text-primary mb-4">Pending Actions</h2>
         <div className="grid sm:grid-cols-3 gap-4">
           {[
-            { label: 'Schools awaiting verification', value: stats?.pendingHospitals ?? '—', color: 'text-amber-600', href: '/admin/hospitals' },
+            { label: 'Schools awaiting verification', value: stats?.pendingSchools ?? '—', color: 'text-amber-600', href: '/admin/schools' },
             { label: 'Open disputes', value: '—', color: 'text-red-600', href: '/admin/disputes' },
             { label: 'Suspended users', value: '—', color: 'text-text-muted', href: '/admin/users' },
           ].map(({ label, value, color, href }) => (

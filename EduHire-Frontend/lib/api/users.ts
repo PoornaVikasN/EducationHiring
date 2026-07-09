@@ -1,5 +1,5 @@
 import { apiClient } from '../api-client';
-import { Academics, Availability, AvailableTimings, Gender, HospitalDepartment, MaritalStatus, SalaryRange, TypeOfPractice } from '../shared/enums';
+import { Academics, Availability, AvailableTimings, Gender, MaritalStatus, SalaryRange, TypeOfPractice } from '../shared/enums';
 
 export interface SeekerProfilePayload {
   fullName: string;
@@ -36,31 +36,7 @@ export interface SeekerProfilePayload {
 }
 
 export interface UserSettingsPayload {
-  alertSosJobs?: boolean;
-  alertFtJobs?: boolean;
-}
-
-export interface HospitalProfilePayload {
-  name: string;
-  registrationNumber: string;
-  address: string;
-  city: string;
-  state: string;
-  pincode: string;
-  contactEmail: string;
-  contactPhone: string;
-  logoUrl?: string;
-  description?: string;
-  website?: string;
-  noOfOperationTheatres?: number;
-  hospitalInfra?: string[];
-  noOfCabinsAndBeds?: number;
-  photos?: string[];
-  scopeOfServices?: string;
-  hospitalStrength?: number;
-  noOfBeds?: number;
-  accreditations?: string[];
-  departments?: HospitalDepartment[];
+  alertNewJobs?: boolean;
 }
 
 export interface RecruiterProfilePayload {

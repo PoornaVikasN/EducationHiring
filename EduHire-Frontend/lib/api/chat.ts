@@ -4,7 +4,7 @@ export interface ChatMessage {
   _id: string;
   applicationId: string;
   senderId: string;
-  senderRole: string; // JOB_SEEKER | RECRUITER
+  senderRole: string; // TEACHER | RECRUITER
   text: string;
   read: boolean;
   createdAt: string;

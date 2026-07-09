@@ -11,6 +11,7 @@ export interface JwtPayload {
   sub: string;
   role: Role;
   email: string;
+  tv?: number;
 }
 
 @Injectable()
@@ -32,12 +33,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
     const user = await this.userModel
       .findOne({ _id: payload.sub, isActive: true, deletedAt: null })
-      .select('_id')
+      .select('_id tokenVersion')
       .lean()
       .exec();
     if (!user) {
       throw new UnauthorizedException('Account is suspended or deleted');
     }
+
+    const userTv = (user.tokenVersion as number | undefined) ?? 0;
+    const tokenTv = payload.tv ?? 0;
+    if (userTv !== tokenTv) {
+      throw new UnauthorizedException('Token has been revoked');
+    }
+
     return payload;
   }
 }

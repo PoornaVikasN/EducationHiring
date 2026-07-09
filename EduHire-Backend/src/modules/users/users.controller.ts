@@ -28,7 +28,7 @@ export class UsersController {
   }
 
   @Patch('me/seeker-profile')
-  @Roles(Role.JOB_SEEKER)
+  @Roles(Role.TEACHER)
   updateSeekerProfile(
     @CurrentUser() user: JwtPayload,
     @Body() dto: UpdateSeekerProfileDto,
@@ -76,14 +76,14 @@ export class UsersController {
   }
 
   @Post('profile/whatsapp/send-otp')
-  @Roles(Role.JOB_SEEKER)
+  @Roles(Role.TEACHER)
   @HttpCode(HttpStatus.OK)
   sendWhatsAppOtp(@CurrentUser() user: JwtPayload) {
     return this.usersService.sendWhatsAppOtp(user.sub);
   }
 
   @Post('profile/whatsapp/verify-otp')
-  @Roles(Role.JOB_SEEKER)
+  @Roles(Role.TEACHER)
   @HttpCode(HttpStatus.OK)
   verifyWhatsAppOtp(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
     return this.usersService.verifyWhatsAppOtp(user.sub, body.code);

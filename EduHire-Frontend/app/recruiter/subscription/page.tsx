@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle, Clock, Infinity } from 'lucide-react';
 import { subscriptionsApi } from '../../../lib/api/subscriptions';
-import { hospitalsApi } from '../../../lib/api/hospitals';
+import { schoolsApi } from '../../../lib/api/schools';
 import { Button } from '../../../common-components/ui/button';
 import { useToast } from '../../../hooks/use-toast';
 import { useRazorpay } from '../../../hooks/use-razorpay';
@@ -18,9 +18,9 @@ export default function RecruiterSubscriptionPage() {
   const { pricing } = usePublicPricing();
   const subPaise = pricing.RECRUITER_MONTHLY_PAISE ?? RECRUITER_MONTHLY_PAISE;
 
-  const { data: hospital } = useQuery({
-    queryKey: ['my-hospital'],
-    queryFn: () => hospitalsApi.getMine().then((r) => r.data).catch(() => null),
+  const { data: school } = useQuery({
+    queryKey: ['my-school'],
+    queryFn: () => schoolsApi.getMine().then((r) => r.data).catch(() => null),
   });
 
   const { data: subscription, isLoading } = useQuery({
@@ -38,13 +38,13 @@ export default function RecruiterSubscriptionPage() {
   const isExpiringSoon = isActive && daysLeft <= 7;
 
   const handleSubscribe = () => {
-    if (!hospital) {
+    if (!school) {
       toast({ title: 'Set up your school profile first', variant: 'destructive' });
       return;
     }
     pay(
       PaymentKind.SUBSCRIPTION,
-      hospital._id,
+      school._id,
       `Unlimited school subscription — 30 days`,
       () => {
         toast({ title: 'Subscription activated!', description: 'You can now post unlimited teaching jobs for 30 days.' });
@@ -137,7 +137,7 @@ export default function RecruiterSubscriptionPage() {
             ))}
           </ul>
 
-          {!hospital && (
+          {!school && (
             <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
               ⚠️ Complete your school profile before subscribing.
             </p>
@@ -147,7 +147,7 @@ export default function RecruiterSubscriptionPage() {
             <Button
               className={`w-full ${isExpiringSoon ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
               onClick={handleSubscribe}
-              disabled={!hospital}
+              disabled={!school}
             >
               {isExpiringSoon
                 ? `Renew Now — ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`
