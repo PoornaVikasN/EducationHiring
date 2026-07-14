@@ -1,5 +1,5 @@
 import { apiClient } from '../api-client';
-import { Academics, ApplicationState, Availability, AvailableTimings, MaritalStatus, TypeOfPractice } from '../shared/enums';
+import { ApplicationState, Availability, AvailableTimings, MaritalStatus, Subject, TeacherPost, TypeOfPractice } from '../shared/enums';
 
 export interface Application {
   _id: string;
@@ -51,7 +51,7 @@ export interface Application {
       resumeUrl?: string | null;
       city?: string | null;
       state?: string | null;
-      expertise?: string[];
+      expertise?: Subject[];
       degrees?: string[];
       availability?: Availability | null;
       age?: number | null;
@@ -59,16 +59,16 @@ export interface Application {
       maritalStatus?: MaritalStatus | null;
       whatsappNumber?: string | null;
       pincode?: string | null;
-      placeOfPractice?: string | null;
-      typeOfPractice?: TypeOfPractice | null;
-      academics?: Academics | null;
+      currentSchool?: string | null;
+      employmentType?: TypeOfPractice | null;
+      academics?: TeacherPost | null;
       salaryRange?: string | null;
-      isRegisteredInCouncil?: boolean | null;
-      medicalCouncilName?: string | null;
+      isRegisteredWithBoard?: boolean | null;
+      boardRegistrationName?: string | null;
       desiredCities?: string[];
       experienceYears?: number | null;
       availableTimings?: AvailableTimings[];
-      interestedToCover?: string[];
+      interestedToCover?: Subject[];
       indemnityInsurance?: boolean | null;
     };
   };

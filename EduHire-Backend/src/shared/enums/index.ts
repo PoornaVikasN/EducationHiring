@@ -101,15 +101,6 @@ export enum TypeOfPractice {
   PRIVATE = 'PRIVATE',
 }
 
-export enum Academics {
-  INTERNSHIP = 'INTERNSHIP',
-  GRADUATE = 'GRADUATE',
-  POST_GRADUATE = 'POST_GRADUATE',
-  ASST_PROFESSOR = 'ASST_PROFESSOR',
-  ASSOCIATE_PROFESSOR = 'ASSOCIATE_PROFESSOR',
-  PROFESSOR = 'PROFESSOR',
-}
-
 export enum SalaryRange {
   BELOW_25K     = 'BELOW_25K',      // < ₹25,000/mo
   RANGE_25_50K  = 'RANGE_25_50K',   // ₹25K–₹50K/mo

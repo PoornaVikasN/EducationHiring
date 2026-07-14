@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Briefcase, Filter, Search, ShieldOff } from 'lucide-react';
+import { Briefcase, Filter, Search, ShieldOff, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { jobsApi, type Job } from '../../../lib/api/jobs';
 import { AdminJobDetailDialog } from '../../../common-components/admin-job-detail-dialog';
@@ -44,10 +44,12 @@ function activeFilterCount(f: Filters) {
 function JobRow({
   job,
   onDisable,
+  onDelete,
   onViewDetail,
 }: {
   job: Job;
   onDisable: (id: string) => void;
+  onDelete: (id: string) => void;
   onViewDetail: (job: Job) => void;
 }) {
   const badge = STATUS_BADGE[job.status];
@@ -68,11 +70,16 @@ function JobRow({
       </td>
       <td className="px-4 py-3 text-xs text-text-muted">{new Date(job.createdAt).toLocaleDateString('en-IN')}</td>
       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-        {job.status !== JobStatus.DISABLED_BY_ADMIN && (
-          <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => onDisable(job._id)}>
-            <ShieldOff className="w-3.5 h-3.5 mr-1" /> Disable
+        <div className="flex items-center gap-2">
+          {job.status !== JobStatus.DISABLED_BY_ADMIN && (
+            <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50" onClick={() => onDisable(job._id)}>
+              <ShieldOff className="w-3.5 h-3.5 mr-1" /> Disable
+            </Button>
+          )}
+          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => onDelete(job._id)}>
+            <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
           </Button>
-        )}
+        </div>
       </td>
     </tr>
   );
@@ -87,6 +94,7 @@ export default function AdminJobsPage() {
   const [draft, setDraft] = useState<Filters>(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
   const [disableTarget, setDisableTarget] = useState<Job | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Job | null>(null);
   const [detailJob, setDetailJob] = useState<Job | null>(null);
   const debouncedSearch = useDebouncedValue(search, 400);
 
@@ -106,6 +114,12 @@ export default function AdminJobsPage() {
   const disableMutation = useMutation({
     mutationFn: (id: string) => jobsApi.adminDisable(id),
     onSuccess: () => { toast({ title: 'Job disabled' }); setDisableTarget(null); qc.invalidateQueries({ queryKey: ['admin-jobs'] }); qc.invalidateQueries({ queryKey: ['admin-stats'] }); },
+    onError: () => toast({ title: 'Action failed', variant: 'destructive' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => jobsApi.adminDelete(id),
+    onSuccess: () => { toast({ title: 'Job deleted' }); setDeleteTarget(null); qc.invalidateQueries({ queryKey: ['admin-jobs'] }); qc.invalidateQueries({ queryKey: ['admin-stats'] }); },
     onError: () => toast({ title: 'Action failed', variant: 'destructive' }),
   });
 
@@ -183,6 +197,7 @@ export default function AdminJobsPage() {
                       key={j._id}
                       job={j}
                       onDisable={(id) => setDisableTarget(data.data.find((x) => x._id === id) ?? null)}
+                      onDelete={(id) => setDeleteTarget(data.data.find((x) => x._id === id) ?? null)}
                       onViewDetail={setDetailJob}
                     />
                   ))}
@@ -260,6 +275,16 @@ export default function AdminJobsPage() {
         confirmLabel="Disable"
         onConfirm={() => { if (disableTarget) disableMutation.mutate(disableTarget._id); }}
         loading={disableMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="Delete Job"
+        description={`Are you sure you want to delete "${deleteTarget?.title}"? All open applications will be closed and affected teachers notified. This can only be undone by a database restore.`}
+        confirmLabel="Delete"
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget._id); }}
+        loading={deleteMutation.isPending}
       />
     </div>
   );

@@ -4,7 +4,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AuditModule } from '../audit/audit.module';
+import { SystemConfigModule } from '../system-config/system-config.module';
 import { User, UserSchema } from '../users/schemas/user.schema';
+import { RecaptchaService } from '../../common/recaptcha/recaptcha.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { Otp, OtpSchema } from './schemas/otp.schema';
@@ -30,9 +32,10 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     }),
     NotificationsModule,
     AuditModule,
+    SystemConfigModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, RecaptchaService],
   exports: [AuthService],
 })
 export class AuthModule {}

@@ -3,7 +3,7 @@
 import { ChevronDown, LogOut, Menu, X } from 'lucide-react';
 import NotificationsBell from './notifications-bell';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth-context';
@@ -48,7 +48,6 @@ const ADMIN_NAV: NavItem[] = [
 export default function AppHeader() {
   const { user, accessToken, logout } = useAuth();
   const qc = useQueryClient();
-  const router = useRouter();
   const pathname = usePathname();
 
   const [profileOpen, setProfileOpen] = useState(false);
@@ -115,7 +114,8 @@ export default function AppHeader() {
   const handleLogout = async () => {
     setProfileOpen(false);
     await logout().catch(() => {});
-    router.push('/login');
+    qc.clear();
+    window.location.replace('/login');
   };
 
   // Always render the shell so layout doesn't collapse; show minimal logo-only header while user loads

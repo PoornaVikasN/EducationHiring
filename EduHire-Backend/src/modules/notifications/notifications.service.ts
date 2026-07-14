@@ -162,13 +162,20 @@ export class NotificationsService {
     seekerId: string;
     jobId: string;
     applicationId: string;
-    paymentDueBy: Date;
+    paymentDueBy: Date | null;
   }) {
+    // Message must match the actual gating — under the default config (TEACHER_PAID_ENABLED
+    // off) there is no payment step at all, so the old unconditional "Pay ₹99..." copy was
+    // simply false for every shortlist notification sent in the default configuration.
+    const teacherPaidEnabled = await this.systemConfigService.getSettingBoolean('TEACHER_PAID_ENABLED', false);
+    const body = teacherPaidEnabled
+      ? 'Pay ₹99 within 48 hours to confirm your interview and reveal school details.'
+      : 'The school will be in touch soon. Check your chat for updates.';
     await this.notify(
       payload.seekerId,
       NotificationKind.APPLICATION_SHORTLISTED,
       'You have been shortlisted! 🎉',
-      'Pay ₹99 within 48 hours to confirm your interview and reveal school details.',
+      body,
       `/applications`,
     );
   }

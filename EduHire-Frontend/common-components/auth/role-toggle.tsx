@@ -25,7 +25,7 @@ export function RoleToggle({ value, onChange, teacherLabel = 'Teacher', schoolLa
           type="button"
           variant={value === role ? 'default' : 'outline'}
           size={size}
-          className="flex-1 text-sm"
+          className="flex-1 min-w-0 px-2 text-xs sm:text-sm"
           onClick={() => onChange(role)}
         >
           {label}

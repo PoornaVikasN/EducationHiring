@@ -18,6 +18,7 @@ import { redactEmail, redactPhone } from '../../common/utils/redact';
 import { normalizePhoneNumber as normalizePhone } from '../../utils/phone-normalizer';
 import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../notifications/email.service';
+import { RecaptchaService } from '../../common/recaptcha/recaptcha.service';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -28,6 +29,7 @@ import {
 } from './schemas/refresh-token-blacklist.schema';
 import { Otp, OtpDocument } from './schemas/otp.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
+import { SafeUser, toSafeUser } from '../../shared/utils/safe-user';
 
 const BCRYPT_ROUNDS = 12;
 const OTP_TTL_MS = 5 * 60 * 1000;
@@ -55,6 +57,7 @@ export class AuthService {
     private config: ConfigService,
     private emailService: EmailService,
     private auditService: AuditService,
+    private recaptchaService: RecaptchaService,
   ) {}
 
   // ── Register ────────────────────────────────────────────────────────────────
@@ -160,6 +163,10 @@ export class AuthService {
       this.auditService.logAuthEvent('AUTH_FAILED', masked, 'invalid_password', ctx.ip, ctx.userAgent);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    // reCAPTCHA checked after credential validation so auth errors always surface first.
+    // On production this blocks bots that somehow guessed valid credentials.
+    await this.recaptchaService.verify(dto.recaptchaToken, 'login');
 
     this.auditService.logAuthEvent('LOGIN_SUCCESS', masked, 'password_login', ctx.ip, ctx.userAgent);
 
@@ -491,30 +498,3 @@ export class AuthService {
   }
 }
 
-// ── Safe user shape (no passwordHash, no sensitive fields) ───────────────────
-
-export interface SafeUser {
-  id: string;
-  role: Role;
-  email?: string;
-  phone?: string;
-  emailVerified: boolean;
-  phoneVerified: boolean;
-  seekerProfile: unknown;
-  recruiterProfile: unknown;
-  alertNewJobs: boolean;
-}
-
-function toSafeUser(user: UserDocument): SafeUser {
-  return {
-    id: user._id.toString(),
-    role: user.role,
-    email: user.email,
-    phone: user.phone,
-    emailVerified: user.emailVerified,
-    phoneVerified: user.phoneVerified,
-    seekerProfile: user.seekerProfile,
-    recruiterProfile: user.recruiterProfile,
-    alertNewJobs: user.alertNewJobs,
-  };
-}

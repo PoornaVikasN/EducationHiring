@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Academics, Availability, AvailableTimings, Gender, MaritalStatus, SalaryRange, Subject, TypeOfPractice } from '../shared/enums';
+import { Availability, AvailableTimings, Gender, MaritalStatus, SalaryRange, Subject, TeacherPost, TypeOfPractice } from '../shared/enums';
 
 export const seekerProfileSchema = z.object({
   fullName: z.string().min(2, 'Name is required').max(80),
@@ -17,16 +17,16 @@ export const seekerProfileSchema = z.object({
   desiredCities: z.array(z.string()).optional(),
   whatsappNumber: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number').optional().or(z.literal('')),
   pincode: z.string().regex(/^\d{6}$/, 'Enter a valid 6-digit pincode').optional().or(z.literal('')),
-  placeOfPractice: z.string().max(200).optional().or(z.literal('')),
-  typeOfPractice: z.nativeEnum(TypeOfPractice).optional(),
-  expertise: z.array(z.string()).optional(),
-  academics: z.nativeEnum(Academics).optional(),
+  currentSchool: z.string().max(200).optional().or(z.literal('')),
+  employmentType: z.nativeEnum(TypeOfPractice).optional(),
+  expertise: z.array(z.nativeEnum(Subject)).optional(),
+  academics: z.nativeEnum(TeacherPost).optional(),
   salaryRange: z.nativeEnum(SalaryRange).optional(),
   availableTimings: z.array(z.nativeEnum(AvailableTimings)).optional(),
-  interestedToCover: z.array(z.string()).optional(),
+  interestedToCover: z.array(z.nativeEnum(Subject)).optional(),
   indemnityInsurance: z.boolean().optional(),
-  isRegisteredInCouncil: z.boolean().optional(),
-  medicalCouncilName: z.string().max(200).optional().or(z.literal('')),
+  isRegisteredWithBoard: z.boolean().optional(),
+  boardRegistrationName: z.string().max(200).optional().or(z.literal('')),
 });
 
 export type SeekerProfileFormValues = z.infer<typeof seekerProfileSchema>;

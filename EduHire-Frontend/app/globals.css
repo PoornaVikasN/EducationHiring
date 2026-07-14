@@ -214,3 +214,13 @@ body {
 .scroll-top-btn:hover {
   transform: translateY(-3px) !important;
 }
+
+/* ── reCAPTCHA v3 badge ──
+   Google's floating badge sits bottom-right with an extremely high z-index
+   (2000000000), which would otherwise render on top of the cookie-consent
+   banner and other bottom-fixed UI on the auth pages. Hiding it is explicitly
+   permitted by Google's terms as long as the required attribution text is
+   shown near the action it protects — see <RecaptchaNotice />. */
+.grecaptcha-badge {
+  visibility: hidden;
+}

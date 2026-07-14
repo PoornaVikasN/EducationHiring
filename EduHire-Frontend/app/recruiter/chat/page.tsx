@@ -5,9 +5,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { applicationsApi, type Application } from '../../../lib/api/applications';
 import { chatApi, type ChatMessage } from '../../../lib/api/chat';
+import { SOCKET_ORIGIN } from '../../../lib/api-client';
 import { useAuth } from '../../../lib/auth-context';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+import { useToast } from '../../../hooks/use-toast';
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
@@ -21,7 +21,9 @@ export default function SchoolChatPage() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const socketRef = useRef<Socket | null>(null);
+  const selectedRef = useRef<Application | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   // Load chat-unlocked applications for this school (SHORTLISTED/PAID + WON, gated server-side)
   useEffect(() => {
@@ -34,26 +36,58 @@ export default function SchoolChatPage() {
   // Socket.IO connection
   useEffect(() => {
     if (!accessToken) return;
-    const socket = io(`${API_BASE}/chat`, {
+    const socket = io(`${SOCKET_ORIGIN}/chat`, {
       auth: { token: accessToken },
       transports: ['websocket'],
     });
     socketRef.current = socket;
+    console.log('[chat] connecting to', `${SOCKET_ORIGIN}/chat`);
+    // Re-join the currently selected conversation's room on (re)connect — covers both a
+    // dropped/reconnected socket and the case where a conversation was auto-selected before
+    // this socket finished connecting (emit on a not-yet-connected socket is a silent no-op).
+    socket.on('connect', () => {
+      console.log('[chat] socket CONNECTED, id:', socket.id);
+      if (selectedRef.current) socket.emit('chat:join', selectedRef.current._id);
+    });
+    socket.on('connect_error', (err) => {
+      console.error('[chat] CONNECT_ERROR:', err.message, err);
+      toast({ title: 'Chat connection failed', description: err.message, variant: 'destructive' });
+    });
+    socket.on('disconnect', (reason) => {
+      console.warn('[chat] DISCONNECTED:', reason);
+    });
+    socket.on('chat:joined', (d) => console.log('[chat] joined room:', d));
     socket.on('chat:message', (msg: ChatMessage) => {
+      console.log('[chat] received chat:message:', msg);
       setMessages((prev) => [...prev, msg]);
     });
+    socket.on('chat:error', (err: { message?: string }) => {
+      console.error('[chat] CHAT_ERROR:', err);
+      toast({ title: 'Message failed to send', description: err?.message, variant: 'destructive' });
+    });
     return () => { socket.disconnect(); socketRef.current = null; };
-  }, [accessToken]);
+  }, [accessToken, toast]);
 
   const selectApp = useCallback(async (app: Application) => {
     setSelected(app);
+    selectedRef.current = app;
     setMessages([]);
     try {
       const { data } = await chatApi.getHistory(app._id);
       setMessages(data);
     } catch { /* empty */ }
-    socketRef.current?.emit('chat:join', app._id);
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('chat:join', app._id);
+    }
   }, []);
+
+  // Auto-open the first conversation once the list loads, if nothing is selected yet
+  useEffect(() => {
+    if (!selected && apps.length > 0) {
+      void selectApp(apps[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apps]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -61,6 +95,7 @@ export default function SchoolChatPage() {
 
   const handleSend = async () => {
     if (!selected || !text.trim() || sending) return;
+    console.log('[chat] handleSend — socket connected:', socketRef.current?.connected, '| selected app:', selected._id, '| text:', text.trim());
     setSending(true);
     try {
       socketRef.current?.emit('chat:send', { applicationId: selected._id, text: text.trim() });
@@ -71,7 +106,7 @@ export default function SchoolChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] border border-border-default rounded-2xl overflow-hidden bg-bg-card">
+    <div className="flex h-[calc(100vh-7rem)] border border-border-default rounded-2xl overflow-hidden bg-bg-card">
       {/* Conversation list */}
       <div className="w-72 shrink-0 border-r border-border-default flex flex-col">
         <div className="p-4 border-b border-border-default">

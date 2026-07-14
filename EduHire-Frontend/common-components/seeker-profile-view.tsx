@@ -4,6 +4,7 @@ import { ExternalLink, Mail, Phone, ShieldCheck } from 'lucide-react';
 import type { Application } from '../lib/api/applications';
 import { ApplicationState, SalaryRange } from '../lib/shared/enums';
 import { SALARY_RANGE_LABELS } from '../lib/shared/constants';
+import { enumLabel } from '../lib/utils/enum-options';
 
 const AVAILABILITY_LABELS: Record<string, string> = {
   IMMEDIATE: 'Immediate',
@@ -25,15 +26,6 @@ const PRACTICE_LABELS: Record<string, string> = {
   FREELANCE: 'Freelance',
   REGULAR_JOB: 'Regular Job',
   PRIVATE: 'Private',
-};
-
-const ACADEMICS_LABELS: Record<string, string> = {
-  INTERNSHIP: 'Internship',
-  GRADUATE: 'Graduate',
-  POST_GRADUATE: 'Post Graduate',
-  ASST_PROFESSOR: 'Asst. Professor',
-  ASSOCIATE_PROFESSOR: 'Associate Professor',
-  PROFESSOR: 'Professor',
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -133,7 +125,7 @@ export function SeekerProfileView({ app, jobType: _jobType }: { app: Application
       {/* Expertise */}
       {(p.expertise?.length ?? 0) > 0 && (
         <Section title="Expertise / Specialisation">
-          <Chips items={p.expertise!} color="brand" />
+          <Chips items={p.expertise!.map((s) => enumLabel(s))} color="brand" />
         </Section>
       )}
 
@@ -147,22 +139,22 @@ export function SeekerProfileView({ app, jobType: _jobType }: { app: Application
       {/* Professional details */}
       <Section title="Professional Details">
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-          {p.typeOfPractice && (
+          {p.employmentType && (
             <div>
-              <span className="text-text-muted">Practice type: </span>
-              <span className="font-medium text-text-primary">{PRACTICE_LABELS[p.typeOfPractice] ?? p.typeOfPractice}</span>
+              <span className="text-text-muted">Employment: </span>
+              <span className="font-medium text-text-primary">{PRACTICE_LABELS[p.employmentType] ?? p.employmentType}</span>
             </div>
           )}
-          {p.placeOfPractice && (
+          {p.currentSchool && (
             <div>
-              <span className="text-text-muted">Place: </span>
-              <span className="font-medium text-text-primary">{p.placeOfPractice}</span>
+              <span className="text-text-muted">Current School: </span>
+              <span className="font-medium text-text-primary">{p.currentSchool}</span>
             </div>
           )}
           {p.academics && (
             <div>
-              <span className="text-text-muted">Academics: </span>
-              <span className="font-medium text-text-primary">{ACADEMICS_LABELS[p.academics] ?? p.academics}</span>
+              <span className="text-text-muted">Current Post: </span>
+              <span className="font-medium text-text-primary">{enumLabel(p.academics)}</span>
             </div>
           )}
           {p.salaryRange && (
@@ -192,13 +184,13 @@ export function SeekerProfileView({ app, jobType: _jobType }: { app: Application
           <div>
             <span className="text-text-muted">Teaching Council Reg: </span>
             <span className="font-medium text-text-primary">
-              {p.isRegisteredInCouncil === true ? 'Yes' : p.isRegisteredInCouncil === false ? 'No' : '—'}
+              {p.isRegisteredWithBoard === true ? 'Yes' : p.isRegisteredWithBoard === false ? 'No' : '—'}
             </span>
           </div>
-          {p.isRegisteredInCouncil && p.medicalCouncilName && (
+          {p.isRegisteredWithBoard && p.boardRegistrationName && (
             <div className="col-span-2">
               <span className="text-text-muted">Council / Board: </span>
-              <span className="font-medium text-text-primary">{p.medicalCouncilName}</span>
+              <span className="font-medium text-text-primary">{p.boardRegistrationName}</span>
             </div>
           )}
         </div>
@@ -220,7 +212,7 @@ export function SeekerProfileView({ app, jobType: _jobType }: { app: Application
       {/* Interested to Cover */}
       {(p.interestedToCover?.length ?? 0) > 0 && (
         <Section title="Subjects Willing to Cover">
-          <Chips items={p.interestedToCover!} color="slate" />
+          <Chips items={p.interestedToCover!.map((s) => enumLabel(s))} color="slate" />
         </Section>
       )}
 

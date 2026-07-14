@@ -25,22 +25,6 @@ export const SCHOOL_ACCREDITATION_OPTIONS = [
   'State Board (TS)', 'State Board (AP)', 'NIOS', 'Minority Institution', 'ISO 9001', 'Others',
 ];
 
-export const EXPERTISE_OPTIONS = [
-  'Mathematics', 'Science', 'Physics', 'Chemistry', 'Biology',
-  'English', 'Hindi', 'Telugu', 'Social Studies', 'History', 'Geography',
-  'Economics', 'Business Studies', 'Accountancy', 'Computer Science',
-  'Information Technology', 'Physical Education', 'Art & Crafts', 'Music',
-  'Dance', 'Environmental Science (EVS)', 'Pre-Primary Education',
-  'Special Education', 'School Administration', 'Counseling', 'Others',
-];
-
-export const INTERESTED_TO_COVER_OPTIONS = [
-  'Primary (All Subjects)', 'Mathematics', 'Science', 'English',
-  'Hindi', 'Telugu', 'Social Studies', 'Computer Science',
-  'Physical Education', 'Art & Crafts', 'Music', 'Dance',
-  'Pre-Primary', 'Special Education', 'Others',
-];
-
 export const DEGREE_OPTIONS = [
   'B.Ed', 'M.Ed', 'D.Ed', 'B.A', 'M.A', 'B.Sc', 'M.Sc',
   'B.Com', 'M.Com', 'B.Tech', 'M.Tech', 'MBA', 'MCA', 'BCA',

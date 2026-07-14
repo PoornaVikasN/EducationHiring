@@ -20,17 +20,17 @@ export interface AuthResponse {
 }
 
 export const authApi = {
-  register: (data: { email: string; phone: string; password: string; role: Role; fullName: string }) =>
+  register: (data: { email: string; phone: string; password: string; role: Role; fullName: string; recaptchaToken?: string }) =>
     apiClient.post<{ message: string; devOtp?: string }>('/auth/register', data),
 
-  login: (data: { email: string; password: string }) =>
+  login: (data: { email: string; password: string; recaptchaToken?: string }) =>
     apiClient.post<AuthResponse>('/auth/login', data),
 
   googleAuth: (data: { accessToken: string; role: Role }) =>
     apiClient.post<AuthResponse>('/auth/google', data),
 
-  sendOtp: (email: string) =>
-    apiClient.post<{ message: string; devOtp?: string }>('/auth/otp/send', { email }),
+  sendOtp: (email: string, recaptchaToken?: string) =>
+    apiClient.post<{ message: string; devOtp?: string }>('/auth/otp/send', { email, recaptchaToken }),
 
   verifyOtp: (data: { email: string; code: string }) =>
     apiClient.post<AuthResponse>('/auth/otp/verify', data),
@@ -38,8 +38,8 @@ export const authApi = {
   refresh: () =>
     apiClient.post<{ accessToken: string }>('/auth/refresh'),
 
-  forgotPassword: (email: string) =>
-    apiClient.post<{ message: string }>('/auth/forgot-password', { email }),
+  forgotPassword: (email: string, recaptchaToken?: string) =>
+    apiClient.post<{ message: string }>('/auth/forgot-password', { email, recaptchaToken }),
 
   resetPassword: (data: { email: string; otp: string; password: string }) =>
     apiClient.post<{ message: string }>('/auth/reset-password', data),

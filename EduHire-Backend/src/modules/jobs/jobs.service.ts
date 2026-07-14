@@ -13,7 +13,6 @@ import {
   Role,
   SubscriptionStatus,
 } from '../../shared/enums';
-import { JOB_TTL_MS } from '../../shared/constants/pricing';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { Application, ApplicationDocument } from '../applications/schemas/application.schema';
 import { School, SchoolDocument } from '../schools/schemas/school.schema';
@@ -53,7 +52,8 @@ export class JobsService {
       throw new BadRequestException('Complete your school profile before posting jobs');
     }
 
-    const expiresAt = new Date(Date.now() + JOB_TTL_MS);
+    const jobTtlMs = await this.systemConfigService.getJobListingDurationMs();
+    const expiresAt = new Date(Date.now() + jobTtlMs);
 
     // Determine whether this posting goes live immediately: paid gating can be
     // switched off entirely, or the school can have an active subscription, or
@@ -393,6 +393,31 @@ export class JobsService {
     }
   }
 
+  // Admin: delete job (soft delete — same cascade as recruiter's own remove(), plus audit log)
+  async adminRemoveJob(jobId: string, adminId: string, adminEmail: string): Promise<void> {
+    const job = await this.jobModel.findOne({ _id: jobId, deletedAt: null }).exec();
+    if (!job) throw new NotFoundException('Job not found');
+
+    const now = new Date();
+    await this.jobModel.findByIdAndUpdate(jobId, { $set: { deletedAt: now } }).exec();
+
+    this.auditService.log(adminId, adminEmail, 'JOB_DELETED', 'job', jobId, job.title ?? jobId,
+      { deletedAt: null },
+      { deletedAt: now },
+    );
+
+    // Close all active applications and notify seekers
+    const ACTIVE_STATES = [ApplicationState.INTERESTED, ApplicationState.SHORTLISTED, ApplicationState.PAID];
+    await this.appModel.updateMany(
+      { jobId: new Types.ObjectId(jobId), state: { $in: ACTIVE_STATES } },
+      { $set: { state: ApplicationState.CLOSED, decisionReason: 'Job was removed by admin', decisionAt: now } },
+    );
+    const affected = await this.appModel.find({ jobId: new Types.ObjectId(jobId), state: ApplicationState.CLOSED, decisionReason: 'Job was removed by admin' }).select('seekerId').lean().exec();
+    for (const a of affected) {
+      this.eventEmitter.emit('application.closed', { seekerId: a.seekerId.toString(), jobId, jobTitle: job.title, reason: 'Job was removed' });
+    }
+  }
+
   // ── Expiry sweep (called by scheduler) ───────────────────────────────────────
 
   async runExpirySweep(): Promise<{ expired: number }> {
@@ -412,11 +437,12 @@ export class JobsService {
     const job = await this.jobModel.findOne({ _id: jobId, deletedAt: null }).exec();
     if (!job) throw new NotFoundException('Job not found');
 
+    const jobTtlMs = await this.systemConfigService.getJobListingDurationMs();
     await this.jobModel.findByIdAndUpdate(jobId, {
       $set: {
         status: JobStatus.ACTIVE,
         isBoosted: true,
-        expiresAt: new Date(Date.now() + JOB_TTL_MS),
+        expiresAt: new Date(Date.now() + jobTtlMs),
       },
     });
   }

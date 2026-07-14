@@ -1,6 +1,7 @@
 import {
   IsEmail,
   IsEnum,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -27,4 +28,8 @@ export class RegisterDto {
   @MinLength(2)
   @MaxLength(100)
   fullName!: string;
+
+  @IsOptional()
+  @IsString()
+  recaptchaToken?: string;
 }

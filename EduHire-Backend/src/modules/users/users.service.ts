@@ -24,6 +24,7 @@ import { UpdateRecruiterProfileDto } from './dto/update-recruiter-profile.dto';
 import { UpdateSeekerProfileDto } from './dto/update-seeker-profile.dto';
 import { UpdateUserSettingsDto } from './dto/update-user-settings.dto';
 import { User, UserDocument } from './schemas/user.schema';
+import { SafeUser, toSafeUser } from '../../shared/utils/safe-user';
 
 const WHATSAPP_OTP_TTL_MS = 5 * 60 * 1000;
 
@@ -41,13 +42,12 @@ export class UsersService {
     private uploads: UploadsService,
   ) {}
 
-  async getMe(currentUser: JwtPayload): Promise<UserDocument> {
+  async getMe(currentUser: JwtPayload): Promise<SafeUser> {
     const user = await this.userModel
       .findOne({ _id: currentUser.sub, deletedAt: null })
-      .select('-passwordHash')
       .exec();
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    return toSafeUser(user);
   }
 
   async updateSeekerProfile(

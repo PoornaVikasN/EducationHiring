@@ -75,13 +75,14 @@ export const envValidationSchema = Joi.object({
   // Google Maps (optional everywhere — feature, not auth)
   GOOGLE_MAPS_API_KEY: Joi.string().allow('').optional(),
 
-  // GSuite SMTP via nodemailer OAuth2 (replaces Brevo)
+  // GSuite SMTP via nodemailer OAuth2 — see EmailService. This is the only email
+  // integration actually wired into the code; there is no Brevo/SendGrid fallback.
   GMAIL_USER: prodRequiredString,
   GMAIL_CLIENT_ID: prodRequiredString,
   GMAIL_CLIENT_SECRET: prodRequiredString,
   GMAIL_REFRESH_TOKEN: prodRequiredString,
   GMAIL_ACCESS_TOKEN: Joi.string().allow('').optional(), // auto-refreshed; optional
-  SMTP_SENDER_NAME: Joi.string().default('RxJobs4U Admin'),
+  SMTP_SENDER_NAME: Joi.string().default('SchoolTeacher'),
 
   // Google reCAPTCHA v3 (optional — if missing, backend skips verification in dev)
   RECAPTCHA_SECRET_KEY: Joi.string().allow('').optional(),

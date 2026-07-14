@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
@@ -10,6 +11,7 @@ import { Button } from '../../../common-components/ui/button';
 import { Input } from '../../../common-components/ui/input';
 import { Label } from '../../../common-components/ui/label';
 import { OtpCodeInput } from '../../../common-components/auth/otp-code-input';
+import { RecaptchaNotice } from '../../../common-components/auth/recaptcha-notice';
 import { authApi } from '../../../lib/api/auth';
 import { useAuth } from '../../../lib/auth-context';
 import { getRoleHome } from '../../../lib/auth-redirect';
@@ -26,6 +28,7 @@ function OtpVerifyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const prefillEmail = searchParams.get('email') ?? '';
   const alreadySent = searchParams.get('sent') === '1';
@@ -56,9 +59,12 @@ function OtpVerifyForm() {
   useEffect(() => {
     if (!prefillEmail || alreadySent || autoSentRef.current) return;
     autoSentRef.current = true;
-    authApi.sendOtp(prefillEmail)
-      .then((r) => { startCooldown(); if (r.data.devOtp) setDevOtp(r.data.devOtp); })
-      .catch(() => {});
+    (async () => {
+      const recaptchaToken = executeRecaptcha ? await executeRecaptcha('otp_send') : undefined;
+      authApi.sendOtp(prefillEmail, recaptchaToken)
+        .then((r) => { startCooldown(); if (r.data.devOtp) setDevOtp(r.data.devOtp); })
+        .catch(() => {});
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -76,7 +82,8 @@ function OtpVerifyForm() {
   const onSendOtp = async (data: EmailOnlyInput) => {
     setServerError('');
     try {
-      const r = await authApi.sendOtp(data.email);
+      const recaptchaToken = executeRecaptcha ? await executeRecaptcha('otp_send') : undefined;
+      const r = await authApi.sendOtp(data.email, recaptchaToken);
       setEmail(data.email);
       otpForm.setValue('email', data.email);
       startCooldown();
@@ -93,7 +100,8 @@ function OtpVerifyForm() {
   const handleResend = async () => {
     setServerError('');
     try {
-      const r = await authApi.sendOtp(email);
+      const recaptchaToken = executeRecaptcha ? await executeRecaptcha('otp_send') : undefined;
+      const r = await authApi.sendOtp(email, recaptchaToken);
       startCooldown();
       if (r.data.devOtp) setDevOtp(r.data.devOtp);
     } catch (err: unknown) {
@@ -123,12 +131,12 @@ function OtpVerifyForm() {
   if (step === 1) {
     return (
       <>
-        <h1 className="text-xl font-bold text-text-primary mb-1">Login with OTP</h1>
-        <p className="text-sm text-text-muted mb-6">
+        <h1 className="text-lg sm:text-xl font-bold text-text-primary mb-1">Login with OTP</h1>
+        <p className="text-xs sm:text-sm text-text-muted mb-4 sm:mb-6">
           Enter your registered email and we&apos;ll send you a one-time code to sign in.
         </p>
 
-        <form onSubmit={emailForm.handleSubmit(onSendOtp)} className="space-y-4">
+        <form onSubmit={emailForm.handleSubmit(onSendOtp)} className="space-y-3 sm:space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="email">Email address</Label>
             <Input
@@ -152,6 +160,7 @@ function OtpVerifyForm() {
           >
             {emailForm.formState.isSubmitting ? 'Sending…' : 'Send OTP →'}
           </Button>
+          <RecaptchaNotice />
         </form>
 
         <p className="mt-4 text-center text-sm text-text-muted">
@@ -166,21 +175,21 @@ function OtpVerifyForm() {
   /* ── Step 2: OTP code entry ── */
   return (
     <>
-      <h1 className="text-xl font-bold text-text-primary mb-1">Verify your email</h1>
-      <p className="text-sm text-text-muted mb-6">
+      <h1 className="text-lg sm:text-xl font-bold text-text-primary mb-1">Verify your email</h1>
+      <p className="text-xs sm:text-sm text-text-muted mb-4 sm:mb-6">
         We sent a 6-digit code to your email. Enter it below to sign in.
       </p>
 
       {/* Dev OTP hint — only visible when NODE_ENV !== production */}
       {devOtp && (
-        <div className="flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 mb-4">
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 mb-4">
           <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide shrink-0">DEV</span>
           <span className="text-sm text-amber-800">OTP code: <span className="font-mono font-bold tracking-widest">{devOtp}</span></span>
         </div>
       )}
 
       {/* Email display */}
-      <div className="flex items-center gap-3 bg-brand-primary-light border border-brand-primary/20 rounded-xl px-4 py-3 mb-5">
+      <div className="flex items-center gap-3 bg-brand-primary-light border border-brand-primary/20 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 mb-4 sm:mb-5">
         <svg className="w-4 h-4 text-brand-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
@@ -196,7 +205,7 @@ function OtpVerifyForm() {
         )}
       </div>
 
-      <form onSubmit={otpForm.handleSubmit(onVerify)} className="space-y-4">
+      <form onSubmit={otpForm.handleSubmit(onVerify)} className="space-y-3 sm:space-y-4">
         <input type="hidden" {...otpForm.register('email')} />
 
         <div className="space-y-1.5">

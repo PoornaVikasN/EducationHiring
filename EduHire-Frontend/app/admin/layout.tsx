@@ -11,12 +11,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && user && user.role !== Role.ADMIN) {
-      router.replace('/dashboard');
+    if (isLoading) return;
+    if (!user) { router.replace('/login'); return; }
+    if (user.role !== Role.ADMIN) {
+      router.replace(user.role === Role.RECRUITER ? '/recruiter/dashboard' : '/dashboard');
     }
   }, [user, isLoading, router]);
 
-  if (isLoading) {
+  // Show spinner while loading OR while a redirect is pending (prevents flash/stale render of wrong-role content)
+  if (isLoading || !user || user.role !== Role.ADMIN) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg-page">
         <div className="w-8 h-8 rounded-full border-4 border-brand-primary border-t-transparent animate-spin" />

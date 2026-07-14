@@ -2,6 +2,15 @@ import axios, { InternalAxiosRequestConfig } from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
+// Bare origin (no /api suffix) for Socket.IO connections — the backend's global 'api' prefix
+// (app.setGlobalPrefix('api') in main.ts) only applies to REST controllers, not WebSocket
+// gateway namespaces, so a socket must connect to `${SOCKET_ORIGIN}/chat`, never
+// `${API_BASE_URL}/chat`. Derived from the same env var as the REST client so there is only
+// one source of truth for "where's the backend" — a second, separately-named env var
+// (NEXT_PUBLIC_API_BASE_URL) used to back this and had silently drifted to an /api-suffixed
+// value, which made every chat socket connect to a namespace that doesn't exist.
+export const SOCKET_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
+
 // In-memory access token — never persisted to localStorage/sessionStorage
 let currentToken: string | null = null;
 let isRefreshing = false;

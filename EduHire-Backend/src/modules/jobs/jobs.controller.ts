@@ -64,6 +64,14 @@ export class JobsController {
     return this.jobsService.adminDisableJob(id, user.sub, user.email);
   }
 
+  // Admin: delete job (soft delete, same cascade as recruiter's own delete)
+  @Roles(Role.ADMIN)
+  @Delete('admin/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  adminRemove(@Param('id', ParseObjectIdPipe) id: string, @CurrentUser() user: JwtPayload) {
+    return this.jobsService.adminRemoveJob(id, user.sub, user.email);
+  }
+
   // Public: single job detail — parameterized routes last
   @Public()
   @Get(':id')

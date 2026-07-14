@@ -1,5 +1,5 @@
 import { apiClient } from '../api-client';
-import { Academics, Availability, AvailableTimings, Gender, MaritalStatus, SalaryRange, TypeOfPractice } from '../shared/enums';
+import { Availability, AvailableTimings, Gender, MaritalStatus, SalaryRange, Subject, TeacherPost, TypeOfPractice } from '../shared/enums';
 
 export interface SeekerProfilePayload {
   fullName: string;
@@ -21,16 +21,16 @@ export interface SeekerProfilePayload {
   desiredCities?: string[];
   whatsappNumber?: string;
   pincode?: string;
-  placeOfPractice?: string;
-  typeOfPractice?: TypeOfPractice;
-  expertise?: string[];
-  academics?: Academics;
+  currentSchool?: string;
+  employmentType?: TypeOfPractice;
+  expertise?: Subject[];
+  academics?: TeacherPost;
   salaryRange?: SalaryRange;
   availableTimings?: AvailableTimings[];
-  interestedToCover?: string[];
+  interestedToCover?: Subject[];
   indemnityInsurance?: boolean;
-  isRegisteredInCouncil?: boolean;
-  medicalCouncilName?: string;
+  isRegisteredWithBoard?: boolean;
+  boardRegistrationName?: string;
   latitude?: number;
   longitude?: number;
 }

@@ -29,10 +29,10 @@ type SettingSeed = {
 
 const SETTING_SEEDS: SettingSeed[] = [
   {
-    key: 'POSTING_ALERT_RADIUS_KM',
-    label: 'Posting Alert Radius',
+    key: 'JOB_ALERT_RADIUS_KM',
+    label: 'Job Alert Radius',
     description:
-      'Radius for location-based posting alerts. Teachers whose saved location is within this distance of a newly posted role will receive a notification — even if the posting city does not match their preferred city list. Minimum 5 km, maximum 200 km.',
+      'Radius for location-based job alerts. Teachers whose saved location is within this distance of a newly posted role will receive a notification — even if the job city does not match their preferred city list. Minimum 5 km, maximum 200 km.',
     valueNumber: 30,
     minValue: 5,
     maxValue: 200,
@@ -67,6 +67,17 @@ const SETTING_SEEDS: SettingSeed[] = [
     minValue: 0,
     maxValue: 1,
     displayKind: 'boolean',
+  },
+  {
+    key: 'JOB_LISTING_DURATION_DAYS',
+    label: 'Job Listing Duration',
+    description:
+      'How many days a job posting stays active before it auto-expires. Also the length of time a Boost payment re-activates an expired listing for. Industry-typical range is 30-45 days.',
+    valueNumber: 30,
+    minValue: 7,
+    maxValue: 90,
+    unit: 'days',
+    displayKind: 'number',
   },
 ];
 
@@ -169,7 +180,21 @@ export class SystemConfigService implements OnModuleInit {
     return num !== 0;
   }
 
+  // Job listing active-window length, in ms — admin-editable via JOB_LISTING_DURATION_DAYS
+  // (days, not ms, since that's what the admin Settings UI shows). Centralised here so the
+  // three call sites (create, boost, re-boost) can't drift on the day→ms conversion.
+  async getJobListingDurationMs(): Promise<number> {
+    const days = await this.getSettingNumber('JOB_LISTING_DURATION_DAYS', 30);
+    return days * 24 * 60 * 60 * 1000;
+  }
+
   async updateSetting(key: string, valueNumber: number, adminId: string, adminEmail: string): Promise<void> {
+    if (typeof valueNumber !== 'number' || Number.isNaN(valueNumber)) {
+      // Without this guard, a missing/malformed body silently no-ops below (Mongoose
+      // drops `undefined` from $set, and `undefined < doc.minValue` is always false) —
+      // the endpoint would return 200 while changing nothing, with zero error feedback.
+      throw new BadRequestException('value must be a number');
+    }
     const doc = await this.configModel.findOne({ key, type: 'setting' }).exec();
     if (!doc) throw new BadRequestException(`Unknown setting key: ${key}`);
     if (valueNumber < doc.minValue) {

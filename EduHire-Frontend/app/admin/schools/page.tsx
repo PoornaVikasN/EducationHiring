@@ -15,29 +15,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../commo
 import { Input } from '../../../common-components/ui/input';
 import { Label } from '../../../common-components/ui/label';
 import { DatePicker } from '../../../common-components/ui/date-picker';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../common-components/ui/select';
 import { useToast } from '../../../hooks/use-toast';
 import { useDebouncedValue } from '../../../hooks/use-debounced-value';
 import { downloadCsv } from '../../../lib/utils/export-csv';
 
-type VerificationFilter = 'ALL' | 'VERIFIED' | 'PENDING' | 'REJECTED';
+type VerifTab = 'ALL' | 'PENDING' | 'VERIFIED' | 'REJECTED';
 
 interface Filters {
-  verification: VerificationFilter;
   city: string;
   registeredFrom: string;
   registeredTo: string;
 }
 
-const DEFAULT_FILTERS: Filters = { verification: 'ALL', city: '', registeredFrom: '', registeredTo: '' };
+const DEFAULT_FILTERS: Filters = { city: '', registeredFrom: '', registeredTo: '' };
 
 function activeCount(f: Filters) {
   let n = 0;
-  if (f.verification !== 'ALL') n++;
   if (f.city) n++;
   if (f.registeredFrom || f.registeredTo) n++;
   return n;
 }
+
+const VERIF_TABS: { id: VerifTab; label: string }[] = [
+  { id: 'ALL', label: 'All' },
+  { id: 'PENDING', label: 'Pending' },
+  { id: 'VERIFIED', label: 'Verified' },
+  { id: 'REJECTED', label: 'Rejected' },
+];
 
 function SchoolRow({
   school,
@@ -102,6 +106,7 @@ function SchoolRow({
 function SchoolsContent() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const [verifTab, setVerifTab] = useState<VerifTab>('ALL');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -112,12 +117,12 @@ function SchoolsContent() {
   const debouncedSearch = useDebouncedValue(search, 400);
 
   const verifiedParam =
-    filters.verification === 'VERIFIED' ? true :
-    filters.verification === 'PENDING' || filters.verification === 'REJECTED' ? false :
+    verifTab === 'VERIFIED' ? true :
+    verifTab === 'PENDING' || verifTab === 'REJECTED' ? false :
     undefined;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-schools', page, debouncedSearch, filters],
+    queryKey: ['admin-schools', verifTab, page, debouncedSearch, filters],
     queryFn: () => adminApi.listSchools(
       page, 10,
       verifiedParam,
@@ -129,8 +134,8 @@ function SchoolsContent() {
 
   // Client-side refine for REJECTED vs PENDING (single verified boolean can't distinguish)
   const rows = (data?.data ?? []).filter((h) => {
-    if (filters.verification === 'REJECTED' && h.verificationStatus !== 'REJECTED') return false;
-    if (filters.verification === 'PENDING' && (h.isVerified || h.verificationStatus === 'REJECTED')) return false;
+    if (verifTab === 'REJECTED' && h.verificationStatus !== 'REJECTED') return false;
+    if (verifTab === 'PENDING' && (h.isVerified || h.verificationStatus === 'REJECTED')) return false;
     if (filters.city && !h.city.toLowerCase().includes(filters.city.toLowerCase())) return false;
     return true;
   });
@@ -170,7 +175,7 @@ function SchoolsContent() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-text-primary flex items-center gap-2"><Building2 className="w-5 h-5" /> Schools</h1>
-          <p className="text-sm text-text-muted mt-0.5">{data?.meta.total ?? 0} total schools</p>
+          <p className="text-sm text-text-muted mt-0.5">{rows.length} {verifTab !== 'ALL' ? verifTab.toLowerCase() : 'total'} schools</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <SearchBar
@@ -189,6 +194,21 @@ function SchoolsContent() {
           </Button>
           <AdminExportButton onExport={handleExport} disabled={!rows.length} />
         </div>
+      </div>
+
+      {/* Verification tabs */}
+      <div className="flex gap-1 bg-bg-page rounded-xl p-1 border border-border-default">
+        {VERIF_TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => { setVerifTab(t.id); setPage(1); }}
+            className={`flex-1 text-sm py-2 rounded-lg font-medium transition-colors ${
+              verifTab === t.id ? 'bg-white text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden">
@@ -241,18 +261,6 @@ function SchoolsContent() {
             <DialogTitle>Filter Schools</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Verification Status</Label>
-              <Select value={draft.verification} onValueChange={(v) => setDraft((p) => ({ ...p, verification: v as VerificationFilter }))}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All</SelectItem>
-                  <SelectItem value="VERIFIED">Verified</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="REJECTED">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div className="space-y-1.5">
               <Label className="text-xs">City</Label>
               <LocationAutocomplete

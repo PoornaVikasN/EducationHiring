@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useGoogleLogin } from '@react-oauth/google';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
@@ -10,6 +11,7 @@ import { Button } from '../../../common-components/ui/button';
 import { Input } from '../../../common-components/ui/input';
 import { Label } from '../../../common-components/ui/label';
 import { PasswordField } from '../../../common-components/auth/password-field';
+import { RecaptchaNotice } from '../../../common-components/auth/recaptcha-notice';
 import { GoogleButton } from '../../../common-components/auth/google-button';
 import { RoleToggle } from '../../../common-components/auth/role-toggle';
 import { authApi } from '../../../lib/api/auth';
@@ -24,6 +26,7 @@ function LoginForm() {
   const { login } = useAuth();
   const [serverError, setServerError] = useState('');
   const [googleRole, setGoogleRole] = useState<Role.TEACHER | Role.RECRUITER>(Role.TEACHER);
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const {
     register,
@@ -39,7 +42,8 @@ function LoginForm() {
   const onSubmit = async (data: LoginInput) => {
     setServerError('');
     try {
-      const res = await authApi.login(data);
+      const recaptchaToken = executeRecaptcha ? await executeRecaptcha('login') : undefined;
+      const res = await authApi.login({ ...data, recaptchaToken });
       login(res.data.accessToken, res.data.user);
       redirectAfterLogin(res.data.user.role);
     } catch (err: unknown) {
@@ -69,10 +73,10 @@ function LoginForm() {
 
   return (
     <>
-      <h1 className="text-xl font-bold text-text-primary mb-1">Welcome back</h1>
-      <p className="text-sm text-text-muted mb-6">Sign in to your SchoolTeacher account</p>
+      <h1 className="text-lg sm:text-xl font-bold text-text-primary mb-1">Welcome back</h1>
+      <p className="text-xs sm:text-sm text-text-muted mb-4 sm:mb-6">Sign in to your SchoolTeacher account</p>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -110,9 +114,10 @@ function LoginForm() {
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? 'Signing in…' : 'Sign in'}
         </Button>
+        <RecaptchaNotice />
       </form>
 
-      <div className="relative my-5">
+      <div className="relative my-4 sm:my-5">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-border-default" />
         </div>
@@ -127,7 +132,7 @@ function LoginForm() {
         <GoogleButton onClick={() => googleLogin()} />
       </div>
 
-      <div className="mt-6 space-y-2 text-center text-sm text-text-muted">
+      <div className="mt-4 sm:mt-6 space-y-2 text-center text-xs sm:text-sm text-text-muted">
         <p>
           Don&apos;t have an account?{' '}
           <Link href="/register" className="text-brand-primary hover:underline font-medium">

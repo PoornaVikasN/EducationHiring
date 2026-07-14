@@ -2,159 +2,260 @@
 
 > The domain, architecture, and cross-cutting rules for this project. Read after
 > `CLAUDE.md`, before diving into any guide.
+>
+> Rewritten 2026-07-09 directly from the current codebase and `DECISIONS.md` — the previous
+> version predated implementation and described a URGENT/PERMANENT dual-posting-type model,
+> `PostingStatus.PENDING_PAYMENT`, `teacherProfile`/`schoolAdminProfile` field names, and a
+> two-collection chat model, none of which were ever built (superseded by `DECISIONS.md`
+> D42-superseding and D41). Cross-check `DATA_MODEL.md` for field-level detail; this doc is the
+> narrative/architecture layer above it.
 
 ---
 
 ## 1. Domain
 
-**School Teacher** connects **Schools** with **Teachers** for teaching roles. Two hiring modes co-exist on the same platform:
+**School Teacher** connects **Schools** with **Teachers** for teaching roles. There is **one
+posting type only** — no urgent/substitute mode. (An urgent/substitute concept was proposed and
+briefly logged as D14, then explicitly reverted — see `DECISIONS.md` D42-superseding: "We don't
+have any urgent jobs, only FT jobs simply — no job types needed at all.")
 
-- **Substitute / Urgent** — a school needs a teacher immediately (sick leave, sudden vacancy, short-notice cover). Schools subscribe monthly for unlimited urgent posts; teachers pay a monthly access fee to see + apply to these.
-- **Permanent / Contract** — a long-term posting (30-day listing). School pays a one-time post fee; teachers apply free, and pay a small shortlist-confirmation fee only after the school shortlists them.
+Schools post jobs for free up to a monthly quota, or subscribe for unlimited posts. Teachers apply
+for free; a config-gated payment step can optionally sit between shortlist and hire (off by
+default). See §5 for the exact toggle-driven mechanics.
 
 ## 2. Actors + Roles
 
-| Role | Description |
-|---|---|
-| **Teacher** (was JobSeeker) | Individual teacher applying for postings. Profile: name, qualifications, subjects, grades taught, experience, city/state, resume, availability. |
-| **School Admin** (was Recruiter) | User acting for a school. One user manages one school. Can post + shortlist applicants + manage subscription. |
-| **Admin** | Platform admin. Verifies schools, disables abusive users/postings, edits pricing via SystemConfig, views analytics. |
+`Role` enum (`shared/enums/index.ts`): `TEACHER`, `RECRUITER`, `ADMIN`.
+
+| Role (enum value) | UI label | Description |
+|---|---|---|
+| `TEACHER` | "Teacher" | Individual teacher applying for jobs. Profile (`User.seekerProfile`): name, degrees, subject expertise, current/highest post held, experience, city/state, resume, availability. |
+| `RECRUITER` | "School" (admin-facing badge) / "Recruiter" (internal component naming — both refer to the same role) | User acting for a school. One user manages one school (`User.recruiterProfile.schoolId`). Can post jobs, shortlist applicants, manage subscription. |
+| `ADMIN` | "Admin" | Platform admin. Verifies schools, disables abusive users/jobs, edits pricing + settings via SystemConfig, soft-deletes/restores users, edits legal pages and email templates, views audit log. |
 
 ## 3. Entities
 
-- **User** — auth + role; holds either a `teacherProfile` or a `schoolAdminProfile` sub-doc.
-- **School** — the hiring entity. Verification-gated: registration number + address + admin verification → `verificationStatus: PENDING/VERIFIED/REJECTED`.
-- **Posting** (was Job) — a teaching role. `type: URGENT | PERMANENT`, `subject`, `gradeLevel`, `city`, `state`, geo location, salary range (paise, monthly), `status: PENDING_PAYMENT/PENDING_SUBSCRIPTION/ACTIVE/FILLED/EXPIRED/AUTO_DISABLED/DISABLED_BY_ADMIN`.
-- **Application** — teacher applies to a posting. 5-state machine.
-- **Chat** *(Phase 1 planned)* — Socket.IO room scoped to one accepted (`PAID` or later) application. Messages persist in Mongo.
+Full field-level detail lives in `DATA_MODEL.md` §3 — this is the narrative summary.
+
+- **User** — auth + role; holds either a `seekerProfile` (TEACHER) or `recruiterProfile`
+  (RECRUITER) sub-doc, never both, never neither for those two roles.
+- **School** — the hiring entity, owned by one `RECRUITER` user (`adminUserId`). Verification-gated:
+  registration number + address → admin verification → `verificationStatus: PENDING/VERIFIED/REJECTED`.
+- **Job** (collection `jobs`) — a teaching role posting. `department: JobDepartment`,
+  `role: TeacherPost`, `specializations: Subject[]`, city/state + geo location, salary range
+  (plain monthly rupees, **not** paise — see `DATA_MODEL.md` §4), `status: ACTIVE/FILLED/EXPIRED/
+  AUTO_DISABLED/DISABLED_BY_ADMIN`. No `PENDING_PAYMENT` status — see §5, job activation doesn't
+  gate on a per-post payment anymore.
+- **Application** — a teacher applies to a job. 5-state machine, see §4.
+- **Chat** — **live, not planned.** Socket.IO namespace `/chat` (`modules/chat/`), one flat
+  `chat_messages` collection keyed by `applicationId` (no separate "room" collection — see
+  `DATA_MODEL.md` §3.7). Unlocks at `SHORTLISTED` by default, or `PAID` if `TEACHER_PAID_ENABLED`
+  is on (config-aware, fixed in `DECISIONS.md` D44 after being found hardcoded to PAID/WON-only).
+  File-upload attachments are the one still-unbuilt piece (D39).
 - **Payment** — Razorpay orders + webhooks. Idempotent by `razorpayOrderId` (unique index).
-- **Subscription** — school (monthly urgent-post subscription), teacher (monthly urgent-access subscription). Auto-renewal via Razorpay Subscriptions or manual re-purchase depending on integration decision (TBD).
-- **SystemConfig** — dynamic pricing, admin-managed API keys (encrypted at rest), settings (`displayKind: boolean | number`, `unit`, `maxValue` metadata for the admin UI).
-- **AuditLog** — admin actions + anonymous auth events (`AUTH_FAILED`, `OTP_FAILED`, `OTP_LOCKED`, `PASSWORD_RESET`, `LOGIN_SUCCESS`). Nullable `adminId` + optional `ip`/`userAgent`/`reason`.
-- **Notification** — in-app + email + web-push fan-out targets.
+  `PaymentKind`: `APPLICATION` (teacher shortlist-confirmation fee, gated behind
+  `TEACHER_PAID_ENABLED`), `SUBSCRIPTION` (school monthly unlimited-posting), `BOOST` (re-activate
+  an expired job).
+- **Subscription** — **school-level only** (`Subscription.schoolId`, not per-user) — a school's
+  monthly unlimited-posting subscription. There is no separate teacher-side subscription entity;
+  `TEACHER_PAID_ENABLED` gates a one-off per-application fee (`PaymentKind.APPLICATION`), not a
+  subscription. Auto-renewal mechanism (Razorpay Subscriptions API vs manual re-purchase) is still
+  an open decision (`DECISIONS.md` §14).
+- **SystemConfig** — dynamic pricing + settings + admin-managed API keys (encrypted at rest).
+  `type: 'price' | 'setting' | 'api_key'`, `displayKind`/`unit`/`maxValue` metadata drive the
+  admin Settings UI. No pricing auto-seed — admin configures at go-live (`DATA_MODEL.md` §5).
+- **AuditLog** — admin actions + anonymous auth events. Nullable `adminId` (supports anonymous
+  events) + `ip`/`userAgent`/`reason`.
+- **Notification** — in-app + email + web-push fan-out targets, `NotificationKind` enum (16
+  values — see `DATA_MODEL.md` §2).
+- **LegalPage** / **EmailTemplate** — admin-editable content, added in the Phase 1 admin-parity
+  push (`DECISIONS.md` D45), fulfilling what was originally logged as a "carried forward, not yet
+  built" item. Both are live now.
+- **Dispute** — a reporting/dispute-ticket entity (`modules/disputes/`) not covered by earlier
+  planning docs at all; exists and is wired, own local `DisputeStatus`/`DisputeKind` enums (not in
+  the shared registry).
 
 ## 4. Application State Machine
 
 ```
-INTERESTED ──shortlist by school──▶ SHORTLISTED ──teacher pays──▶ PAID ──confirm hire──▶ WON
-     │                                   │                          │
-     │─school declines / TTL──────▶ CLOSED (reason logged, contact never revealed)
+INTERESTED ──school shortlists──▶ SHORTLISTED ──(if TEACHER_PAID_ENABLED)──▶ PAID ──school confirms──▶ WON
+     │                                  │                                      │
+     │                                  ├──school declines / 48h pay window expires──▶ CLOSED
+     │                                  │
+     │                                  └──(if TEACHER_PAID_ENABLED is OFF, default)──▶ WON directly
+     │
+     └──school declines──▶ CLOSED
 ```
 
-- **INTERESTED**: teacher applied. No contact reveal.
-- **SHORTLISTED**: school shortlisted. Teacher notified. 48-hour payment window opens.
-- **PAID**: teacher paid the shortlist-confirmation fee. Contact details unlocked BOTH WAYS. **Chat room created** for this application.
-- **WON**: school confirmed the offer. Application terminal-positive.
-- **CLOSED**: school declined OR payment window expired OR posting closed. Application terminal-negative. Contact never revealed if teacher never paid.
+This is **config-toggle-driven**, not a fixed machine — the `PAID` state only occurs when the
+`TEACHER_PAID_ENABLED` `SystemConfig` setting is on (off by default):
 
-## 5. Pricing — 100% Dynamic
+- **Default (`TEACHER_PAID_ENABLED` off)**: `INTERESTED → SHORTLISTED → WON | CLOSED`. No payment
+  step. Chat unlocks at `SHORTLISTED`.
+- **When `TEACHER_PAID_ENABLED` is on**: `INTERESTED → SHORTLISTED → PAID → WON | CLOSED`. A
+  48-hour payment window opens at `SHORTLISTED`; the teacher pays `APPLICATION_FEE_PAISE` to
+  unlock contact details both ways and move toward `WON`. Chat unlocks at `PAID`.
 
-**No hardcoded rupee constants anywhere in code.** This is a deliberate departure from RxJobs4U where prices lived in `shared/constants/pricing.ts`.
+**INTERESTED**: teacher applied (free). No contact reveal. **SHORTLISTED**: school shortlisted,
+teacher notified. **PAID**: (config-gated only) teacher paid; contact unlocked both ways.
+**WON**: school confirmed hire — terminal-positive. **CLOSED**: declined, or pay window expired
+(when gated), or job closed — terminal-negative; contact never revealed if payment step was never
+completed.
 
-- Every price is stored in `SystemConfig{type:'price'}` with fields `key`, `label`, `description`, `valueNumber` (paise), `minValue`.
-- Admin edits any price via **Admin Settings → Pricing** (unit-aware input, min-value validation, audit-logged).
-- Server always reads via `systemConfig.getPricePaise(key)` at request time; never assumes a value.
-- Adding a new charge kind is admin-driven: add the row via UI, wire the `PaymentKind` enum, done — no deploy for pricing.
+## 5. Pricing — 100% Dynamic, Two Independent Toggles
 
-Suggested initial keys (values TBD by client, admin seeds them):
-```
-URGENT_MONTHLY_SCHOOL_PAISE          — school subscription for unlimited urgent posts
-URGENT_MONTHLY_TEACHER_PAISE         — teacher subscription for urgent-post access
-PERMANENT_POST_PAISE                 — one-time permanent-posting fee
-APPLICATION_FEE_PAISE                — shortlist-confirmation fee (teacher pays)
-BOOST_PAISE                          — re-activate an expired posting
-```
+**No hardcoded rupee constants in code that actually execute.** `lib/shared/constants.ts` /
+`shared/constants/pricing.ts` hold **fallback display values only** (used before the real
+`SystemConfig` value loads, or if a key is missing) — the server always recomputes and verifies
+against `SystemConfig` at request time, never trusts a client-sent amount.
+
+Two independent boolean settings control the whole pricing/gating model
+(`system-config.service.ts` seed, `DECISIONS.md` D43):
+
+- **`SCHOOL_PAID_ENABLED`** (default **on**) — when on, a school without an active subscription is
+  capped at `FREE_TIER_JOB_LIMIT` (default 2) active posts per calendar month; posting beyond that
+  requires an active `Subscription`. When off, all posts go live immediately regardless.
+- **`TEACHER_PAID_ENABLED`** (default **off**) — when on, a shortlisted teacher must pay
+  `APPLICATION_FEE_PAISE` within the pay window to reach `WON` (see §4). When off, no payment step
+  exists on the teacher side at all.
+
+Known `SystemConfig` price/setting keys actually read at runtime (`getPricePaise`/
+`getSettingBoolean`/`getSettingNumber` call sites): `RECRUITER_MONTHLY_PAISE` (school subscription
+price, fallback ₹500), `APPLICATION_FEE_PAISE` (teacher shortlist-confirmation fee, fallback ₹99),
+`SCHOOL_PAID_ENABLED`, `FREE_TIER_JOB_LIMIT` (fallback 2), `TEACHER_PAID_ENABLED`,
+`JOB_ALERT_RADIUS_KM` (fallback 30, used by the job-alert notification fan-out, unrelated to
+payments). No pricing rows are auto-seeded — see `DATA_MODEL.md` §5.
 
 ## 6. Auth & Session
 
-- **Registration**: email + password + role (teacher | school_admin) + email OTP verification.
-- **Login**: email + password OR email OTP OR Google OAuth (id_token verified server-side via `google-auth-library`).
-- **Access token**: JWT, 15 min TTL, in-memory only (never localStorage).
-- **Refresh token**: JWT, 7-day TTL, httpOnly cookie, `path: '/'`, `SameSite=Lax`, `Secure` in prod, `Domain=<eTLD+1>` in prod for subdomain split.
-- **`tokenVersion`** claim in JWT. Bumped on password change / reset / forced logout — invalidates outstanding access tokens immediately.
-- **reCAPTCHA v3** on register / login / OTP-send / forgot-password. Skips silently in dev (localhost scores always fail).
-- **Throttles**: register 3/min, login 5/min, OTP-send 3/min, OTP-verify 10/min, forgot 3/min, reset 5/min. Global default: 100/min.
-- **CSRF**: `X-Requested-With: XMLHttpRequest` guard on cookie-auth POSTs.
+Ground-truth checked against `modules/auth/auth.controller.ts`/`auth.service.ts` 2026-07-09:
+
+- **Registration**: email + phone (+91, Indian mobile format) + password + role
+  (`TEACHER`|`RECRUITER`) + full name → email OTP verification required before full access.
+- **Login**: email + password, OR email OTP, OR Google OAuth (`id_token` verified server-side).
+- **Access token**: JWT, **15 min TTL** (`signOptions: { expiresIn: '15m' }`), in-memory only on
+  the frontend (never localStorage).
+- **Refresh token**: JWT, 7-day TTL, httpOnly cookie, `SameSite=Lax`, `Secure` in prod,
+  `COOKIE_DOMAIN` env-driven (blank in dev so it defaults to request host).
+- **`tokenVersion`** (`tv` claim) — bumped on password change/reset and admin delete/restore,
+  invalidates outstanding access tokens immediately (`DATA_MODEL.md` §1.2).
+- **reCAPTCHA v3**: `common/recaptcha/recaptcha.service.ts` exists but **is not currently wired
+  into any controller or guard** — grepped 2026-07-09, zero call sites outside its own file. An
+  earlier version of this doc claimed it gates register/login/OTP-send/forgot-password; that was
+  aspirational, not actual, matching the exact "shipped in the doc, dead in the code" pattern
+  D46's audit found for several other items. Treat as **not enforced** until re-wired and
+  verified live.
+- **Throttles** (confirmed via `@Throttle` decorators): login 5/min, OTP-send 3/min, OTP-verify
+  10/min, refresh 10/min, logout 10/min. `register` has **no** `@Throttle` decorator — also worth
+  a deliberate look before calling auth "fully hardened."
+- **CSRF**: `CsrfGuard` (`X-Requested-With` header check) applied to `/auth/refresh` and
+  `/auth/logout` (`DECISIONS.md` D46).
 
 ## 7. Payments — Razorpay
 
-- Order created server-side with computed amount from SystemConfig.
-- Webhook signature verified with **`safeEqual()` (timing-safe HMAC)** — never plain `!==`.
-- Idempotency: `razorpayOrderId` has `unique: true`, handler short-circuits on already-PAID payments.
-- Fulfillment inside Mongoose transactions.
+- Order created server-side with amount computed from `SystemConfig` (§5) — never trusts a
+  client-sent amount.
+- Webhook signature verified with `safeEqual()` (timing-safe HMAC) — fixed from a timing-unsafe
+  `!==` comparison in `DECISIONS.md` D46.
+- Idempotency: `Payment.razorpayOrderId` has `unique: true`; handler short-circuits on
+  already-`PAID` payments.
 
 ## 8. File Uploads — S3 via Presign
 
-- Client asks BE for a presigned PUT (kind + contentType + size). BE validates MIME + size against `MIME_ALLOWLIST` / `SIZE_LIMITS`.
+- Client asks BE for a presigned PUT (`kind` + `contentType` + `size`) via `POST /uploads/presign`.
+  BE validates MIME + size against `MIME_ALLOWLIST`/`SIZE_LIMITS` for the given `UploadKind`.
 - Client PUTs directly to S3.
-- **On the next persist call** (profile update / school update), BE HEAD-verifies the claimed key via `uploads.verifyUploadKey(url, kind)` before writing the URL to the DB. Prevents clients from claiming someone else's key.
+- **On the next persist call** (profile update / school update), BE HEAD-verifies the claimed key
+  via `UploadsService.verifyUploadKey(url, kind)` before writing the URL to the DB — added in
+  `DECISIONS.md` D46/D18, closes a trust-the-client gap. Verified live this session (rejects a
+  never-uploaded URL with a 404).
+- Currently using the RxJobs4U S3 bucket temporarily (owner's explicit call, pending provisioning
+  a dedicated School Teacher bucket — not urgent).
 
 ## 9. Notifications
 
-- **In-app** — Notification doc persisted + Socket.IO push via `/notifications` namespace (JWT handshake auth).
-- **Email** — Gmail OAuth2 via nodemailer.
-- **Web Push** — VAPID `web-push` library (no Firebase).
-- Each event has an `@OnEvent()` handler in `NotificationsService`. **Enum value + `eventEmitter.emit()` + `@OnEvent()` handler are always a trio** — see BUG_PATTERNS BE-9.
+- **In-app** — `Notification` doc persisted; delivery mechanism beyond persistence not
+  independently re-verified this rewrite — check `notifications.service.ts`/gateway before
+  relying on real-time push claims.
+- **Email** — Gmail OAuth2 via nodemailer, with a DB-template-first / hardcoded-fallback pattern
+  (`EmailTemplatesModule`, `DECISIONS.md` D45) — 14 seeded templates, admin-editable.
+- **Web Push** — `web-push` (VAPID), `User.pushSubscription` stores the subscription as a JSON
+  string.
+- Each event needs an `@OnEvent()` handler in `NotificationsService`. **`NotificationKind` value +
+  `eventEmitter.emit()` + `@OnEvent()` handler are always a trio** (BUG_PATTERNS BE-9).
 
-## 10. Chat (Phase 1 — planned)
+## 10. Chat — Live
 
-- Socket.IO namespace `/chat`.
-- One room per accepted application (`applicationId` is the room ID). Room created when application enters `PAID` state.
-- Both parties (teacher + school-admin) join. All others rejected server-side (per-room membership check on `join`).
-- Messages persist in `chat_messages` collection: `{ applicationId, senderId, body, createdAt, readByRecipient }`.
-- Presence + typing indicators nice-to-have, not required.
+- Socket.IO namespace, gateway at `modules/chat/chat.gateway.ts`.
+- Flat `chat_messages` collection, no separate room collection — a "room" is just messages sharing
+  an `applicationId` (`DATA_MODEL.md` §3.7). Fields: `applicationId`, `senderId`, `senderRole`
+  (`'TEACHER'|'RECRUITER'` plain string), `text` (not `body`, max 2000 chars), `read` (not
+  `readByRecipient`).
+- Unlocks per §4's toggle-aware rule (`SHORTLISTED` default / `PAID` when `TEACHER_PAID_ENABLED`)
+  — both parties join, anyone else rejected server-side on join (`DECISIONS.md` D38/D44).
+- File-upload attachments not implemented (D39, deferred to Phase 4). Message length (2000 chars)
+  is an accidental split between two earlier-discussed figures (500/4000) — still open (D40).
 
 ## 11. Data Locality
 
 - **MongoDB Atlas** (single region). All timestamps UTC.
-- **AWS S3** private bucket. Signed GET URLs (short TTL) for reads. Bucket policy denies public access.
-- **Gmail OAuth2** for outbound email — no static access token stored.
+- **AWS S3** — currently the RxJobs4U bucket (temporary, see §8).
+- **Gmail OAuth2** for outbound email.
 - **Razorpay India** — INR only.
 
 ## 12. Environments
 
-- **Local dev**: `localhost:3000` (FE) + `localhost:3001` (BE). `COOKIE_DOMAIN=` (blank). `NODE_ENV=development`.
-- **Production**: `schoolteacher.com` (FE) + `api.schoolteacher.com` (BE). `COOKIE_DOMAIN=.schoolteacher.com`. `NODE_ENV=production`. All env values are prod-strength.
-- **Env validation** at BE boot via Joi — fails fast on misconfiguration. See `env.validation.ts`.
+- **Local dev**: `localhost:3000` (FE) + `localhost:3001/api` (BE). `NODE_ENV=development`.
+- **Production**: not yet deployed — Hostinger is the planned target per `CLAUDE.md`, domain TBD.
+- **Env validation** at BE boot via Joi, actually wired into `ConfigModule.forRoot()` as of
+  `DECISIONS.md` D46 (was dead code — defined but never passed to `ConfigModule` — before that;
+  re-verify it's still wired before trusting this line, per that decision's own caveat).
 
 ## 13. Observability
 
-- **Structured logs** via `nestjs-pino` — JSON in prod, pretty in dev. PII redacted (Authorization headers, cookies, password fields).
-- **PII in application-level logs** → `redactEmail()` / `redactPhone()` from `common/utils/redact.ts` before any `logger.log/debug/warn/error` call.
-- **Tag-prefixed pipeline logs** for fan-outs (`[chat:room:X]`, `[posting:activate:Y]`) — makes grepping one event's full trail easy.
-- **Auth audit** for anonymous events — `AuditService.logAuthEvent(action, masked, reason, ip, ua)`.
+- **Structured logs** via `nestjs-pino`.
+- **PII redaction** — `redactEmail()`/`redactPhone()` (`common/utils/redact.ts`) wired into every
+  raw email/phone log interpolation in `auth.service.ts`/`whatsapp.service.ts` (`DECISIONS.md` D46).
+- **Auth audit** for anonymous events via `AuditLog` with nullable `adminId` (D46).
 
 ## 14. Cross-Cutting Rules
 
 1. **All timestamps UTC in the DB.** Format at the UI edge for IST.
-2. **All money is integer paise.** Never float rupees. Divide by 100 at the UI edge.
-3. **All prices come from SystemConfig at request time.** No hardcoded rupee constants in code.
-4. **Every fan-out is batched** (batch size 50) — never a single loop hitting 10k users.
-5. **Every schema with an array-nested doc uses a `@Schema({_id:false})` sub-class** — never inline nested paths (BUG_PATTERNS BE-14).
-6. **Every geo field uses the `LocationSchema` sub-class** with `default: null` on the parent prop.
-7. **Every outbound user-facing URL** goes through `PUBLIC_FRONTEND_URL` env — never hardcoded.
-8. **Every non-obvious architectural call** gets a dated entry in `DECISIONS.md`.
+2. **Money fields are not uniformly paise** — `Payment.amountPaise` and the `SystemConfig` price
+   values are integer paise; `Job.salaryMin`/`salaryMax` are plain monthly rupees. Check the field
+   name/comment before assuming (`DATA_MODEL.md` §4).
+3. **All prices/settings come from `SystemConfig` at request time.** No hardcoded values drive
+   actual gating logic — display-only fallback constants exist for pre-load UI, never for
+   computation.
+4. **Every schema with an array-nested doc uses a `@Schema({_id:false})` sub-class** — except
+   `User.seekerProfile.location` and `EmailTemplate.channels`, which are bare `Object`/inline
+   props, not real sub-schema classes (`DATA_MODEL.md` §1.1/§3.10 — a real exception, not a rule
+   violation to fix blindly).
+5. **Every geo field that IS a real sub-schema** uses the shared `LocationSchema` class with
+   `default: null` on the parent prop (`School.location`, `Job.location` — not
+   `User.seekerProfile.location`, see above).
+6. **Every non-obvious architectural call gets a dated entry in `DECISIONS.md`.** This has been
+   followed consistently — `DECISIONS.md` is the single most reliable source of truth in this
+   repo for "what actually happened and why," more reliable than any narrative doc including this
+   one. When in doubt, read its tail.
 
 ## 15. Reference Table — Concept Renames from RxJobs4U
 
 | RxJobs4U | School Teacher |
 |---|---|
 | Hospital | School |
-| JobSeeker / Seeker | Teacher |
-| Recruiter / Hospital Admin | School Admin |
-| Job / Posting | Posting |
-| SOS (24-hour urgent) | Urgent (substitute) |
-| Full-time | Permanent |
-| Qualification (medical taxonomy) | Subject + GradeLevel |
-| Department (medical) | Subject (academic) |
-| `jobs-display.ts` | `postings-display.ts` |
-| Chat | **Chat (NEW — not in RxJobs4U)** |
+| JobSeeker / Seeker | Teacher (`Role.TEACHER`) |
+| Recruiter / Hospital Admin | Recruiter (`Role.RECRUITER`, UI badge "School") |
+| Job | Job (collection `jobs` — stayed "Job", was never renamed to "Posting" despite early planning docs assuming otherwise) |
+| SOS (24-hour urgent) / substitute mode | **Removed entirely** — proposed once (D14), reverted (D42-superseding) |
+| `HospitalDepartment` | `Subject` (teaching subject) + `JobDepartment` (grade-level/section — a genuinely new, separate concept, not a rename) |
+| Qualification taxonomy | `TeacherPost` (post/designation, e.g. SGT/TGT/PGT/Principal) |
+| Chat | **Chat (new — not in RxJobs4U, built from scratch)** |
 
-## 16. Open Questions (fill as decisions land)
+## 16. Open Questions (tracked live in `DECISIONS.md` §14 — this table is a pointer, not a duplicate)
 
-- Pricing values — client to confirm; admin seeds via SystemConfig.
-- Subscription cycle — monthly? annual option? Auto-renewal via Razorpay Subscriptions API or manual re-purchase? **Log the decision in `DECISIONS.md`.**
-- Multi-user per school (multiple admin users) — schema supports it, UI TBD.
-- Multi-school per admin — one-to-one for now, revisit if demand emerges.
-- Video interviews inside chat — deferred, not Phase 1.
-- Featured / boosted postings — deferred.
+See `DECISIONS.md` §14 "Explicit Non-decisions" for the current, authoritative list (subscription
+auto-renewal mechanism, chat char-limit final call, chat file upload, verified badges, ratings,
+referral programme, actual pricing values, `indemnityInsurance` disposition). Don't duplicate that
+list here — it will drift the same way this whole file just did; update `DECISIONS.md` directly
+when one of these resolves.

@@ -94,19 +94,25 @@ function UserRow({
   );
 }
 
+type UserTab = 'ALL' | 'TEACHER' | 'RECRUITER';
+
+const USER_TABS: { id: UserTab; label: string }[] = [
+  { id: 'ALL', label: 'All Users' },
+  { id: 'TEACHER', label: 'Teachers' },
+  { id: 'RECRUITER', label: 'Schools' },
+];
+
 interface Filters {
-  role: string;
   status: string;
   city: string;
   joinedFrom: string;
   joinedTo: string;
 }
 
-const DEFAULT_FILTERS: Filters = { role: 'ALL', status: 'ALL', city: '', joinedFrom: '', joinedTo: '' };
+const DEFAULT_FILTERS: Filters = { status: 'ALL', city: '', joinedFrom: '', joinedTo: '' };
 
 function activeFilterCount(f: Filters) {
   let count = 0;
-  if (f.role !== 'ALL') count++;
   if (f.status !== 'ALL') count++;
   if (f.city) count++;
   if (f.joinedFrom || f.joinedTo) count++;
@@ -118,6 +124,7 @@ function UsersContent() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [userTab, setUserTab] = useState<UserTab>('ALL');
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [draft, setDraft] = useState<Filters>(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -129,10 +136,10 @@ function UsersContent() {
   const debouncedSearch = useDebouncedValue(search, 400);
 
   const isActiveParam = filters.status === 'ACTIVE' ? true : filters.status === 'SUSPENDED' ? false : undefined;
-  const roleParam = filters.role === 'ALL' ? undefined : filters.role;
+  const roleParam = userTab === 'ALL' ? undefined : userTab;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-users', page, debouncedSearch, filters, showDeleted],
+    queryKey: ['admin-users', userTab, page, debouncedSearch, filters, showDeleted],
     queryFn: () => adminApi.listUsers(
       page, 10,
       debouncedSearch || undefined,
@@ -200,7 +207,7 @@ function UsersContent() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-text-primary flex items-center gap-2"><Users className="w-5 h-5" /> Users</h1>
-          <p className="text-sm text-text-muted mt-0.5">{data?.meta.total ?? 0} total users</p>
+          <p className="text-sm text-text-muted mt-0.5">{data?.meta.total ?? 0} {userTab !== 'ALL' ? roleLabel(userTab).toLowerCase() + 's' : 'total'} users</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <SearchBar
@@ -228,6 +235,21 @@ function UsersContent() {
             <Plus className="w-3.5 h-3.5 mr-1" /> Create user
           </Button>
         </div>
+      </div>
+
+      {/* Role tabs */}
+      <div className="flex gap-1 bg-bg-page rounded-xl p-1 border border-border-default">
+        {USER_TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => { setUserTab(t.id); setPage(1); }}
+            className={`flex-1 text-sm py-2 rounded-lg font-medium transition-colors ${
+              userTab === t.id ? 'bg-white text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden">
@@ -282,17 +304,6 @@ function UsersContent() {
             <DialogTitle>Filter Users</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Role</Label>
-              <Select value={draft.role} onValueChange={(v) => setDraft((p) => ({ ...p, role: v }))}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Roles</SelectItem>
-                  <SelectItem value={Role.TEACHER}>Teacher</SelectItem>
-                  <SelectItem value={Role.RECRUITER}>School</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Status</Label>
               <Select value={draft.status} onValueChange={(v) => setDraft((p) => ({ ...p, status: v }))}>

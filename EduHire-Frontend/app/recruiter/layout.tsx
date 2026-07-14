@@ -24,10 +24,12 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
     enabled: !isLoading && !!user,
   });
 
-  // Redirect seekers away
+  // Redirect non-recruiters away
   useEffect(() => {
-    if (!isLoading && user?.role === Role.TEACHER) {
-      router.replace('/dashboard');
+    if (isLoading) return;
+    if (!user) { router.replace('/login'); return; }
+    if (user.role !== Role.RECRUITER) {
+      router.replace(user.role === Role.ADMIN ? '/admin' : '/dashboard');
     }
   }, [user, isLoading, router]);
 
@@ -41,7 +43,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
     }
   }, [school, schoolLoading, isLoading, pathname, router]);
 
-  if (isLoading || schoolLoading) {
+  if (isLoading || schoolLoading || !user || user.role !== Role.RECRUITER) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg-page">
         <div className="w-8 h-8 rounded-full border-4 border-brand-primary border-t-transparent animate-spin" />

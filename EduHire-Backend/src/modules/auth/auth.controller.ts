@@ -12,6 +12,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { CsrfGuard } from '../../common/guards/csrf.guard';
+import { RecaptchaService } from '../../common/recaptcha/recaptcha.service';
 import { AuthService } from './auth.service';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
@@ -20,12 +21,17 @@ import { SendOtpDto, VerifyOtpDto } from './dto/otp.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly recaptchaService: RecaptchaService,
+  ) {}
 
   @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  register(@Body() dto: RegisterDto) {
+  async register(@Body() dto: RegisterDto) {
+    await this.recaptchaService.verify(dto.recaptchaToken, 'register');
     return this.authService.register(dto);
   }
 
@@ -58,7 +64,8 @@ export class AuthController {
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('otp/send')
   @HttpCode(HttpStatus.OK)
-  sendOtp(@Body() dto: SendOtpDto) {
+  async sendOtp(@Body() dto: SendOtpDto) {
+    await this.recaptchaService.verify(dto.recaptchaToken, 'otp_send');
     return this.authService.sendOtp(dto);
   }
 
@@ -78,9 +85,14 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  forgotPassword(@Body('email') email: string) {
+  async forgotPassword(
+    @Body('email') email: string,
+    @Body('recaptchaToken') recaptchaToken?: string,
+  ) {
+    await this.recaptchaService.verify(recaptchaToken, 'forgot_password');
     return this.authService.forgotPassword(email);
   }
 

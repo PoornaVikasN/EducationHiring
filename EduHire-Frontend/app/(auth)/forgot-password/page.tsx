@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -11,6 +12,7 @@ import { Input } from '../../../common-components/ui/input';
 import { Label } from '../../../common-components/ui/label';
 import { PasswordField } from '../../../common-components/auth/password-field';
 import { OtpCodeInput } from '../../../common-components/auth/otp-code-input';
+import { RecaptchaNotice } from '../../../common-components/auth/recaptcha-notice';
 import { authApi } from '../../../lib/api/auth';
 
 const emailSchema = z.object({
@@ -37,6 +39,7 @@ export default function ForgotPasswordPage() {
   const [sentEmail, setSentEmail] = useState('');
   const [serverError, setServerError] = useState('');
   const [done, setDone] = useState(false);
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const emailForm = useForm<EmailInput>({ resolver: zodResolver(emailSchema) });
   const resetForm = useForm<ResetInput>({ resolver: zodResolver(resetSchema) });
@@ -44,7 +47,8 @@ export default function ForgotPasswordPage() {
   const onSendOtp = async (data: EmailInput) => {
     setServerError('');
     try {
-      await authApi.forgotPassword(data.email);
+      const recaptchaToken = executeRecaptcha ? await executeRecaptcha('forgot_password') : undefined;
+      await authApi.forgotPassword(data.email, recaptchaToken);
       setSentEmail(data.email);
       setStep('reset');
     } catch (err: unknown) {
@@ -86,13 +90,13 @@ export default function ForgotPasswordPage() {
   if (step === 'reset') {
     return (
       <>
-        <h1 className="text-xl font-bold text-text-primary mb-1">Set new password</h1>
-        <p className="text-sm text-text-muted mb-1">
+        <h1 className="text-lg sm:text-xl font-bold text-text-primary mb-1">Set new password</h1>
+        <p className="text-xs sm:text-sm text-text-muted mb-1">
           We sent a 6-digit code to
         </p>
-        <p className="text-sm font-semibold text-text-primary mb-5">{sentEmail}</p>
+        <p className="text-xs sm:text-sm font-semibold text-text-primary mb-4 sm:mb-5">{sentEmail}</p>
 
-        <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-4">
+        <form onSubmit={resetForm.handleSubmit(onReset)} className="space-y-3 sm:space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="otp">Verification code</Label>
             <OtpCodeInput
@@ -154,12 +158,12 @@ export default function ForgotPasswordPage() {
 
   return (
     <>
-      <h1 className="text-xl font-bold text-text-primary mb-1">Forgot password?</h1>
-      <p className="text-sm text-text-muted mb-6">
+      <h1 className="text-lg sm:text-xl font-bold text-text-primary mb-1">Forgot password?</h1>
+      <p className="text-xs sm:text-sm text-text-muted mb-4 sm:mb-6">
         Enter your account email and we&apos;ll send you a reset code.
       </p>
 
-      <form onSubmit={emailForm.handleSubmit(onSendOtp)} className="space-y-4">
+      <form onSubmit={emailForm.handleSubmit(onSendOtp)} className="space-y-3 sm:space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="email">Email address</Label>
           <Input
@@ -183,6 +187,7 @@ export default function ForgotPasswordPage() {
         <Button type="submit" className="w-full" size="lg" disabled={emailForm.formState.isSubmitting}>
           {emailForm.formState.isSubmitting ? 'Sending…' : 'Send reset code'}
         </Button>
+        <RecaptchaNotice />
       </form>
 
       <p className="mt-6 text-center text-sm text-text-muted">

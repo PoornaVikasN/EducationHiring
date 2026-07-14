@@ -12,7 +12,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { Academics, Availability, AvailableTimings, MaritalStatus, SalaryRange, TypeOfPractice } from '../../../shared/enums';
+import { Availability, AvailableTimings, MaritalStatus, SalaryRange, Subject, TeacherPost, TypeOfPractice } from '../../../shared/enums';
 
 export class UpdateSeekerProfileDto {
   @IsOptional()
@@ -109,12 +109,12 @@ export class UpdateSeekerProfileDto {
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  expertise?: string[];
+  @IsEnum(Subject, { each: true })
+  expertise?: Subject[];
 
   @IsOptional()
-  @IsEnum(Academics)
-  academics?: Academics;
+  @IsEnum(TeacherPost)
+  academics?: TeacherPost;
 
   @IsOptional()
   @IsEnum(SalaryRange)
@@ -127,8 +127,8 @@ export class UpdateSeekerProfileDto {
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  interestedToCover?: string[];
+  @IsEnum(Subject, { each: true })
+  interestedToCover?: Subject[];
 
   @IsOptional()
   @IsBoolean()

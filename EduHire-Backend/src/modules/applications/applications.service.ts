@@ -180,10 +180,13 @@ export class ApplicationsService {
               'seekerProfile.currentSchool': 1,
               'seekerProfile.employmentType': 1,
               'seekerProfile.academics': 1,
-              'seekerProfile.expectedSalaryLakhs': 1,
+              'seekerProfile.salaryRange': 1,
               'seekerProfile.availableTimings': 1,
               'seekerProfile.interestedToCover': 1,
               'seekerProfile.indemnityInsurance': 1,
+              'seekerProfile.isRegisteredWithBoard': 1,
+              'seekerProfile.boardRegistrationName': 1,
+              'seekerProfile.desiredCities': 1,
               email: 1,
               phone: 1,
             },
@@ -218,7 +221,11 @@ export class ApplicationsService {
 
     if (!app) throw new NotFoundException('Application not found or already actioned');
 
-    const paymentDueBy = new Date(Date.now() + SHORTLIST_PAY_WINDOW_MS);
+    // paymentDueBy only means anything when TEACHER_PAID_ENABLED is on — a shortlisted
+    // application with the toggle off has no payment step to expire, so it must stay
+    // null (not just cosmetically: runPayWindowSweep() would otherwise auto-CLOSE it).
+    const teacherPaidEnabled = await this.systemConfig.getSettingBoolean('TEACHER_PAID_ENABLED', false);
+    const paymentDueBy = teacherPaidEnabled ? new Date(Date.now() + SHORTLIST_PAY_WINDOW_MS) : null;
     const updated = await this.appModel
       .findByIdAndUpdate(
         applicationId,
@@ -269,7 +276,13 @@ export class ApplicationsService {
 
     if (!app) throw new NotFoundException('Application not found');
 
-    const allowedStates = [ApplicationState.PAID];
+    // WON is reachable from SHORTLISTED directly when TEACHER_PAID_ENABLED is off (the
+    // default — no payment step exists), or only from PAID when the toggle is on. This
+    // was previously hardcoded to [PAID] only, meaning WON was completely unreachable
+    // under the default config — the exact same bug class D44 already fixed once for
+    // chat gating.
+    const teacherPaidEnabled = await this.systemConfig.getSettingBoolean('TEACHER_PAID_ENABLED', false);
+    const allowedStates = teacherPaidEnabled ? [ApplicationState.PAID] : [ApplicationState.SHORTLISTED];
 
     if (!allowedStates.includes(app.state)) {
       throw new BadRequestException(`Application must be in ${allowedStates.join(' or ')} state`);
@@ -401,10 +414,18 @@ export class ApplicationsService {
   // ── Shortlist pay-window sweep (called by scheduler) ─────────────────────────
 
   async runPayWindowSweep(): Promise<number> {
+    // If TEACHER_PAID_ENABLED is off, no application should ever owe a payment — skip
+    // entirely rather than relying solely on the paymentDueBy:{$ne:null} guard below,
+    // since Mongo's BSON type ordering means a null date field DOES match a bare
+    // {$lte: someDate} query (null sorts below Date), which would otherwise silently
+    // auto-CLOSE every shortlisted application after 48h even with payments off.
+    const teacherPaidEnabled = await this.systemConfig.getSettingBoolean('TEACHER_PAID_ENABLED', false);
+    if (!teacherPaidEnabled) return 0;
+
     const result = await this.appModel.updateMany(
       {
         state: ApplicationState.SHORTLISTED,
-        paymentDueBy: { $lte: new Date() },
+        paymentDueBy: { $ne: null, $lte: new Date() },
         deletedAt: null,
       },
       {

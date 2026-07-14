@@ -15,7 +15,7 @@ import {
   PaymentStatus,
   SubscriptionStatus,
 } from '../../shared/enums';
-import { JOB_TTL_MS, SUBSCRIPTION_CYCLE_DAYS } from '../../shared/constants/pricing';
+import { SUBSCRIPTION_CYCLE_DAYS } from '../../shared/constants/pricing';
 import { Application, ApplicationDocument } from '../applications/schemas/application.schema';
 import { School, SchoolDocument } from '../schools/schemas/school.schema';
 import { Job, JobDocument } from '../jobs/schemas/job.schema';
@@ -171,11 +171,12 @@ export class PaymentsService {
       }
 
       case PaymentKind.BOOST: {
+        const jobTtlMs = await this.systemConfig.getJobListingDurationMs();
         await this.jobModel.findByIdAndUpdate(entityId, {
           $set: {
             status: 'ACTIVE',
             isBoosted: true,
-            expiresAt: new Date(Date.now() + JOB_TTL_MS),
+            expiresAt: new Date(Date.now() + jobTtlMs),
           },
         });
         this.eventEmitter.emit('job.boosted', { jobId: entityId, userId: payment.userId.toString() });

@@ -8,6 +8,7 @@ import { Button } from '../../../common-components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../common-components/ui/dialog';
 import { Input } from '../../../common-components/ui/input';
 import { Switch } from '../../../common-components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../common-components/ui/tabs';
 import { Textarea } from '../../../common-components/ui/textarea';
 import { useToast } from '../../../hooks/use-toast';
 
@@ -245,150 +246,167 @@ export default function AdminConfigPage() {
         <p className="text-sm text-text-muted mt-0.5">Manage API keys, service credentials, and platform settings.</p>
       </div>
 
-      {/* ── Job Alert Settings ─────────────────────────────────────────────── */}
-      {settings && settings.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal className="w-4 h-4 text-brand-primary" />
-            <h2 className="text-sm font-bold text-text-primary uppercase tracking-wide">Platform Settings</h2>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {settings.map((s) => (
-              <SettingCard
-                key={s.key}
-                config={s}
-                onSave={async (key, value) => {
-                  await saveSettingMutation.mutateAsync({ key, value });
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <Tabs defaultValue="settings" className="w-full">
+        <TabsList className="w-full justify-start gap-1 h-auto bg-bg-page border border-border-default rounded-xl p-1">
+          <TabsTrigger value="settings" className="text-sm px-4 py-2 rounded-lg">Settings</TabsTrigger>
+          <TabsTrigger value="api-keys" className="text-sm px-4 py-2 rounded-lg">API Keys</TabsTrigger>
+          <TabsTrigger value="email-templates" className="text-sm px-4 py-2 rounded-lg">Email Templates</TabsTrigger>
+          <TabsTrigger value="legal-pages" className="text-sm px-4 py-2 rounded-lg">Legal Pages</TabsTrigger>
+        </TabsList>
 
-      {/* ── API Keys ──────────────────────────────────────────────────────── */}
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-6 h-6 rounded-full border-2 border-brand-primary border-t-transparent animate-spin" />
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Settings className="w-4 h-4 text-brand-primary" />
-            <h2 className="text-sm font-bold text-text-primary uppercase tracking-wide">API Keys &amp; Credentials</h2>
-          </div>
-          {Object.entries(groups).map(([service, keys]) => (
-            <div key={service} className="bg-bg-card border border-border-default rounded-2xl overflow-hidden">
-              <div className="px-5 py-3 bg-bg-page border-b border-border-default">
-                <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wide">{service}</h2>
+        {/* ── Platform Settings ─────────────────────────────────────────────── */}
+        <TabsContent value="settings" className="mt-5">
+          {settings && settings.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-brand-primary" />
+                <h2 className="text-sm font-bold text-text-primary uppercase tracking-wide">Platform Settings</h2>
               </div>
-              <div className="px-5">
-                {keys.map((k) => (
-                  <ApiKeyRow key={k.key} status={k} onEdit={(s) => { setEditTarget(s); setEditValue(''); setShowValue(false); }} />
+              <div className="grid sm:grid-cols-2 gap-4">
+                {settings.map((s) => (
+                  <SettingCard
+                    key={s.key}
+                    config={s}
+                    onSave={async (key, value) => {
+                      await saveSettingMutation.mutateAsync({ key, value });
+                    }}
+                  />
                 ))}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          )}
+        </TabsContent>
 
-      {/* ── Email Templates ──────────────────────────────────────────────── */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Mail className="w-4 h-4 text-brand-primary" />
-          <h2 className="text-sm font-bold text-text-primary uppercase tracking-wide">Email Templates</h2>
-        </div>
-        {tplLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-6 h-6 rounded-full border-2 border-brand-primary border-t-transparent animate-spin" />
-          </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 gap-3">
-            {(templates ?? []).map((tpl) => (
-              <div key={tpl.key} className="bg-bg-card border border-border-default rounded-2xl p-4 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-semibold text-text-primary">{tpl.name}</h3>
-                      {tpl.isSystem && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">System</span>
-                      )}
-                      {tpl.isActive ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Active</span>
-                      ) : (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Inactive</span>
-                      )}
+        {/* ── API Keys ──────────────────────────────────────────────────────── */}
+        <TabsContent value="api-keys" className="mt-5">
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-6 h-6 rounded-full border-2 border-brand-primary border-t-transparent animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-brand-primary" />
+                <h2 className="text-sm font-bold text-text-primary uppercase tracking-wide">API Keys &amp; Credentials</h2>
+              </div>
+              {Object.entries(groups).map(([service, keys]) => (
+                <div key={service} className="bg-bg-card border border-border-default rounded-2xl overflow-hidden">
+                  <div className="px-5 py-3 bg-bg-page border-b border-border-default">
+                    <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wide">{service}</h2>
+                  </div>
+                  <div className="px-5">
+                    {keys.map((k) => (
+                      <ApiKeyRow key={k.key} status={k} onEdit={(s) => { setEditTarget(s); setEditValue(''); setShowValue(false); }} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── Email Templates ──────────────────────────────────────────────── */}
+        <TabsContent value="email-templates" className="mt-5">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-brand-primary" />
+              <h2 className="text-sm font-bold text-text-primary uppercase tracking-wide">Email Templates</h2>
+            </div>
+            {tplLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="w-6 h-6 rounded-full border-2 border-brand-primary border-t-transparent animate-spin" />
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-3">
+                {(templates ?? []).map((tpl) => (
+                  <div key={tpl.key} className="bg-bg-card border border-border-default rounded-2xl p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-sm font-semibold text-text-primary">{tpl.name}</h3>
+                          {tpl.isSystem && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">System</span>
+                          )}
+                          {tpl.isActive ? (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Active</span>
+                          ) : (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Inactive</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] font-medium text-brand-primary mt-0.5">Trigger: {tpl.trigger}</p>
+                        <p className="text-xs text-text-muted mt-1 leading-relaxed">{tpl.description}</p>
+                        {tpl.channels && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {tpl.channels.seekerEmail    && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50  text-blue-700  border border-blue-100">✉ Teacher</span>}
+                            {tpl.channels.seekerInApp    && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100">🔔 Teacher</span>}
+                            {tpl.channels.recruiterEmail && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50  text-blue-700  border border-blue-100">✉ Recruiter</span>}
+                            {tpl.channels.recruiterInApp && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100">🔔 Recruiter</span>}
+                          </div>
+                        )}
+                        {tpl.variables.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {tpl.variables.map((v) => (
+                              <span key={v} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-page border border-border-default text-text-muted">{`{{${v}}}`}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="outline" size="sm" className="gap-1" onClick={() => openEditTpl(tpl)}>
+                          <Pencil className="w-3 h-3" />
+                        </Button>
+                        {!tpl.isSystem && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+                            disabled={deleteTplMutation.isPending}
+                            onClick={() => deleteTplMutation.mutate(tpl.key)}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-[11px] font-medium text-brand-primary mt-0.5">Trigger: {tpl.trigger}</p>
-                    <p className="text-xs text-text-muted mt-1 leading-relaxed">{tpl.description}</p>
-                    {tpl.channels && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {tpl.channels.seekerEmail    && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50  text-blue-700  border border-blue-100">✉ Teacher</span>}
-                        {tpl.channels.seekerInApp    && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100">🔔 Teacher</span>}
-                        {tpl.channels.recruiterEmail && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50  text-blue-700  border border-blue-100">✉ Recruiter</span>}
-                        {tpl.channels.recruiterInApp && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100">🔔 Recruiter</span>}
-                      </div>
-                    )}
-                    {tpl.variables.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {tpl.variables.map((v) => (
-                          <span key={v} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-page border border-border-default text-text-muted">{`{{${v}}}`}</span>
-                        ))}
-                      </div>
-                    )}
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button variant="outline" size="sm" className="gap-1" onClick={() => openEditTpl(tpl)}>
-                      <Pencil className="w-3 h-3" />
-                    </Button>
-                    {!tpl.isSystem && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1 text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
-                        disabled={deleteTplMutation.isPending}
-                        onClick={() => deleteTplMutation.mutate(tpl.key)}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
-      </div>
+        </TabsContent>
 
-      {/* ── Legal Pages ───────────────────────────────────────────────────── */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-brand-primary" />
-          <h2 className="text-sm font-bold text-text-primary uppercase tracking-wide">Legal Pages</h2>
-        </div>
-        {legalLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-6 h-6 rounded-full border-2 border-brand-primary border-t-transparent animate-spin" />
-          </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 gap-3">
-            {(legalPages ?? []).map((page) => (
-              <div key={page.key} className="bg-bg-card border border-border-default rounded-2xl p-4 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-text-primary">{page.title}</h3>
-                    <p className="text-xs text-text-muted mt-0.5">{page.lastUpdatedLabel}</p>
-                    <p className="text-[11px] text-text-muted mt-1">{page.sections.length} sections · /{page.key}</p>
-                  </div>
-                  <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => openEditLegal(page)}>
-                    <Pencil className="w-3 h-3" />
-                  </Button>
-                </div>
+        {/* ── Legal Pages ───────────────────────────────────────────────────── */}
+        <TabsContent value="legal-pages" className="mt-5">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-brand-primary" />
+              <h2 className="text-sm font-bold text-text-primary uppercase tracking-wide">Legal Pages</h2>
+            </div>
+            {legalLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="w-6 h-6 rounded-full border-2 border-brand-primary border-t-transparent animate-spin" />
               </div>
-            ))}
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-3">
+                {(legalPages ?? []).map((page) => (
+                  <div key={page.key} className="bg-bg-card border border-border-default rounded-2xl p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold text-text-primary">{page.title}</h3>
+                        <p className="text-xs text-text-muted mt-0.5">{page.lastUpdatedLabel}</p>
+                        <p className="text-[11px] text-text-muted mt-1">{page.sections.length} sections · /{page.key}</p>
+                      </div>
+                      <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => openEditLegal(page)}>
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open) { setEditTarget(null); setEditValue(''); setShowValue(false); } }}>
         <DialogContent className="max-w-sm bg-bg-card border border-border-default">

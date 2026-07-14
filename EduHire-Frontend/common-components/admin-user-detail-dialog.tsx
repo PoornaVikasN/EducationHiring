@@ -4,6 +4,7 @@ import { ExternalLink, Mail, Phone, ShieldCheck } from 'lucide-react';
 import type { AdminUser } from '../lib/api/admin';
 import { SalaryRange, Role } from '../lib/shared/enums';
 import { SALARY_RANGE_LABELS } from '../lib/shared/constants';
+import { enumLabel } from '../lib/utils/enum-options';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 
 const AVAILABILITY_LABELS: Record<string, string> = {
@@ -33,15 +34,6 @@ function roleLabel(role: string) {
   if (role === 'RECRUITER') return 'School';
   return 'Admin';
 }
-
-const ACADEMICS_LABELS: Record<string, string> = {
-  INTERNSHIP: 'Internship',
-  GRADUATE: 'Graduate',
-  POST_GRADUATE: 'Post Graduate',
-  ASST_PROFESSOR: 'Asst. Professor',
-  ASSOCIATE_PROFESSOR: 'Associate Professor',
-  PROFESSOR: 'Professor',
-};
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -122,7 +114,7 @@ function SeekerView({ user }: { user: AdminUser }) {
       </div>
 
       {(p.expertise?.length ?? 0) > 0 && (
-        <Section title="Expertise / Specialisation"><Chips items={p.expertise!} color="brand" /></Section>
+        <Section title="Expertise / Specialisation"><Chips items={p.expertise!.map((s) => enumLabel(s))} color="brand" /></Section>
       )}
       {(p.degrees?.length ?? 0) > 0 && (
         <Section title="Qualifications"><Chips items={p.degrees!} color="teal" /></Section>
@@ -137,7 +129,7 @@ function SeekerView({ user }: { user: AdminUser }) {
             <div><span className="text-text-muted">Current School: </span><span className="font-medium text-text-primary">{p.currentSchool}</span></div>
           )}
           {p.academics && (
-            <div><span className="text-text-muted">Academics: </span><span className="font-medium text-text-primary">{ACADEMICS_LABELS[p.academics] ?? p.academics}</span></div>
+            <div><span className="text-text-muted">Current Post: </span><span className="font-medium text-text-primary">{enumLabel(p.academics)}</span></div>
           )}
           {p.salaryRange && (
             <div><span className="text-text-muted">Salary Range: </span><span className="font-medium text-text-primary">{SALARY_RANGE_LABELS[p.salaryRange as SalaryRange] ?? p.salaryRange}</span></div>
@@ -171,7 +163,7 @@ function SeekerView({ user }: { user: AdminUser }) {
         <Section title="Available Timings"><Chips items={p.availableTimings!.map((t) => TIMINGS_LABELS[t] ?? t)} color="slate" /></Section>
       )}
       {(p.interestedToCover?.length ?? 0) > 0 && (
-        <Section title="Subjects Willing to Cover"><Chips items={p.interestedToCover!} color="slate" /></Section>
+        <Section title="Subjects Willing to Cover"><Chips items={p.interestedToCover!.map((s) => enumLabel(s))} color="slate" /></Section>
       )}
       {(p.skills?.length ?? 0) > 0 && (
         <Section title="Skills"><Chips items={p.skills!} color="slate" /></Section>

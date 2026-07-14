@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useGoogleLogin } from '@react-oauth/google';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
@@ -10,6 +11,7 @@ import { Button } from '../../../common-components/ui/button';
 import { Input } from '../../../common-components/ui/input';
 import { Label } from '../../../common-components/ui/label';
 import { PasswordField } from '../../../common-components/auth/password-field';
+import { RecaptchaNotice } from '../../../common-components/auth/recaptcha-notice';
 import { GoogleButton } from '../../../common-components/auth/google-button';
 import { RoleToggle } from '../../../common-components/auth/role-toggle';
 import { authApi } from '../../../lib/api/auth';
@@ -28,6 +30,7 @@ function RegisterForm() {
   const [success, setSuccess] = useState(false);
   const [googleLinked, setGoogleLinked] = useState(false);
   const [googleRole, setGoogleRole] = useState<Role.TEACHER | Role.RECRUITER>(prefillRole);
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const {
     register,
@@ -45,7 +48,8 @@ function RegisterForm() {
   const onSubmit = async (data: RegisterInput) => {
     setServerError('');
     try {
-      const res = await authApi.register(data);
+      const recaptchaToken = executeRecaptcha ? await executeRecaptcha('register') : undefined;
+      const res = await authApi.register({ ...data, recaptchaToken });
       setSuccess(true);
       setTimeout(() => {
         const devParam = res.data.devOtp ? `&devOtp=${res.data.devOtp}` : '';
@@ -94,11 +98,11 @@ function RegisterForm() {
 
   return (
     <>
-      <h1 className="text-xl font-bold text-text-primary mb-1">Create your account</h1>
-      <p className="text-sm text-text-muted mb-5">Join SchoolTeacher — free for teachers, always</p>
+      <h1 className="text-lg sm:text-xl font-bold text-text-primary mb-1">Create your account</h1>
+      <p className="text-xs sm:text-sm text-text-muted mb-4 sm:mb-5">Join SchoolTeacher — free for teachers, always</p>
 
       {/* Role toggle */}
-      <div className="mb-5">
+      <div className="mb-4 sm:mb-5">
         <RoleToggle
           value={selectedRole}
           teacherLabel="I'm a Teacher"
@@ -107,7 +111,7 @@ function RegisterForm() {
         />
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="fullName">Full name</Label>
           <Input id="fullName" placeholder="Priya Sharma" {...register('fullName')} />
@@ -164,10 +168,11 @@ function RegisterForm() {
         <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
           {isSubmitting ? 'Creating account…' : 'Create account'}
         </Button>
+        <RecaptchaNotice />
       </form>
 
       {/* Divider */}
-      <div className="relative my-5">
+      <div className="relative my-4 sm:my-5">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-border-default" />
         </div>
@@ -179,7 +184,7 @@ function RegisterForm() {
       {/* Google OAuth */}
       <GoogleButton onClick={() => googleLogin()} size="lg" />
 
-      <p className="mt-5 text-center text-sm text-text-muted">
+      <p className="mt-4 sm:mt-5 text-center text-xs sm:text-sm text-text-muted">
         Already have an account?{' '}
         <Link href="/login" className="text-brand-primary hover:underline font-medium">
           Sign in

@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { Academics, Availability, AvailableTimings, MaritalStatus, Role, SalaryRange, TypeOfPractice } from '../../../shared/enums';
+import { Availability, AvailableTimings, MaritalStatus, Role, SalaryRange, Subject, TeacherPost, TypeOfPractice } from '../../../shared/enums';
 
 // ── Embedded sub-schemas ──────────────────────────────────────────────────────
 
@@ -69,11 +69,11 @@ class SeekerProfile {
   @Prop({ type: String, enum: TypeOfPractice, default: null })
   employmentType!: TypeOfPractice | null;
 
-  @Prop({ type: [String], default: [] })
-  expertise!: string[];
+  @Prop({ type: [String], enum: Subject, default: [] })
+  expertise!: Subject[];
 
-  @Prop({ type: String, enum: Academics, default: null })
-  academics!: Academics | null;
+  @Prop({ type: String, enum: TeacherPost, default: null })
+  academics!: TeacherPost | null;
 
   @Prop({ type: String, enum: SalaryRange, default: null })
   salaryRange!: SalaryRange | null;
@@ -81,8 +81,8 @@ class SeekerProfile {
   @Prop({ type: [String], enum: AvailableTimings, default: [] })
   availableTimings!: AvailableTimings[];
 
-  @Prop({ type: [String], default: [] })
-  interestedToCover!: string[];
+  @Prop({ type: [String], enum: Subject, default: [] })
+  interestedToCover!: Subject[];
 
   @Prop({ type: Boolean, default: null })
   indemnityInsurance!: boolean | null;

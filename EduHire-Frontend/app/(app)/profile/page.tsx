@@ -12,6 +12,7 @@ import { Button } from '../../../common-components/ui/button';
 import { ExpertiseSelector } from '../../../common-components/ui/expertise-selector';
 import { Input } from '../../../common-components/ui/input';
 import { Label } from '../../../common-components/ui/label';
+import { Combobox } from '../../../common-components/ui/combobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../common-components/ui/select';
 import { Switch } from '../../../common-components/ui/switch';
 import { Textarea } from '../../../common-components/ui/textarea';
@@ -21,22 +22,24 @@ import { useAuth } from '../../../lib/auth-context';
 import { useToast } from '../../../hooks/use-toast';
 import type { Resolver } from 'react-hook-form';
 import {
-  Academics,
   Availability,
   AvailableTimings,
   Gender,
   MaritalStatus,
   SalaryRange,
+  Subject,
+  TeacherPost,
   TypeOfPractice,
   UploadKind,
 } from '../../../lib/shared/enums';
 import {
   DEGREE_OPTIONS,
-  EXPERTISE_OPTIONS,
-  INTERESTED_TO_COVER_OPTIONS,
   SALARY_RANGE_LABELS,
 } from '../../../lib/shared/constants';
+import { enumLabel, enumComboboxOptions } from '../../../lib/utils/enum-options';
 import { seekerProfileSchema, type SeekerProfileFormValues } from '../../../lib/validations/profile';
+
+const SUBJECT_OPTIONS = Object.values(Subject);
 
 const TIMINGS_OPTIONS: { value: AvailableTimings; label: string }[] = [
   { value: AvailableTimings.TWENTY_FOUR_SEVEN, label: '24/7' },
@@ -84,16 +87,16 @@ export default function SeekerProfilePage() {
       desiredCities: (profile?.desiredCities as string[]) ?? [],
       whatsappNumber: ((profile?.whatsappNumber as string) ?? '').replace(/^\+91/, ''),
       pincode: (profile?.pincode as string) ?? '',
-      placeOfPractice: (profile?.placeOfPractice as string) ?? '',
-      typeOfPractice: (profile?.typeOfPractice as TypeOfPractice) ?? undefined,
-      expertise: (profile?.expertise as string[]) ?? [],
-      academics: (profile?.academics as Academics) ?? undefined,
+      currentSchool: (profile?.currentSchool as string) ?? '',
+      employmentType: (profile?.employmentType as TypeOfPractice) ?? undefined,
+      expertise: (profile?.expertise as Subject[]) ?? [],
+      academics: (profile?.academics as TeacherPost) ?? undefined,
       salaryRange: (profile?.salaryRange as SalaryRange) ?? undefined,
       availableTimings: (profile?.availableTimings as AvailableTimings[]) ?? [],
-      interestedToCover: (profile?.interestedToCover as string[]) ?? [],
+      interestedToCover: (profile?.interestedToCover as Subject[]) ?? [],
       indemnityInsurance: (profile?.indemnityInsurance as boolean) ?? false,
-      isRegisteredInCouncil: (profile?.isRegisteredInCouncil as boolean) ?? undefined,
-      medicalCouncilName: (profile?.medicalCouncilName as string) ?? '',
+      isRegisteredWithBoard: (profile?.isRegisteredWithBoard as boolean) ?? undefined,
+      boardRegistrationName: (profile?.boardRegistrationName as string) ?? '',
     },
   });
 
@@ -115,16 +118,16 @@ export default function SeekerProfilePage() {
         desiredCities: (profile.desiredCities as string[]) ?? [],
         whatsappNumber: ((profile.whatsappNumber as string) ?? '').replace(/^\+91/, ''),
         pincode: (profile.pincode as string) ?? '',
-        placeOfPractice: (profile.placeOfPractice as string) ?? '',
-        typeOfPractice: (profile.typeOfPractice as TypeOfPractice) ?? undefined,
-        expertise: (profile.expertise as string[]) ?? [],
-        academics: (profile.academics as Academics) ?? undefined,
+        currentSchool: (profile.currentSchool as string) ?? '',
+        employmentType: (profile.employmentType as TypeOfPractice) ?? undefined,
+        expertise: (profile.expertise as Subject[]) ?? [],
+        academics: (profile.academics as TeacherPost) ?? undefined,
         salaryRange: (profile.salaryRange as SalaryRange) ?? undefined,
         availableTimings: (profile.availableTimings as AvailableTimings[]) ?? [],
-        interestedToCover: (profile.interestedToCover as string[]) ?? [],
+        interestedToCover: (profile.interestedToCover as Subject[]) ?? [],
         indemnityInsurance: (profile.indemnityInsurance as boolean) ?? false,
-        isRegisteredInCouncil: (profile.isRegisteredInCouncil as boolean) ?? undefined,
-        medicalCouncilName: (profile.medicalCouncilName as string) ?? '',
+        isRegisteredWithBoard: (profile.isRegisteredWithBoard as boolean) ?? undefined,
+        boardRegistrationName: (profile.boardRegistrationName as string) ?? '',
       });
       setResumeUrl((profile.resumeUrl as string) ?? null);
       setVideoUrl((profile.introVideoUrl as string) ?? null);
@@ -152,16 +155,16 @@ export default function SeekerProfilePage() {
         desiredCities: values.desiredCities,
         whatsappNumber: values.whatsappNumber ? `+91${values.whatsappNumber}` : undefined,
         pincode: values.pincode || undefined,
-        placeOfPractice: values.placeOfPractice || undefined,
-        typeOfPractice: values.typeOfPractice,
+        currentSchool: values.currentSchool || undefined,
+        employmentType: values.employmentType,
         expertise: values.expertise,
         academics: values.academics,
         salaryRange: values.salaryRange,
         availableTimings: values.availableTimings,
         interestedToCover: values.interestedToCover,
         indemnityInsurance: values.indemnityInsurance,
-        isRegisteredInCouncil: values.isRegisteredInCouncil,
-        medicalCouncilName: values.medicalCouncilName || undefined,
+        isRegisteredWithBoard: values.isRegisteredWithBoard,
+        boardRegistrationName: values.boardRegistrationName || undefined,
       };
       return usersApi.updateSeekerProfile(payload);
     },
@@ -429,16 +432,16 @@ export default function SeekerProfilePage() {
           <div className="space-y-1.5">
             <Label>Current School / Institution</Label>
             <LocationAutocomplete
-              defaultValue={watch('placeOfPractice') ?? ''}
+              defaultValue={watch('currentSchool') ?? ''}
               placeholder="Search school or institution name…"
-              onSelect={({ displayText }) => setValue('placeOfPractice', displayText, { shouldDirty: true })}
-              onClear={() => setValue('placeOfPractice', '', { shouldDirty: true })}
+              onSelect={({ displayText }) => setValue('currentSchool', displayText, { shouldDirty: true })}
+              onClear={() => setValue('currentSchool', '', { shouldDirty: true })}
             />
           </div>
 
           <div className="space-y-1.5">
             <Label>Employment Type</Label>
-            <Select value={watch('typeOfPractice') ?? ''} onValueChange={(v) => setValue('typeOfPractice', v as TypeOfPractice, { shouldDirty: true })}>
+            <Select value={watch('employmentType') ?? ''} onValueChange={(v) => setValue('employmentType', v as TypeOfPractice, { shouldDirty: true })}>
               <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={TypeOfPractice.REGULAR_JOB}>Full-time / Regular</SelectItem>
@@ -492,9 +495,10 @@ export default function SeekerProfilePage() {
           <div className="space-y-1.5">
             <Label>Subjects / Specialisation</Label>
             <ExpertiseSelector
-              options={EXPERTISE_OPTIONS}
+              options={SUBJECT_OPTIONS}
+              formatLabel={enumLabel}
               value={watch('expertise') ?? []}
-              onValueChange={(v) => setValue('expertise', v, { shouldDirty: true })}
+              onValueChange={(v) => setValue('expertise', v as Subject[], { shouldDirty: true })}
               searchPlaceholder="Search subjects…"
               placeholder="Select subjects you teach"
             />
@@ -544,18 +548,14 @@ export default function SeekerProfilePage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Academics</Label>
-              <Select value={watch('academics') ?? ''} onValueChange={(v) => setValue('academics', v as Academics, { shouldDirty: true })}>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={Academics.INTERNSHIP}>Internship</SelectItem>
-                  <SelectItem value={Academics.GRADUATE}>Graduate</SelectItem>
-                  <SelectItem value={Academics.POST_GRADUATE}>Post Graduate</SelectItem>
-                  <SelectItem value={Academics.ASST_PROFESSOR}>Assistant Professor</SelectItem>
-                  <SelectItem value={Academics.ASSOCIATE_PROFESSOR}>Associate Professor</SelectItem>
-                  <SelectItem value={Academics.PROFESSOR}>Professor</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Current / Highest Post Held</Label>
+              <Combobox
+                options={enumComboboxOptions(TeacherPost)}
+                value={watch('academics') ?? ''}
+                onValueChange={(v) => setValue('academics', v as TeacherPost, { shouldDirty: true })}
+                placeholder="Select post"
+                searchPlaceholder="Search post…"
+              />
             </div>
           </div>
 
@@ -579,9 +579,10 @@ export default function SeekerProfilePage() {
           <div className="space-y-1.5">
             <Label>Subjects Willing to Cover (as Substitute)</Label>
             <ExpertiseSelector
-              options={INTERESTED_TO_COVER_OPTIONS}
+              options={SUBJECT_OPTIONS}
+              formatLabel={enumLabel}
               value={watch('interestedToCover') ?? []}
-              onValueChange={(v) => setValue('interestedToCover', v, { shouldDirty: true })}
+              onValueChange={(v) => setValue('interestedToCover', v as Subject[], { shouldDirty: true })}
               searchPlaceholder="Search subjects…"
               placeholder="Select subjects you can cover"
             />
@@ -593,16 +594,16 @@ export default function SeekerProfilePage() {
               <p className="text-xs text-text-muted">Are you registered with a teaching or education council?</p>
             </div>
             <Switch
-              checked={watch('isRegisteredInCouncil') ?? false}
-              onCheckedChange={(v) => setValue('isRegisteredInCouncil', v, { shouldDirty: true })}
+              checked={watch('isRegisteredWithBoard') ?? false}
+              onCheckedChange={(v) => setValue('isRegisteredWithBoard', v, { shouldDirty: true })}
             />
           </div>
 
-          {watch('isRegisteredInCouncil') && (
+          {watch('isRegisteredWithBoard') && (
             <div className="space-y-1.5">
-              <Label htmlFor="medicalCouncilName">Council / Board Name</Label>
-              <Input id="medicalCouncilName" placeholder="e.g. Telangana State Teachers Council" {...register('medicalCouncilName')} />
-              {errors.medicalCouncilName && <p className="text-xs text-red-500">{errors.medicalCouncilName.message}</p>}
+              <Label htmlFor="boardRegistrationName">Council / Board Name</Label>
+              <Input id="boardRegistrationName" placeholder="e.g. Telangana State Teachers Council" {...register('boardRegistrationName')} />
+              {errors.boardRegistrationName && <p className="text-xs text-red-500">{errors.boardRegistrationName.message}</p>}
             </div>
           )}
 

@@ -101,7 +101,7 @@ function buildFaqSections(appFee: string, subMo: string) {
         },
         {
           q: 'How do I contact support?',
-          a: 'Email us at support@schoolteacher.in or raise a dispute ticket from the Settings page. We respond within 1 business day.',
+          a: 'Email us at schoolteachermarketing@gmail.com or raise a dispute ticket from the Settings page. We respond within 1 business day.',
         },
       ],
     },
@@ -167,7 +167,7 @@ export default function HelpPage() {
           <h2 className="text-2xl font-bold text-text-primary mb-3">Still have questions?</h2>
           <p className="text-text-muted mb-6">Our support team responds within 1 business day.</p>
           <a
-            href="mailto:support@schoolteacher.in"
+            href="mailto:schoolteachermarketing@gmail.com"
             className="inline-block px-8 py-3 rounded-xl text-sm font-bold text-white"
             style={{ background: '#3949ab' }}
           >

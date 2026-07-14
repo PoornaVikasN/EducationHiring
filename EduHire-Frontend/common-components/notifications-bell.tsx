@@ -4,13 +4,14 @@ import { Bell, CheckCheck, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
+import { SOCKET_ORIGIN } from '../lib/api-client';
 import { notificationsApi, type Notification } from '../lib/api/notifications';
 
 let socket: Socket | null = null;
 
 function getSocket(token: string): Socket {
   if (!socket || !socket.connected) {
-    socket = io(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001'}/notifications`, {
+    socket = io(`${SOCKET_ORIGIN}/notifications`, {
       auth: { token },
       transports: ['websocket'],
       autoConnect: true,

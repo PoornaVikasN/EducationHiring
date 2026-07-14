@@ -83,13 +83,18 @@ export default function LandingPage() {
       <SiteHeader barOpen={false} />
 
       {/* ── HERO ─────────────────────────────────────────────────────────────── */}
-      <section className="relative flex items-end overflow-hidden" style={{ minHeight: '100svh' }}>
+      {/* Hero height is intentionally shorter on mobile: this image is landscape-oriented, so
+          object-fit:cover inside a full 100svh portrait viewport forces a very high scale factor
+          (driven by the height side) and crops most of the frame's width away — a heavy "zoomed
+          in" look. Shrinking min-height on narrow screens reduces that forced scale factor, which
+          shows noticeably more of the photo (a "zoomed out" look) without needing a second image
+          or a different crop — content still anchors to the bottom via items-end regardless. */}
+      <section className="relative flex items-end overflow-hidden min-h-[78svh] sm:min-h-[88svh] md:min-h-[100svh]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="https://images.pexels.com/photos/8617542/pexels-photo-8617542.jpeg?auto=compress&cs=tinysrgb&w=1600"
           alt="Teacher engaging with students in a classroom"
-          className="absolute inset-0 w-full h-full"
-          style={{ objectFit: 'cover', objectPosition: 'center 30%' }}
+          className="absolute inset-0 w-full h-full object-cover object-[center_25%] sm:object-[center_30%]"
         />
         <div
           className="absolute inset-0"
@@ -99,20 +104,20 @@ export default function LandingPage() {
           }}
         />
 
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-40 pb-16 md:pb-24">
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-12 pt-28 sm:pt-32 md:pt-40 pb-12 sm:pb-16 md:pb-24">
           <div style={{ maxWidth: 620 }}>
             {/* Audience toggle */}
-            <div className="hero-anim hero-delay-0 inline-flex rounded-full p-1 mb-6"
+            <div className="hero-anim hero-delay-0 inline-flex rounded-full p-1 mb-5 sm:mb-6"
               style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.20)', backdropFilter: 'blur(8px)' }}>
               <button onClick={() => setHeroMode('teacher')}
-                className="px-5 py-2 rounded-full text-sm font-bold transition-all duration-200"
+                className="px-4 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-all duration-200"
                 style={heroMode === 'teacher'
                   ? { background: '#3949ab', color: '#fff', boxShadow: '0 2px 10px rgba(57,73,171,0.50)' }
                   : { color: 'rgba(255,255,255,0.65)', background: 'transparent' }}>
                 For Teachers
               </button>
               <button onClick={() => setHeroMode('school')}
-                className="px-5 py-2 rounded-full text-sm font-bold transition-all duration-200"
+                className="px-4 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-all duration-200"
                 style={heroMode === 'school'
                   ? { background: '#f59e0b', color: '#fff', boxShadow: '0 2px 10px rgba(245,158,11,0.50)' }
                   : { color: 'rgba(255,255,255,0.65)', background: 'transparent' }}>
@@ -121,9 +126,9 @@ export default function LandingPage() {
             </div>
 
             {/* Badge row */}
-            <div className="hero-anim hero-delay-0 flex flex-wrap gap-2 mb-6">
+            <div className="hero-anim hero-delay-0 flex flex-wrap gap-2 mb-5 sm:mb-6">
               {['Verified Schools', 'Free for Teachers'].map((badge) => (
-                <span key={badge} className="text-[11px] font-semibold px-3 py-1 rounded-full"
+                <span key={badge} className="text-[10px] sm:text-[11px] font-semibold px-2.5 sm:px-3 py-1 rounded-full"
                   style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.20)' }}>
                   {badge}
                 </span>
@@ -131,8 +136,8 @@ export default function LandingPage() {
             </div>
 
             {/* Headline */}
-            <h1 className="hero-anim hero-delay-1 font-black leading-tight tracking-tight mb-5 text-white"
-              style={{ fontSize: 'clamp(2.8rem, 5.5vw, 4.4rem)' }}>
+            <h1 className="hero-anim hero-delay-1 font-black leading-tight tracking-tight mb-4 sm:mb-5 text-white"
+              style={{ fontSize: 'clamp(2.1rem, 8vw, 4.4rem)' }}>
               {hero.headlineLead}{' '}
               <span key={heroMode} style={{
                 background: hero.gradient,
@@ -146,17 +151,17 @@ export default function LandingPage() {
             </h1>
 
             {/* Sub-copy */}
-            <p className="hero-anim hero-delay-2 mb-8 leading-relaxed"
-              style={{ color: 'rgba(255,255,255,0.88)', fontSize: '1.1rem', maxWidth: 520 }}>
+            <p className="hero-anim hero-delay-2 mb-6 sm:mb-8 leading-relaxed text-sm sm:text-base"
+              style={{ color: 'rgba(255,255,255,0.88)', maxWidth: 520 }}>
               {hero.subtext}
             </p>
 
             {/* CTAs */}
-            <div className="hero-anim hero-delay-3 flex flex-wrap items-center gap-3 mb-6">
+            <div className="hero-anim hero-delay-3 flex flex-wrap items-center gap-2.5 sm:gap-3 mb-5 sm:mb-6">
               <Link
                 key={heroMode}
                 href={hero.ctaHref}
-                className="btn-glow inline-flex items-center gap-2 font-bold px-9 py-4 rounded-xl text-white text-base"
+                className="btn-glow inline-flex items-center gap-2 font-bold px-6 py-3 sm:px-9 sm:py-4 rounded-xl text-white text-sm sm:text-base"
                 style={{
                   background: heroMode === 'teacher' ? 'linear-gradient(135deg, #3949ab, #5c6bc0)' : 'linear-gradient(135deg, #f59e0b, #f97316)',
                   boxShadow: heroMode === 'teacher' ? '0 4px 20px rgba(57,73,171,0.55)' : '0 4px 20px rgba(245,158,11,0.55)',
@@ -166,7 +171,7 @@ export default function LandingPage() {
               </Link>
               <a
                 href="#how-it-works"
-                className="inline-flex items-center gap-2 font-semibold px-7 py-3 rounded-xl text-sm transition-colors"
+                className="inline-flex items-center gap-2 font-semibold px-5 py-2.5 sm:px-7 sm:py-3 rounded-xl text-xs sm:text-sm transition-colors"
                 style={{ border: '1.5px solid rgba(255,255,255,0.28)', color: '#ffffff', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(6px)' }}>
                 See how it works
               </a>
@@ -181,7 +186,7 @@ export default function LandingPage() {
               ].map((chip) => (
                 <span
                   key={chip}
-                  className="text-[11px] font-semibold px-3 py-1 rounded-full"
+                  className="text-[10px] sm:text-[11px] font-semibold px-2.5 sm:px-3 py-1 rounded-full"
                   style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.15)' }}
                 >
                   {chip}
@@ -194,8 +199,8 @@ export default function LandingPage() {
 
       {/* ── TRUST MARQUEE STRIP ──────────────────────────────────────────────── */}
       <div style={{ background: '#0d1b2a', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '14px 0' }}>
-        <div className="max-w-7xl mx-auto px-6 flex items-center gap-6">
-          <span className="text-xs font-bold uppercase tracking-widest flex-shrink-0" style={{ color: 'rgba(255,255,255,0.35)' }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-4 sm:gap-6">
+          <span className="hidden sm:inline text-xs font-bold uppercase tracking-widest flex-shrink-0" style={{ color: 'rgba(255,255,255,0.35)' }}>
             Schools using SchoolTeacher:
           </span>
           <div className="marquee-track flex-1">
@@ -216,14 +221,14 @@ export default function LandingPage() {
       </div>
 
       {/* ── BENTO GRID ───────────────────────────────────────────────────────── */}
-      <section className="py-24 px-6" style={{ background: '#f8fafc', borderTop: '1px solid #e8edf5' }}>
+      <section className="py-14 sm:py-16 md:py-24 px-4 sm:px-6" style={{ background: '#f8fafc', borderTop: '1px solid #e8edf5' }}>
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14 will-reveal">
+          <div className="text-center mb-10 sm:mb-14 will-reveal">
             <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>Why School Teacher</p>
-            <h2 className="font-black mb-3" style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', color: '#0f172a', lineHeight: 1.1 }}>
+            <h2 className="font-black mb-3" style={{ fontSize: 'clamp(1.75rem, 6vw, 3rem)', color: '#0f172a', lineHeight: 1.1 }}>
               Everything you need.
             </h2>
-            <p className="text-base max-w-md mx-auto" style={{ color: '#64748b' }}>
+            <p className="text-sm sm:text-base max-w-md mx-auto" style={{ color: '#64748b' }}>
               Built for how hiring actually works — not a form dump.
             </p>
           </div>
@@ -232,7 +237,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
             {/* Row 1 — Cell A: Chat (wide) */}
-            <div className="will-reveal-scale lg:col-span-2 rounded-3xl p-8 relative overflow-hidden"
+            <div className="will-reveal-scale lg:col-span-2 rounded-3xl p-6 sm:p-8 relative overflow-hidden"
               style={{ background: '#0d1b2a', minHeight: 220 }}>
               <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold mb-4"
                 style={{ background: 'rgba(57,73,171,0.30)', color: '#9fa8da', border: '1px solid rgba(121,134,203,0.25)' }}>
@@ -246,10 +251,10 @@ export default function LandingPage() {
             </div>
 
             {/* Row 1 — Cell B: Free (narrow) */}
-            <div className="will-reveal-scale reveal-delay-1 rounded-3xl p-8 flex flex-col justify-between"
+            <div className="will-reveal-scale reveal-delay-1 rounded-3xl p-6 sm:p-8 flex flex-col justify-between"
               style={{ background: '#f0f4ff', border: '2px solid #c5cae9', minHeight: 220 }}>
               <div>
-                <p className="text-7xl font-black leading-none mb-1" style={{ color: '#3949ab' }}>₹0</p>
+                <p className="text-5xl sm:text-6xl md:text-7xl font-black leading-none mb-1" style={{ color: '#3949ab' }}>₹0</p>
                 <p className="font-bold text-base mb-1" style={{ color: '#0f172a' }}>Cost for teachers</p>
                 <p className="text-sm" style={{ color: '#64748b' }}>Forever free. No hidden fees.</p>
               </div>
@@ -264,7 +269,7 @@ export default function LandingPage() {
             </div>
 
             {/* Row 2 — Cell C: Video (narrow) */}
-            <div className="will-reveal-scale reveal-delay-2 rounded-3xl p-7"
+            <div className="will-reveal-scale reveal-delay-2 rounded-3xl p-6 sm:p-7"
               style={{ background: '#ffffff', border: '1px solid #e8edf5', boxShadow: '0 2px 16px rgba(0,0,0,0.04)' }}>
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
                 style={{ background: 'rgba(245,158,11,0.12)' }}>
@@ -277,7 +282,7 @@ export default function LandingPage() {
             </div>
 
             {/* Row 2 — Cell D: Verified (wide) */}
-            <div className="will-reveal-scale reveal-delay-1 lg:col-span-2 rounded-3xl p-8 relative overflow-hidden"
+            <div className="will-reveal-scale reveal-delay-1 lg:col-span-2 rounded-3xl p-6 sm:p-8 relative overflow-hidden"
               style={{ background: '#0d1b2a', minHeight: 200 }}>
               <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold mb-4"
                 style={{ background: 'rgba(5,150,105,0.25)', color: '#6ee7b7', border: '1px solid rgba(6,78,59,0.3)' }}>
@@ -288,16 +293,18 @@ export default function LandingPage() {
               <p className="text-sm leading-relaxed" style={{ color: '#94a3b8', maxWidth: 360 }}>
                 Our team reviews every school before they can post a job. Zero fake listings, zero spam — ever.
               </p>
-              {/* Verified badge mockup */}
-              <div className="absolute bottom-6 right-6 flex items-center gap-2 rounded-xl px-4 py-2.5"
+              {/* Verified badge mockup — in normal flow on mobile (avoids overlapping the paragraph
+                  above when it wraps to 3+ lines on narrow widths), absolutely pinned bottom-right on
+                  larger screens where the fixed minHeight guarantees clearance */}
+              <div className="mt-5 sm:mt-0 sm:absolute sm:bottom-6 sm:right-6 inline-flex items-center gap-2 rounded-xl px-4 py-2.5"
                 style={{ background: 'rgba(245,158,11,0.15)', border: '1.5px solid rgba(245,158,11,0.35)' }}>
-                <CheckCircle className="w-4 h-4" style={{ color: '#f59e0b' }} />
+                <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#f59e0b' }} />
                 <span className="text-sm font-bold" style={{ color: '#fbbf24' }}>Verified School ✓</span>
               </div>
             </div>
 
             {/* Row 3 — 3 equal cells */}
-            <div className="will-reveal-scale reveal-delay-1 rounded-3xl p-7"
+            <div className="will-reveal-scale reveal-delay-1 rounded-3xl p-6 sm:p-7"
               style={{ background: '#fff8e1', border: '1px solid #fde68a' }}>
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-4"
                 style={{ background: 'rgba(245,158,11,0.15)' }}>
@@ -307,7 +314,7 @@ export default function LandingPage() {
               <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>Filter by city, distance radius, or state and country. Find exactly what&apos;s near you.</p>
             </div>
 
-            <div className="will-reveal-scale reveal-delay-2 rounded-3xl p-7"
+            <div className="will-reveal-scale reveal-delay-2 rounded-3xl p-6 sm:p-7"
               style={{ background: '#ffffff', border: '1px solid #e8edf5', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-4"
                 style={{ background: 'rgba(57,73,171,0.10)' }}>
@@ -317,7 +324,7 @@ export default function LandingPage() {
               <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>Express interest in one tap — no forms, no cover letters.</p>
             </div>
 
-            <div className="will-reveal-scale reveal-delay-3 rounded-3xl p-7"
+            <div className="will-reveal-scale reveal-delay-3 rounded-3xl p-6 sm:p-7"
               style={{ background: '#e8f5e9', border: '1px solid #a7f3d0' }}>
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-4"
                 style={{ background: 'rgba(5,150,105,0.12)' }}>
@@ -331,26 +338,26 @@ export default function LandingPage() {
       </section>
 
       {/* ── HOW IT WORKS — TAB SWITCHER ──────────────────────────────────────── */}
-      <section id="how-it-works" className="py-24 px-6" style={{ background: '#ffffff', borderTop: '1px solid #e8edf5' }}>
+      <section id="how-it-works" className="py-14 sm:py-16 md:py-24 px-4 sm:px-6" style={{ background: '#ffffff', borderTop: '1px solid #e8edf5' }}>
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-10 will-reveal">
+          <div className="text-center mb-8 sm:mb-10 will-reveal">
             <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>How it works</p>
-            <h2 className="font-black mb-3" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', color: '#0f172a', lineHeight: 1.15 }}>
+            <h2 className="font-black mb-3" style={{ fontSize: 'clamp(1.6rem, 5.5vw, 2.8rem)', color: '#0f172a', lineHeight: 1.15 }}>
               Two journeys. One platform.
             </h2>
-            <p className="text-base max-w-md mx-auto" style={{ color: '#64748b' }}>
+            <p className="text-sm sm:text-base max-w-md mx-auto" style={{ color: '#64748b' }}>
               Whether you&apos;re looking for a role or filling one — it&apos;s built for both.
             </p>
           </div>
 
           {/* Tab pills */}
-          <div className="flex justify-center gap-2 mb-12 will-reveal">
+          <div className="flex justify-center gap-2 mb-9 sm:mb-12 will-reveal">
             {(['teacher', 'school'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setAudience(tab)}
-                className="px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200"
+                className="px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200"
                 style={audience === tab
                   ? { background: '#3949ab', color: '#ffffff', boxShadow: '0 4px 16px rgba(57,73,171,0.30)' }
                   : { background: 'transparent', color: '#64748b', border: '1.5px solid #e2e8f0' }
@@ -426,8 +433,8 @@ export default function LandingPage() {
 
       {/* ── STATS — GIANT NUMBERS ────────────────────────────────────────────── */}
       <section style={{ background: 'linear-gradient(135deg, #0d1b2a 0%, #1a237e 60%, #0d1b2a 100%)', borderTop: '1px solid rgba(121,134,203,0.20)' }}>
-        <div className="max-w-5xl mx-auto px-6 py-20">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 md:gap-4">
             {[
               { stat: '₹0', label: 'Free for teachers', accent: '#f59e0b' },
               { stat: '48h', label: 'Avg. shortlist response', accent: '#7986cb' },
@@ -435,8 +442,8 @@ export default function LandingPage() {
               { stat: '2+', label: 'Post Vacancies for free', accent: '#f59e0b' },
             ].map(({ stat, label, accent }, idx) => (
               <div key={label} className={`will-reveal reveal-delay-${idx + 1} flex flex-col items-center text-center`}>
-                <p className="font-black leading-none mb-3" style={{
-                  fontSize: 'clamp(3.5rem, 7vw, 5.5rem)',
+                <p className="font-black leading-none mb-2 sm:mb-3" style={{
+                  fontSize: 'clamp(2.25rem, 9vw, 5.5rem)',
                   background: `linear-gradient(135deg, ${accent}, #ffffff)`,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
@@ -444,8 +451,8 @@ export default function LandingPage() {
                 }}>
                   {stat}
                 </p>
-                <div className="w-8 h-0.5 rounded-full mb-3" style={{ background: accent }} />
-                <p className="text-sm leading-tight" style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</p>
+                <div className="w-8 h-0.5 rounded-full mb-2 sm:mb-3" style={{ background: accent }} />
+                <p className="text-xs sm:text-sm leading-tight" style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</p>
               </div>
             ))}
           </div>
@@ -453,17 +460,17 @@ export default function LandingPage() {
       </section>
 
       {/* ── SUBJECTS EXPLORER ────────────────────────────────────────────────── */}
-      <section className="py-20 px-6" style={{ background: '#ffffff', borderTop: '1px solid #e8edf5' }}>
+      <section className="py-14 sm:py-16 md:py-20 px-4 sm:px-6" style={{ background: '#ffffff', borderTop: '1px solid #e8edf5' }}>
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12 will-reveal">
+          <div className="text-center mb-9 sm:mb-12 will-reveal">
             <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>Explore Roles</p>
-            <h2 className="font-black mb-3" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.6rem)', color: '#0f172a', lineHeight: 1.15 }}>
+            <h2 className="font-black mb-3" style={{ fontSize: 'clamp(1.6rem, 5vw, 2.6rem)', color: '#0f172a', lineHeight: 1.15 }}>
               Find your match.
             </h2>
-            <p className="text-base" style={{ color: '#64748b' }}>Every subject. Every role. Every level.</p>
+            <p className="text-sm sm:text-base" style={{ color: '#64748b' }}>Every subject. Every role. Every level.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 will-reveal">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 will-reveal">
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full"
@@ -510,19 +517,19 @@ export default function LandingPage() {
       </section>
 
       {/* ── INTERNATIONAL ────────────────────────────────────────────────────── */}
-      <section className="py-20 px-6" style={{ background: '#0d1b2a', borderTop: '1px solid rgba(121,134,203,0.15)' }}>
+      <section className="py-14 sm:py-16 md:py-20 px-4 sm:px-6" style={{ background: '#0d1b2a', borderTop: '1px solid rgba(121,134,203,0.15)' }}>
         <div className="max-w-5xl mx-auto will-reveal">
-          <div className="flex flex-col lg:flex-row items-start gap-12">
+          <div className="flex flex-col lg:flex-row items-start gap-8 sm:gap-10 lg:gap-12">
             <div className="flex-1">
               <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold mb-5"
                 style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Globe className="w-3.5 h-3.5" />
                 Global Teachers Hiring Platform (for free)
               </div>
-              <h2 className="font-black mb-4 text-white" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.6rem)', lineHeight: 1.2 }}>
+              <h2 className="font-black mb-4 text-white" style={{ fontSize: 'clamp(1.6rem, 5vw, 2.6rem)', lineHeight: 1.2 }}>
                 Teaching opportunities beyond India.
               </h2>
-              <p className="text-base mb-8 max-w-lg" style={{ color: 'rgba(255,255,255,0.65)' }}>
+              <p className="text-sm sm:text-base mb-6 sm:mb-8 max-w-lg" style={{ color: 'rgba(255,255,255,0.65)' }}>
                 Teachers from across India have been enquiring about opportunities in Europe, South East Asia, and beyond.
                 Register your interest and we&apos;ll reach out when matching roles go live.
               </p>
@@ -572,14 +579,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── TESTIMONIALS — OPPOSITE-DIRECTION MARQUEE ────────────────────────── */}
-      <section className="py-24 overflow-hidden" style={{ background: '#f8fafc', borderTop: '1px solid #e8edf5' }}>
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-14 will-reveal">
+      <section className="py-14 sm:py-16 md:py-24 overflow-hidden" style={{ background: '#f8fafc', borderTop: '1px solid #e8edf5' }}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10 sm:mb-14 will-reveal">
             <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>Testimonials</p>
-            <h2 className="font-black" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.6rem)', color: '#0f172a', lineHeight: 1.2 }}>
+            <h2 className="font-black" style={{ fontSize: 'clamp(1.6rem, 5vw, 2.6rem)', color: '#0f172a', lineHeight: 1.2 }}>
               Real stories.
             </h2>
-            <p className="text-base mt-2" style={{ color: '#64748b' }}>From teachers who found their role and schools who found their hire.</p>
+            <p className="text-sm sm:text-base mt-2" style={{ color: '#64748b' }}>From teachers who found their role and schools who found their hire.</p>
           </div>
         </div>
 
@@ -619,21 +626,21 @@ export default function LandingPage() {
       </section>
 
       {/* ── PRICING ──────────────────────────────────────────────────────────── */}
-      <section id="pricing" className="py-24 px-6" style={{ background: '#ffffff', borderTop: '1px solid #e8edf5' }}>
+      <section id="pricing" className="py-14 sm:py-16 md:py-24 px-4 sm:px-6" style={{ background: '#ffffff', borderTop: '1px solid #e8edf5' }}>
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-14 will-reveal">
+          <div className="text-center mb-10 sm:mb-14 will-reveal">
             <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>Pricing</p>
-            <h2 className="font-black mb-3" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', color: '#0f172a', lineHeight: 1.15 }}>
+            <h2 className="font-black mb-3" style={{ fontSize: 'clamp(1.6rem, 5.5vw, 2.8rem)', color: '#0f172a', lineHeight: 1.15 }}>
               Simple. Honest. Fair.
             </h2>
-            <p className="text-base max-w-md mx-auto" style={{ color: '#64748b' }}>
+            <p className="text-sm sm:text-base max-w-md mx-auto" style={{ color: '#64748b' }}>
               Teachers pay nothing, ever. Schools pay only when they need more than the free tier.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Teachers */}
-            <div className="will-reveal-left rounded-3xl p-10" style={{ background: '#f0f4ff', border: '2px solid #c5cae9' }}>
+            <div className="will-reveal-left rounded-3xl p-6 sm:p-8 md:p-10" style={{ background: '#f0f4ff', border: '2px solid #c5cae9' }}>
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-5"
                 style={{ background: 'rgba(57,73,171,0.12)' }}>
                 <GraduationCap className="w-5 h-5" style={{ color: '#3949ab' }} />
@@ -643,7 +650,7 @@ export default function LandingPage() {
                 ✨ Always free
               </div>
               <div className="flex items-end gap-2 mb-6">
-                <span className="text-6xl font-black" style={{ color: '#3949ab' }}>₹0</span>
+                <span className="text-5xl sm:text-6xl font-black" style={{ color: '#3949ab' }}>₹0</span>
                 <span className="text-base font-medium mb-2" style={{ color: '#64748b' }}>/ forever</span>
               </div>
               <ul className="space-y-3 mb-8">
@@ -663,7 +670,7 @@ export default function LandingPage() {
             </div>
 
             {/* Schools */}
-            <div className="will-reveal rounded-3xl p-10 relative" style={{ background: '#0d1b2a', border: '2px solid rgba(245,158,11,0.40)' }}>
+            <div className="will-reveal rounded-3xl p-6 sm:p-8 md:p-10 relative" style={{ background: '#0d1b2a', border: '2px solid rgba(245,158,11,0.40)' }}>
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-5"
                 style={{ background: 'rgba(245,158,11,0.15)' }}>
                 <Building2 className="w-5 h-5" style={{ color: '#f59e0b' }} />
@@ -705,7 +712,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── FINAL CTA — BLOB ART ─────────────────────────────────────────────── */}
-      <section className="py-28 px-6 relative overflow-hidden" style={{ background: '#ffffff', borderTop: '1px solid #e8edf5' }}>
+      <section className="py-16 sm:py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden" style={{ background: '#ffffff', borderTop: '1px solid #e8edf5' }}>
         {/* Blobs */}
         <div className="animate-blob absolute pointer-events-none"
           style={{ width: 520, height: 520, borderRadius: '50%', background: 'radial-gradient(circle, rgba(57,73,171,0.09), transparent)', filter: 'blur(70px)', top: '-20%', left: '-8%' }} />
@@ -725,24 +732,24 @@ export default function LandingPage() {
             Join SchoolTeacher today
           </div>
 
-          <h2 className="font-black mb-5" style={{ fontSize: 'clamp(2.2rem, 4.5vw, 3.5rem)', color: '#0f172a', lineHeight: 1.1 }}>
+          <h2 className="font-black mb-5" style={{ fontSize: 'clamp(1.9rem, 7vw, 3.5rem)', color: '#0f172a', lineHeight: 1.1 }}>
             Your next chapter<br />starts here.
           </h2>
 
-          <p className="text-base mb-10 max-w-xl mx-auto" style={{ color: '#64748b' }}>
+          <p className="text-sm sm:text-base mb-8 sm:mb-10 max-w-xl mx-auto" style={{ color: '#64748b' }}>
             Whether you&apos;re a teacher looking for the right role or a school that needs the right hire —
             SchoolTeacher is where it happens.
           </p>
 
-          <div className="flex flex-wrap gap-4 justify-center">
+          <div className="flex flex-wrap gap-3 sm:gap-4 justify-center">
             <Link href="/register?role=TEACHER"
-              className="btn-glow inline-flex items-center gap-2 font-bold px-8 py-4 rounded-xl text-white text-sm"
+              className="btn-glow inline-flex items-center gap-2 font-bold px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-white text-sm"
               style={{ background: 'linear-gradient(135deg, #3949ab, #5c6bc0)', boxShadow: '0 6px 24px rgba(57,73,171,0.35)' }}>
               Find Teaching Jobs
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link href="/register?role=RECRUITER"
-              className="inline-flex items-center gap-2 font-bold px-8 py-4 rounded-xl text-sm"
+              className="inline-flex items-center gap-2 font-bold px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-sm"
               style={{ background: 'transparent', border: '2px solid #0f172a', color: '#0f172a' }}>
               <Building2 className="w-4 h-4" />
               Hire a Teacher
@@ -753,8 +760,8 @@ export default function LandingPage() {
 
       {/* ── FOOTER ───────────────────────────────────────────────────────────── */}
       <footer style={{ background: '#0a1628', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <div className="max-w-6xl mx-auto px-6 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 sm:gap-8 mb-8 sm:mb-10">
             <div className="col-span-2 md:col-span-1">
               <Link href="/" className="flex items-center gap-0.5 mb-3">
                 <span className="text-xl font-black" style={{ color: '#7986cb' }}>School</span>

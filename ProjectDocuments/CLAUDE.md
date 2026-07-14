@@ -20,6 +20,7 @@ Internal folder / npm package names are `eduhire-*` (historical). **Every user-f
 EduHire/                                # folder name is historical
 ├── ProjectDocuments/                    # ← all foundation docs live here
 │   ├── CLAUDE.md                        # you are here
+│   ├── NewChatStartOff.md               # ← read this first in a fresh session — current phase, what's done/pending
 │   ├── PROJECT_BLUEPRINT.md             # domain, architecture, cross-cutting rules
 │   ├── FRONTEND_GUIDE.md                # FE standards & Do/Don't
 │   ├── BACKEND_GUIDE.md                 # BE standards & Do/Don't
@@ -46,6 +47,7 @@ The two app folders are **independent npm projects**, not a monorepo. Shared con
 
 | Situation | Read |
 |---|---|
+| Picking up a fresh chat session, mid-project | `NewChatStartOff.md` first, then `DECISIONS.md` (read the tail) |
 | New contributor onboarding | This file → `PROJECT_BLUEPRINT.md` → `SESSION_NOTES_2026_07.md` → the relevant guide |
 | Touching UI, pages, components, forms, styles | `FRONTEND_GUIDE.md` + `REUSABLE_FILE_GUIDE_FRONTEND.md` |
 | Touching API, Mongoose models, auth, payments, workers | `BACKEND_GUIDE.md` |
@@ -95,34 +97,20 @@ Run in two terminals. No top-level orchestration.
 12. **Every money-flow and auth-flow change needs a test.**
 13. **Read `BUG_PATTERNS.md` before committing** if you touched auth, payments, notifications, uploads, or Mongoose schemas. That file is the sum of months of pain in the sibling project.
 
-## Current Status (2026-07-05)
+## Current Status (2026-07-09)
 
-### 🌱 Phase 0 — Bootstrapping (COMPLETE)
+**The app is fully built and live end-to-end** (auth, all domain modules, admin, chat, payments
+scaffolding) — this section used to describe a pre-build roadmap; that roadmap is done. For
+what's actually happening right now, **read `NewChatStartOff.md` in this folder first**, then
+`DECISIONS.md` (canonical, dated decision log — read the tail/highest-numbered section for the
+latest state). This section is now just a one-line pointer, kept short on purpose so it can't go
+stale the way the old version did.
 
-**Docs seeded** from RxJobs4U Phase 3f:
-- Bug patterns (35+), production security checklist, secrets rotation runbook, frontend + backend guides — all inherited and updated for School Teacher.
-- Foundation docs (CLAUDE.md, PROJECT_BLUEPRINT.md, DATA_MODEL.md) rewritten for domain.
-- DECISIONS.md enriched with 15+ hardened decisions from the sibling project.
-
-**Security scaffolding shipped**:
-- `main.ts` with Helmet (COOP `same-origin-allow-popups`), custom Mongo-operator sanitizer (not `express-mongo-sanitize` — that crashes on Node 20 read-only `req.query`), CORS allow-list, 1 MB body cap, `trust proxy`, pino, `AllExceptionsFilter`.
-- `env.validation.ts` — Joi fail-fast with `JWT_ACCESS_SECRET`/`JWT_REFRESH_SECRET`/`CONFIG_ENCRYPTION_KEY` ≥32 chars & mutually distinct. **Actually wired into `ConfigModule.forRoot()` as of `DECISIONS.md` D46 (2026-07-08)** — it existed as dead code (defined but never passed to `ConfigModule`) until then; verify it's still wired before trusting this line again.
-- `common/utils/` — `safeEqual` (timing-safe HMAC, now used by the Razorpay webhook), `redactEmail`/`redactPhone` (now called at every raw email/phone log site).
-- `common/filters/all-exceptions.filter.ts`, `common/guards/csrf.guard.ts` (now applied to `/auth/refresh`/`/auth/logout`), `common/decorators/public.decorator.ts`, `common/recaptcha/recaptcha.service.ts` (skips outside prod).
-- `tokenVersion` on the User schema + JWT payload, bumped on password change/reset and admin delete/restore (D46) — force-invalidates existing tokens.
-- `SystemConfig` module — dynamic pricing pattern with `displayKind`/`unit`/`maxValue` metadata.
-- FE `proxy.ts` with public paths allow-list, `next.config.ts` headers, axios client with in-memory token + refresh-then-retry, `uploads.ts` with client-side MIME + size validation. Server-side `verifyUploadKey` (D46) now backs this up with a real S3 `HeadObject` check before persisting any upload URL.
-- **Caveat:** this "shipped" list has been wrong before — several of these items were listed here as done while actually being dead code or entirely absent, only caught by an explicit audit in `DECISIONS.md` §11 D46. Don't take this section as ground truth without spot-checking the actual code.
-
-### ⏳ Phase 1 — Next
-
-- Fill `PROJECT_SPEC.md` with the actual product spec.
-- Auth module (register/login/OTP/forgot-password/Google OAuth id_token + `tokenVersion` revocation + reCAPTCHA gate). **Build in `DECISIONS.md` D41 from the start**: nullable `passwordHash`, `hasPassword` on `SafeUser`/`GET /users/me`, and a Settings "Set Password" mode (no current-password field) for Google-only accounts — don't ship "Change Password" only and patch this later.
-- Domain modules: `schools`, `users` (teacher + school-admin profiles), `postings`, `applications`, `payments`, `subscriptions`, `notifications` (Socket.IO + Web Push).
-- **Chat module** (Socket.IO scoped per application room) — the differentiator.
-- Admin module, past the current job-approval scaffold: when built out, add a `LegalContentModule` per `DECISIONS.md` D42 so `/terms` and `/privacy-policy` (currently static, inherited from RxJobs4U) become admin-editable, alongside an `email-templates`-equivalent if transactional email copy needs the same treatment.
-- Screen design + implementation.
-- Populate `SystemConfig` pricing seeds via admin UI.
+**Production-hardening push** ("demo is over, now we are building and making it live") has run
+three phases so far, all complete and live-verified: Phase 1 (full backend domain rename +
+admin parity + security hardening, `DECISIONS.md` §11), Phase 2 (Recruiter/School area cleanup +
+enum consolidation, §13), Phase 3 (Teacher/Job Seeker profile area, same treatment, §15). Phase 4
+(chat file-upload attachments + message-length final call) is next, not yet started.
 
 ## When in Doubt
 

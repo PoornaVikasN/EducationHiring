@@ -1,21 +1,32 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as nodemailer from 'nodemailer';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
-import { SystemConfigService } from '../system-config/system-config.service';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private readonly senderEmail: string;
   private readonly senderName: string;
+  private readonly transporter: nodemailer.Transporter;
 
   constructor(
     private config: ConfigService,
-    private systemConfig: SystemConfigService,
     private emailTemplates: EmailTemplatesService,
   ) {
-    this.senderEmail = this.config.get<string>('SMTP_SENDER_EMAIL', 'noreply@schoolteacher.in');
+    this.senderEmail = this.config.get<string>('GMAIL_USER', 'noreply@schoolteacher.in');
     this.senderName = this.config.get<string>('SMTP_SENDER_NAME', 'SchoolTeacher');
+    this.transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        type: 'OAuth2',
+        user: this.config.get<string>('GMAIL_USER'),
+        clientId: this.config.get<string>('GMAIL_CLIENT_ID'),
+        clientSecret: this.config.get<string>('GMAIL_CLIENT_SECRET'),
+        refreshToken: this.config.get<string>('GMAIL_REFRESH_TOKEN'),
+        // No static accessToken — nodemailer fetches a fresh one via refreshToken on every send
+      },
+    });
   }
 
   async sendRegistrationOtpEmail(to: string, name: string, otp: string): Promise<void> {
@@ -216,31 +227,18 @@ export class EmailService {
   }
 
   private async send(to: string, subject: string, html: string): Promise<void> {
-    const apiKey = await this.systemConfig.getSecret('BREVO_API_KEY');
-    if (!apiKey) {
-      this.logger.warn(`Email skipped (no BREVO_API_KEY) — to: ${to}, subject: ${subject}`);
+    if (!this.config.get<string>('GMAIL_REFRESH_TOKEN')) {
+      this.logger.warn(`Email skipped (no GMAIL_REFRESH_TOKEN) — to: ${to}, subject: ${subject}`);
       return;
     }
     try {
-      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          accept: 'application/json',
-          'api-key': apiKey,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          sender: { name: this.senderName, email: this.senderEmail },
-          to: [{ email: to }],
-          subject,
-          htmlContent: html,
-        }),
+      await this.transporter.sendMail({
+        from: `"${this.senderName}" <${this.senderEmail}>`,
+        to,
+        subject,
+        html,
       });
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`Brevo API ${res.status}: ${body}`);
-      }
-      this.logger.log(`Email sent → ${to}`);
+      this.logger.log(`Email sent → ${to} subject="${subject}"`);
     } catch (err: unknown) {
       this.logger.error(`Email send failed to ${to}: ${String(err)}`);
       throw err;

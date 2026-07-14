@@ -9,8 +9,8 @@ export const FREE_TIER_JOB_LIMIT = 2; // Free active posts/month without subscri
 export const APPLICATION_FEE_PAISE = 9_900; // ₹99 — Teacher confirms interview after shortlist (off by default)
 export const SHORTLIST_PAY_WINDOW_MS = 48 * 60 * 60 * 1000; // 48h to pay or auto-close
 
-// --- Job lifecycle TTLs ---
-export const JOB_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30d active listing window
+// Job listing duration moved to SystemConfig (key: JOB_LISTING_DURATION_DAYS) — admin-editable,
+// see SystemConfigService.getJobListingDurationMs(). Was a hardcoded 30-day constant here before.
 
 // --- Subscription cycle ---
 export const SUBSCRIPTION_CYCLE_DAYS = 30; // Billing cadence for school subscription

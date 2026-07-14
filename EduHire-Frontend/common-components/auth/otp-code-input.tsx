@@ -41,7 +41,7 @@ export function OtpCodeInput({ length = 6, value, onChange, autoFocus }: OtpCode
   };
 
   return (
-    <div className="flex gap-2 justify-between">
+    <div className="flex gap-1.5 sm:gap-2.5 justify-between">
       {digits.map((digit, i) => (
         <input
           key={i}
@@ -54,7 +54,7 @@ export function OtpCodeInput({ length = 6, value, onChange, autoFocus }: OtpCode
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={handlePaste}
-          className="w-11 h-12 text-center text-lg font-mono font-bold rounded-lg border border-border-default bg-bg-card focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
+          className="min-w-0 w-8 h-10 sm:w-11 sm:h-12 text-center text-base sm:text-lg font-mono font-bold rounded-lg border border-border-default bg-bg-card focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-shadow"
         />
       ))}
     </div>

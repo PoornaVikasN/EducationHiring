@@ -35,22 +35,22 @@ export default async function TermsPage() {
       <SiteHeader forceSolid />
       <div className="h-16" />
 
-      <div className="max-w-3xl mx-auto px-6 py-16">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
         {/* Title */}
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0"
                style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
-            <FileText className="w-5 h-5" style={{ color: '#2563eb' }} />
+            <FileText className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: '#2563eb' }} />
           </div>
-          <h1 className="text-2xl md:text-3xl font-black" style={{ color: '#0d1b2a' }}>{page?.title ?? 'Terms & Conditions'}</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-black" style={{ color: '#0d1b2a' }}>{page?.title ?? 'Terms & Conditions'}</h1>
         </div>
-        <p className="text-sm mb-12" style={{ color: '#64748b' }}>{page?.lastUpdatedLabel ?? 'Last updated: July 2026'}</p>
+        <p className="text-sm mb-8 sm:mb-12" style={{ color: '#64748b' }}>{page?.lastUpdatedLabel ?? 'Last updated: July 2026'}</p>
 
         {page ? (
-          <div className="space-y-10" style={{ color: '#334155', lineHeight: 1.8, fontSize: '0.9375rem' }}>
+          <div className="space-y-8 sm:space-y-10" style={{ color: '#334155', lineHeight: 1.8, fontSize: '0.9375rem' }}>
             {page.sections.map((s) => (
               <section key={s.heading}>
-                <h2 className="text-lg font-bold mb-3" style={{ color: '#0d1b2a' }}>{s.heading}</h2>
+                <h2 className="text-base sm:text-lg font-bold mb-3" style={{ color: '#0d1b2a' }}>{s.heading}</h2>
                 <div className="legal-body" dangerouslySetInnerHTML={{ __html: s.body }} />
               </section>
             ))}
@@ -59,7 +59,7 @@ export default async function TermsPage() {
           <p className="text-sm" style={{ color: '#64748b' }}>Unable to load this page right now. Please try again shortly.</p>
         )}
 
-        <div className="mt-16 pt-8 flex gap-6" style={{ borderTop: '1px solid #e8edf5' }}>
+        <div className="mt-12 sm:mt-16 pt-8 flex flex-wrap gap-4 sm:gap-6" style={{ borderTop: '1px solid #e8edf5' }}>
           <Link href="/privacy-policy" className="text-sm font-medium" style={{ color: '#3949ab' }}>Privacy Policy →</Link>
           <Link href="/" className="text-sm" style={{ color: '#64748b' }}>← Back to Home</Link>
         </div>

@@ -107,4 +107,7 @@ export const jobsApi = {
 
   adminDisable: (id: string) =>
     apiClient.patch(`/jobs/admin/${id}/disable`),
+
+  adminDelete: (id: string) =>
+    apiClient.delete(`/jobs/admin/${id}`),
 };

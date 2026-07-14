@@ -12,16 +12,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user) {
-      router.replace('/login');
-      return;
-    }
-    if (user.role === Role.RECRUITER) {
-      router.replace('/recruiter/dashboard');
-    }
+    if (!user) { router.replace('/login'); return; }
+    if (user.role === Role.RECRUITER) { router.replace('/recruiter/dashboard'); return; }
+    if (user.role === Role.ADMIN) { router.replace('/admin'); return; }
   }, [user, isLoading, router]);
 
-  if (isLoading || !user) {
+  // Show spinner while loading OR while a redirect is pending (prevents flash of wrong-role content)
+  if (isLoading || !user || user.role !== Role.TEACHER) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg-page">
         <div className="w-8 h-8 rounded-full border-4 border-brand-primary border-t-transparent animate-spin" />
