@@ -399,6 +399,32 @@ const SEEDS: Array<{
     inAppRecruiterBody: 'Your dispute "{{subject}}" has been resolved. Check your email for details.',
   },
 
+  // ── 14a. Bulk-Import Account Activation ───────────────────────────────────
+  {
+    key: 'ACCOUNT_ACTIVATION',
+    name: 'Account Activation (Bulk Import)',
+    trigger: 'Admin bulk-imports a user',
+    description: 'Sent to a bulk-imported user with a secure link to set their password and activate their account.',
+    subject: 'Your School Teacher account is ready — set your password',
+    variables: ['name', 'roleLabel', 'activationLink'],
+    channels: { seekerEmail: true, seekerInApp: false, recruiterEmail: true, recruiterInApp: false },
+    body: shell({
+      preheader: 'Your School Teacher account has been created — set a password to activate it.',
+      badge: '🔑',
+      headline: 'Your account is ready!',
+      tagline: 'An administrator has created your {{roleLabel}} account on School Teacher.',
+      headerLabel: 'Account Activation',
+      content:
+        hi('{{name}}') +
+        para('An administrator has created your <strong>School Teacher</strong> account as a <strong>{{roleLabel}}</strong>. To get started, set a password using the secure link below.') +
+        ctaBtn('Set My Password →', '{{activationLink}}') +
+        tip('⏰ <strong>This link expires in 72 hours.</strong> If it expires before you use it, ask your administrator to resend the activation email.') +
+        smallNote('If you weren\'t expecting this email, you can safely ignore it — no account changes will be made until the link above is used.'),
+    }),
+    inAppSeekerTitle: null, inAppSeekerBody: null,
+    inAppRecruiterTitle: null, inAppRecruiterBody: null,
+  },
+
   // ── 14. Dispute Rejected ──────────────────────────────────────────────────
   {
     key: 'DISPUTE_REJECTED',

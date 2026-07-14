@@ -6,6 +6,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { AuditModule } from '../audit/audit.module';
 import { SystemConfigModule } from '../system-config/system-config.module';
 import { User, UserSchema } from '../users/schemas/user.schema';
+import { ActivationToken, ActivationTokenSchema } from '../admin/bulk-import/schemas/activation-token.schema';
 import { RecaptchaService } from '../../common/recaptcha/recaptcha.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -22,6 +23,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       { name: User.name, schema: UserSchema },
       { name: Otp.name, schema: OtpSchema },
       { name: RefreshTokenBlacklist.name, schema: RefreshTokenBlacklistSchema },
+      { name: ActivationToken.name, schema: ActivationTokenSchema },
     ]),
     JwtModule.registerAsync({
       useFactory: (config: ConfigService) => ({

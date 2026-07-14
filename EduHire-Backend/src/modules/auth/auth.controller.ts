@@ -108,6 +108,17 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('activation/set-password')
+  @HttpCode(HttpStatus.OK)
+  setPasswordViaActivation(
+    @Body('token') token: string,
+    @Body('password') password: string,
+  ) {
+    return this.authService.completeActivation(token, password);
+  }
+
+  @Public()
   @UseGuards(CsrfGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('refresh')

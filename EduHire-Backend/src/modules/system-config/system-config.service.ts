@@ -79,6 +79,17 @@ const SETTING_SEEDS: SettingSeed[] = [
     unit: 'days',
     displayKind: 'number',
   },
+  {
+    key: 'BULK_IMPORT_MAX_ROWS',
+    label: 'Bulk Import Max Rows',
+    description:
+      'Maximum number of data rows accepted in a single Admin → Users bulk-import Excel file. Uploads processed synchronously within the request, so keep this bounded to what completes in a reasonable time.',
+    valueNumber: 2000,
+    minValue: 100,
+    maxValue: 5000,
+    unit: 'rows',
+    displayKind: 'number',
+  },
 ];
 
 // API keys that admins can rotate via the admin UI.

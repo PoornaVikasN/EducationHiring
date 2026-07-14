@@ -164,6 +164,16 @@ export class User {
   @Prop({ type: Number, default: 0 })
   tokenVersion!: number;
 
+  // Set when the user completes the Set-Password activation flow (bulk import
+  // and any other future no-password-yet creation path). Combined with the
+  // existing `passwordHash: null` convention (already used for Google-only
+  // signups), this is the "pending activation" signal.
+  @Prop({ type: Date, default: null })
+  activatedAt!: Date | null;
+
+  // Traceability only — which bulk-import batch created this user, if any.
+  @Prop({ type: Types.ObjectId, ref: 'ImportBatch', default: null })
+  importBatchId!: Types.ObjectId | null;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

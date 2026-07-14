@@ -1,7 +1,8 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Filter, Plus, RotateCcw, Shield, ShieldOff, Trash2, Users } from 'lucide-react';
+import { Filter, Plus, RotateCcw, Shield, ShieldOff, Trash2, Upload, Users } from 'lucide-react';
+import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { adminApi, type AdminUser } from '../../../lib/api/admin';
 import { AdminCreateUserDialog } from '../../../common-components/admin-create-user-dialog';
@@ -231,6 +232,11 @@ function UsersContent() {
             {showDeleted ? 'Hide deleted' : 'Show deleted'}
           </Button>
           <AdminExportButton onExport={handleExport} disabled={!rows.length} />
+          <Link href="/admin/users/bulk-import">
+            <Button variant="outline" size="sm">
+              <Upload className="w-3.5 h-3.5 mr-1" /> Bulk Import
+            </Button>
+          </Link>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Create user
           </Button>

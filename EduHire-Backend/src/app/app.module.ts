@@ -11,6 +11,7 @@ import { envValidationSchema } from '../config/env.validation';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AdminModule } from '../modules/admin/admin.module';
+import { BulkImportModule } from '../modules/admin/bulk-import/bulk-import.module';
 import { AuditModule } from '../modules/audit/audit.module';
 import { SystemConfigModule } from '../modules/system-config/system-config.module';
 import { DisputesModule } from '../modules/disputes/disputes.module';
@@ -68,6 +69,7 @@ function buildMongoUri(): string {
     NotificationsModule,
     UploadsModule,
     AdminModule,
+    BulkImportModule,
     AuditModule,
     SystemConfigModule,
     DisputesModule,

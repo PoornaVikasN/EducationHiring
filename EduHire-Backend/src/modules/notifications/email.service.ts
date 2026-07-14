@@ -193,6 +193,23 @@ export class EmailService {
     `);
   }
 
+  async sendAccountActivationEmail(to: string, name: string, role: string, activationLink: string): Promise<void> {
+    const roleLabel = role === 'RECRUITER' ? 'School' : role === 'TEACHER' ? 'Teacher' : 'Admin';
+    const db = await this.renderFromDb(
+      'ACCOUNT_ACTIVATION',
+      { name, roleLabel, activationLink },
+      role === 'RECRUITER' ? 'recruiterEmail' : 'seekerEmail',
+    );
+    await this.send(to, db?.subject ?? 'Your School Teacher account is ready — set your password', db?.html ?? `
+      <p>Hi ${name},</p>
+      <p>An administrator has created your <strong>School Teacher</strong> account as a <strong>${roleLabel}</strong>.</p>
+      <p>Set a password to activate your account:</p>
+      <p><a href="${activationLink}" style="display:inline-block;background:#3949ab;color:#fff;font-weight:600;padding:10px 24px;border-radius:8px;text-decoration:none">Set My Password →</a></p>
+      <p style="color:#888;font-size:13px">This link expires in 72 hours.</p>
+      <br><p>— The SchoolTeacher Team</p>
+    `);
+  }
+
   async sendPasswordResetOtpEmail(to: string, otp: string): Promise<void> {
     const db = await this.renderFromDb('PASSWORD_RESET_OTP', { otp });
     await this.send(to, db?.subject ?? 'Reset your SchoolTeacher password', db?.html ?? `

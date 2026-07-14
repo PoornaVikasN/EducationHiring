@@ -28,6 +28,7 @@ import {
   RefreshTokenBlacklistDocument,
 } from './schemas/refresh-token-blacklist.schema';
 import { Otp, OtpDocument } from './schemas/otp.schema';
+import { ActivationToken, ActivationTokenDocument } from '../admin/bulk-import/schemas/activation-token.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { SafeUser, toSafeUser } from '../../shared/utils/safe-user';
 
@@ -53,6 +54,8 @@ export class AuthService {
     @InjectModel(Otp.name) private otpModel: Model<OtpDocument>,
     @InjectModel(RefreshTokenBlacklist.name)
     private blacklistModel: Model<RefreshTokenBlacklistDocument>,
+    @InjectModel(ActivationToken.name)
+    private activationTokenModel: Model<ActivationTokenDocument>,
     private jwtService: JwtService,
     private config: ConfigService,
     private emailService: EmailService,
@@ -150,7 +153,11 @@ export class AuthService {
     }
     if (!user.passwordHash) {
       this.auditService.logAuthEvent('AUTH_FAILED', masked, 'password_login_not_set', ctx.ip, ctx.userAgent);
-      throw new UnauthorizedException('This account uses Google sign-in. Please use the "Continue with Google" button below.');
+      throw new UnauthorizedException(
+        user.importBatchId
+          ? 'Your account is not yet activated. Please check your email for the account-activation link.'
+          : 'This account uses Google sign-in. Please use the "Continue with Google" button below.',
+      );
     }
 
     if (!user.isActive) {
@@ -409,6 +416,36 @@ export class AuthService {
       .exec();
 
     return { message: 'Password reset successfully. You can now log in with your new password.' };
+  }
+
+  // ── Account Activation (bulk-import Set-Password link) ───────────────────────
+  // Structurally a close cousin of resetPassword above, keyed by a link token
+  // (sha256-hashed, stored in ActivationToken) instead of an OTP code.
+
+  async completeActivation(token: string, newPassword: string): Promise<{ message: string }> {
+    if (!newPassword || newPassword.length < 10) {
+      throw new BadRequestException('Password must be at least 10 characters.');
+    }
+
+    const tokenHash = this.hashValue(token);
+    const tokenDoc = await this.activationTokenModel.findOne({ tokenHash }).exec();
+    if (!tokenDoc || tokenDoc.used || tokenDoc.expiresAt < new Date()) {
+      throw new BadRequestException('This activation link is invalid or has expired. Please ask your administrator to resend it.');
+    }
+
+    const user = await this.userModel.findOne({ _id: tokenDoc.userId, deletedAt: null }).exec();
+    if (!user) throw new NotFoundException('Account not found.');
+
+    const newHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.userModel
+      .findByIdAndUpdate(user._id, {
+        $set: { passwordHash: newHash, activatedAt: new Date() },
+        $inc: { tokenVersion: 1 },
+      })
+      .exec();
+    await this.activationTokenModel.updateOne({ _id: tokenDoc._id }, { $set: { used: true } }).exec();
+
+    return { message: 'Password set successfully. You can now log in.' };
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────

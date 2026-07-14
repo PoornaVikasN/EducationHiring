@@ -44,6 +44,9 @@ export const authApi = {
   resetPassword: (data: { email: string; otp: string; password: string }) =>
     apiClient.post<{ message: string }>('/auth/reset-password', data),
 
+  setPasswordViaActivation: (token: string, password: string) =>
+    apiClient.post<{ message: string }>('/auth/activation/set-password', { token, password }),
+
   logout: () =>
     apiClient.post<{ message: string }>('/auth/logout'),
 

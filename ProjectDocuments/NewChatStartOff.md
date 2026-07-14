@@ -1,9 +1,21 @@
 # New Chat Start-Off — read this first if picking up a fresh session
 
-**Last updated:** 2026-07-13. **Phases 1-3 done, independently audited (D53), E2E-tested (D56),
-and the platform's 3 third-party integrations (Google Maps, Google OAuth, Gmail SMTP email) are
-all confirmed live and working (D54, D59).** Backend/frontend both typecheck clean. Docs
-(`DATA_MODEL.md`, `PROJECT_BLUEPRINT.md`) fully rewritten from ground truth (D52).
+**Last updated:** 2026-07-14 (later same day). **New feature shipped: Bulk User Import**
+(Admin → Users → Bulk Import) — one unified `.xlsx` template, partial-success import, SCHOOL
+rows create the School Profile inline, no temp passwords (secure Set-Password activation links
+instead, a new pattern — `ActivationToken` + `POST /auth/activation/set-password` +
+`app/(auth)/activate/[token]/page.tsx`), downloadable error reports, import history + resend.
+Live-verified end-to-end against the real Atlas DB with throwaway test data (cleaned up after) —
+found and fixed one real bug along the way (`importBatchId` never persisted, silently breaking
+the resend-emails feature). Full detail in `DECISIONS.md` §16 (D66-D67).
+
+**Last updated (previous entry):** 2026-07-14. **Phases 1-3 done, independently audited (D53), E2E-tested (D56),
+and the platform's 4 third-party integrations (Google Maps, Google OAuth, Gmail SMTP email,
+Google reCAPTCHA v3) are all confirmed live and working (D54, D59-D60).** Backend/frontend both
+typecheck clean. Docs (`DATA_MODEL.md`, `PROJECT_BLUEPRINT.md`) fully rewritten from ground truth
+(D52). **Chat and real-time notifications, the admin panel's data segregation, role-based
+navigation guards, and mobile responsiveness (landing + auth + legal pages) have all been fixed
+and/or hardened since — see "Since the last update" below for the full list (D59-D65).**
 
 **The E2E pass found and fixed the most severe bug of the whole project (D55):** under the
 default configuration (`TEACHER_PAID_ENABLED` off — the documented default), a recruiter could
@@ -17,35 +29,92 @@ along the way), and email delivery migrated from a half-done Brevo setup to real
 SMTP/OAuth2 via nodemailer matching RxJobs4U exactly (D59) — verified live by actually receiving
 an email, not just a clean compile.
 
-**What's confirmed working, all via live testing** (curl for backend logic, one real email
-receipt for Gmail): full Teacher/Recruiter/Admin journeys (see D56), job posting + free-tier
-limits + admin job delete + configurable listing duration, chat both directions at the correct
-unlock state, Google Maps/OAuth, and now Gmail SMTP email delivery.
+**What's confirmed working, all via live testing** (curl for backend logic, real email receipt for
+Gmail, and — as of this update — actual browser testing by the user): full Teacher/Recruiter/Admin
+journeys (see D56), job posting + free-tier limits + admin job delete + configurable listing
+duration, chat both directions at the correct unlock state (browser-confirmed, D59-D60), real-time
+notifications (browser-confirmed, same fix as chat, D60), Google Maps/OAuth/reCAPTCHA, and Gmail
+SMTP email delivery.
 
-**Not yet covered** — flag these before considering the project fully closed: full Razorpay
-checkout completion (needs real test-mode keys + a browser, not just curl), resume/video S3
-upload completion, WhatsApp OTP verification, the admin dispute-ticket flow, and **any UI/visual
-testing at all** — everything so far has been API-level (curl) only, no browser was driven. A page
-could be visually broken (layout, missing button, JS error) and none of this would have caught it.
-**A full manual E2E test script (every role, every screen, every button) is being written now**
-for the user to run themselves in a real browser before going to production — check this file's
-"pending" section or `DECISIONS.md`'s tail for whether that's done yet.
+## Since the last update (2026-07-14) — D59 through D65
+
+The user started doing their own manual browser QA (the first real UI/visual testing this whole
+project had — see D56/D60's checklist), which immediately surfaced real bugs no amount of curl
+testing could have caught. In rough chronological order:
+
+- **D59/D60 — Chat + notifications were completely broken in the browser** despite testing clean
+  via a raw Node `socket.io-client` script. Two stacked bugs: (1) `users.service.ts`'s `getMe()`
+  returned a raw Mongoose document instead of the shared `SafeUser` shape, so `user.id` was
+  `undefined` after any page reload — this alone broke Teacher-side chat message alignment. (2) The
+  real root cause once (1) was fixed and the bug persisted: `NEXT_PUBLIC_API_BASE_URL` was being
+  read with two contradictory expected shapes across the codebase (bare origin for Socket.IO vs.
+  `/api`-suffixed for REST calls) — whichever value you set, the other set of consumers broke.
+  Fixed with a new `SOCKET_ORIGIN` derived from the single `NEXT_PUBLIC_API_URL` REST client uses.
+  **User confirmed both chat and the notification bell working live after this fix.**
+- **D61 — Admin panel retrofitted with tabs-based data segregation**, matching RxJobs4U's pattern.
+  Only 3 of 9 admin pages actually needed it (schools: verification-status pill tabs; config: full
+  shadcn `Tabs` wrapping 4 sections; users: role pill tabs) — the others either already matched or
+  RxJobs4U's tabs there exist only for its SOS/Full-time job-type split, which EduHire doesn't have.
+- **D62 — Role-based navigation guards fixed to match RxJobs4U's already-shipped (but never
+  actually ported) pattern.** All 3 role layouts (`admin`, `recruiter`, `(app)`/teacher) were
+  missing a render-path guard, so a role mismatch could render that layout's real content before
+  the redirect fired — this is what caused the reported "logged in as Admin, came back an hour
+  later, saw the School dashboard" symptom (compounded by the refresh-token cookie being shared
+  across same-origin tabs). Also fixed the logout handler (`app-header.tsx`) to
+  `queryClient.clear()` + `window.location.replace('/login')` instead of a bare `router.push`,
+  fixing stale cross-role cache and Back-button-into-the-app-after-logout.
+- **D63/D64 — Mobile responsiveness pass** on the landing page, all 4 auth pages, and both legal
+  pages: fixed a real overlap bug (a badge absolutely-positioned over body text that could wrap
+  further on mobile), an OTP-input overflow risk, oversized fixed paddings/font sizes applied
+  identically at every breakpoint (including a couple of `clamp()` calls whose `vw` term was too
+  small to ever kick in below ~800px, silently pinning "responsive" text at desktop size on every
+  phone), and shrunk the auth card further on mobile per explicit user feedback. Also added a
+  **cookie-consent notice** (`common-components/cookie-consent.tsx`) — none existed despite the
+  site loading Google Maps/reCAPTCHA/OAuth unconditionally — and a matching "Cookies" section that
+  was missing from the Privacy Policy content entirely.
+- **D65 — reCAPTCHA badge was rendering app-wide** (landing, dashboards, admin — everywhere) even
+  though it's only used on the 4 auth pages, because `RecaptchaProvider` wrapped the root
+  `Providers` instead of just the `(auth)` layout. Fixed the scoping, and — since the badge's
+  extremely high z-index would otherwise sit on top of the new cookie banner — hid the badge
+  entirely in favor of Google's sanctioned alternative: a small required disclaimer text under each
+  of the 4 actual `executeRecaptcha()`-triggering submit buttons.
+- **Hero image mobile crop fixed** — the landscape hero photo was forced into a full `100svh`
+  portrait box with `object-fit:cover` on mobile, which (correctly, mathematically) crops away most
+  of the frame's width to fill the height. Shortened the hero's minimum height on mobile
+  (`min-h-[78svh]` → steps up to `100svh` at `md:`) so the forced scale factor is smaller and
+  visibly more of the photo shows — a real "zoom out," not just a repositioned crop.
+
+All of the above are logged in full in `DECISIONS.md`'s tail (D59-D65) — this section is a
+summary, that file is the ground truth if any detail here is unclear.
+
+**No visual/browser tool was available in the session that did D63-D65's responsiveness work** —
+that pass was a careful code-level box-model audit (padding/gap/width math traced by hand against
+320-375px viewports), not a live-rendered screenshot check. `tsc --noEmit` is clean, but treat the
+mobile-responsiveness claims as **not yet independently browser-verified** until the user (or a
+session with real screenshot/Playwright tooling) confirms.
 
 **Open items, not yet acted on:**
 - `NEXT_PUBLIC_GOOGLE_CLIENT_SECRET` is set in the frontend `.env.local` but a Google OAuth client
   secret should never carry a `NEXT_PUBLIC_` prefix (bundles it into public JS). Unused in any
-  frontend code (verified via grep) so nothing is actually exposed yet — remove it before anyone
-  references it by accident.
+  frontend code (verified via grep, as of the session that found it) so nothing is actually exposed
+  yet — remove it before anyone references it by accident. Not re-verified this update.
 - **The backend `.env`'s `GMAIL_USER`/`GMAIL_CLIENT_ID`/`GMAIL_CLIENT_SECRET`/`GMAIL_REFRESH_TOKEN`
   are currently RxJobs4U's own credentials**, temporarily borrowed (client-authorized) purely to
   verify the Gmail SMTP migration actually sends real mail. **These must be swapped for EduHire's
   own dedicated Gmail account before production** — sending School Teacher's transactional email
   through RxJobs4U's Google account is not an acceptable permanent state (wrong sender identity,
-  shared rate limits, mixes two products' mail reputation). Tracked as a todo in this session; if
-  picking this up cold, check whether it's still pending before deploying.
-- Chat is the last functionally-untested-in-depth area per the user's own read of the project —
-  confirmed working for text messages both directions, but file-upload attachments (Phase 4, D39)
-  are not built and the message-length limit (D40) is still an undecided number.
+  shared rate limits, mixes two products' mail reputation). User has since confirmed Gmail SMTP
+  works end-to-end (received a real email) — this cleanup is now unblocked, just not yet done.
+- Full Razorpay checkout completion, resume/video S3 upload completion, WhatsApp OTP verification,
+  and the admin dispute-ticket flow are all still untested beyond what Phase 1's presign-flow
+  verification and order-creation checks already covered — none of this session's browser-testing
+  push happened to touch them.
+- Chat file-upload attachments (Phase 4, D39) are still not built; the message-length limit (D40)
+  is still an undecided number (currently implemented as 2000 chars).
+- The D63-D65 mobile-responsiveness/cookie-consent/reCAPTCHA-scoping work has **not yet been
+  ported to RxJobs4U**, even though RxJobs4U may have the identical bugs (it wasn't checked this
+  session) — the user asked for and received a standalone reusable prompt for this, to run in a
+  separate RxJobs4U session themselves.
 
 This file exists because the working chat session that did Phases 1-3 of the EduHire
 production-hardening push got long enough to risk running out of context. If you're a fresh

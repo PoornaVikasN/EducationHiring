@@ -226,6 +226,35 @@ export interface LegalPage {
   updatedAt: string;
 }
 
+export interface FailedImportRow {
+  rowNumber: number;
+  data: Record<string, unknown>;
+  errorReason: string;
+}
+
+export interface ImportBatchSummary {
+  _id: string;
+  importedByAdminEmail: string;
+  fileName: string;
+  totalRows: number;
+  successCount: number;
+  failedCount: number;
+  status: 'COMPLETED' | 'COMPLETED_WITH_ERRORS' | 'FAILED';
+  startedAt: string;
+  completedAt: string;
+  processingDurationMs: number;
+  emailsQueued: number;
+  emailsSent: number;
+  emailsFailed: number;
+  failedRows: FailedImportRow[];
+  createdAt: string;
+}
+
+export interface PaginatedImportBatches {
+  data: ImportBatchSummary[];
+  meta: { page: number; limit: number; total: number; totalPages: number };
+}
+
 export const adminApi = {
   stats: () =>
     apiClient.get<AdminStats>('/admin/stats'),
@@ -313,4 +342,27 @@ export const adminApi = {
 
   updateLegalPage: (key: string, data: Partial<Pick<LegalPage, 'title' | 'lastUpdatedLabel' | 'sections'>>) =>
     apiClient.patch<LegalPage>(`/admin/config/legal-pages/${key}`, data),
+
+  // ── Bulk User Import ─────────────────────────────────────────────────────
+
+  downloadBulkImportTemplate: () =>
+    apiClient.get<Blob>('/admin/bulk-import/template', { responseType: 'blob' }),
+
+  bulkImportUpload: (file: File, force = false) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (force) formData.append('force', 'true');
+    return apiClient.post<ImportBatchSummary>('/admin/bulk-import/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  listBulkImportHistory: (page = 1, limit = 20) =>
+    apiClient.get<PaginatedImportBatches>('/admin/bulk-import/history', { params: { page, limit } }),
+
+  downloadBulkImportErrors: (batchId: string) =>
+    apiClient.get<Blob>(`/admin/bulk-import/${batchId}/errors`, { responseType: 'blob' }),
+
+  resendBulkImportEmails: (batchId: string, userIds?: string[]) =>
+    apiClient.post<{ queued: number }>(`/admin/bulk-import/${batchId}/resend-emails`, { userIds }),
 };

@@ -44,6 +44,7 @@
     "react-places-autocomplete": "^7.3.0",
     "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.5.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"
   },
