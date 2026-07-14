@@ -80,6 +80,28 @@ const SETTING_SEEDS: SettingSeed[] = [
     displayKind: 'number',
   },
   {
+    key: 'SHORTLIST_PAY_WINDOW_HOURS',
+    label: 'Shortlist Payment Window',
+    description:
+      'How many hours a shortlisted teacher has to pay the application fee (while TEACHER_PAID_ENABLED is on) before the application auto-closes. Was a hardcoded 48h constant before — moved here so it is admin-editable without a deploy.',
+    valueNumber: 48,
+    minValue: 1,
+    maxValue: 168,
+    unit: 'hours',
+    displayKind: 'number',
+  },
+  {
+    key: 'SUBSCRIPTION_CYCLE_DAYS',
+    label: 'Subscription Billing Cycle',
+    description:
+      'How many days a school subscription payment covers before it needs to renew. Was a hardcoded 30-day constant before — moved here so it is admin-editable without a deploy.',
+    valueNumber: 30,
+    minValue: 1,
+    maxValue: 365,
+    unit: 'days',
+    displayKind: 'number',
+  },
+  {
     key: 'BULK_IMPORT_MAX_ROWS',
     label: 'Bulk Import Max Rows',
     description:
@@ -199,6 +221,13 @@ export class SystemConfigService implements OnModuleInit {
     return days * 24 * 60 * 60 * 1000;
   }
 
+  // Shortlist-to-payment window, in ms — admin-editable via SHORTLIST_PAY_WINDOW_HOURS.
+  // Was a hardcoded 48h constant (shared/constants/pricing.ts) before.
+  async getShortlistPayWindowMs(): Promise<number> {
+    const hours = await this.getSettingNumber('SHORTLIST_PAY_WINDOW_HOURS', 48);
+    return hours * 60 * 60 * 1000;
+  }
+
   async updateSetting(key: string, valueNumber: number, adminId: string, adminEmail: string): Promise<void> {
     if (typeof valueNumber !== 'number' || Number.isNaN(valueNumber)) {
       // Without this guard, a missing/malformed body silently no-ops below (Mongoose
@@ -222,6 +251,28 @@ export class SystemConfigService implements OnModuleInit {
       { value: oldValue },
       { value: valueNumber },
     );
+  }
+
+  /**
+   * Creates a brand-new price key from the admin "Add Price" UI. Rejects if the key
+   * already exists (use the existing card's inline edit for that instead) — this is
+   * the one-time "define this price for the first time" entry point, since `getAllPrices()`
+   * only returns keys that already exist and the frontend has no other way to create one.
+   */
+  async createPrice(
+    key: string,
+    label: string,
+    description: string,
+    minValue: number,
+    valueNumber: number,
+    adminId: string,
+    adminEmail: string,
+  ): Promise<void> {
+    const existing = await this.configModel.findOne({ key, type: 'price' }).lean().exec();
+    if (existing) {
+      throw new BadRequestException(`Price key "${key}" already exists — edit it directly instead of creating it again.`);
+    }
+    await this.upsertPrice(key, valueNumber, adminId, adminEmail, { label, description, minValue });
   }
 
   /**

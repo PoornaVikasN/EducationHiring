@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePublicPricing, formatRupees } from '@/hooks/use-public-pricing';
-import { RECRUITER_MONTHLY_PAISE } from '@/lib/shared/constants';
+import { usePublicSettings } from '@/hooks/use-public-settings';
 
 // ── Donut Chart (CSS conic-gradient, no library) ─────────────────────────────
 
@@ -98,7 +98,9 @@ function VacancyBar({ filled, total }: { filled: number; total: number }) {
 
 export default function RecruiterDashboardPage() {
   const { pricing } = usePublicPricing();
-  const subMo = pricing.RECRUITER_MONTHLY_PAISE ?? RECRUITER_MONTHLY_PAISE;
+  const { settings } = usePublicSettings();
+  const subMo = pricing.RECRUITER_MONTHLY_PAISE;
+  const freeLimit = settings.FREE_TIER_JOB_LIMIT;
   const { user } = useAuth();
   const name =
     (user?.recruiterProfile as { fullName?: string } | null)?.fullName ??
@@ -315,7 +317,9 @@ export default function RecruiterDashboardPage() {
               </div>
               <div>
                 <h2 className="font-bold text-text-primary">Post a Teaching Job</h2>
-                <p className="text-xs text-brand-primary font-medium">2 free/month · {formatRupees(subMo)}/mo unlimited</p>
+                <p className="text-xs text-brand-primary font-medium">
+                  {freeLimit != null ? `${freeLimit} free/month` : 'Free tier'} · {subMo != null ? `${formatRupees(subMo)}/mo unlimited` : 'paid unlimited plan available'}
+                </p>
               </div>
             </div>
             <p className="text-sm text-text-muted mb-4">30-day listing. Shortlist teachers freely and chat once shortlisted.</p>

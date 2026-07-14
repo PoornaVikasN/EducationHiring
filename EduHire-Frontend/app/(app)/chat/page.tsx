@@ -9,6 +9,7 @@ import { SOCKET_ORIGIN } from '../../../lib/api-client';
 import { useAuth } from '../../../lib/auth-context';
 import { ApplicationState } from '../../../lib/shared/enums';
 import { usePublicSettings } from '../../../hooks/use-public-settings';
+import { usePublicPricing, formatRupees } from '../../../hooks/use-public-pricing';
 import { useToast } from '../../../hooks/use-toast';
 
 function formatTime(iso: string) {
@@ -27,6 +28,8 @@ export default function TeacherChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const { settings } = usePublicSettings();
   const teacherPaidEnabled = settings.TEACHER_PAID_ENABLED === 1;
+  const { pricing } = usePublicPricing();
+  const appFee = pricing.APPLICATION_FEE_PAISE;
   const { toast } = useToast();
 
   // Chat unlocks at SHORTLISTED (default, teacher-fee off) or PAID (teacher-fee on); WON always qualifies.
@@ -123,12 +126,18 @@ export default function TeacherChatPage() {
       <div className="w-72 shrink-0 border-r border-border-default flex flex-col">
         <div className="p-4 border-b border-border-default">
           <h2 className="text-sm font-bold text-text-primary">Messages</h2>
-          <p className="text-xs text-text-muted mt-0.5">Unlocked after ₹99 confirmation</p>
+          <p className="text-xs text-text-muted mt-0.5">
+            {teacherPaidEnabled
+              ? `Unlocked after ${appFee != null ? formatRupees(appFee) : ''} confirmation`
+              : 'Unlocked once a school shortlists you'}
+          </p>
         </div>
         <div className="flex-1 overflow-y-auto">
           {apps.length === 0 && (
             <p className="text-xs text-text-muted text-center py-8 px-4">
-              No active chats yet. Chat unlocks after a school shortlists you and you confirm with ₹99.
+              {teacherPaidEnabled
+                ? `No active chats yet. Chat unlocks after a school shortlists you and you confirm${appFee != null ? ` with ${formatRupees(appFee)}` : ''}.`
+                : 'No active chats yet. Chat unlocks once a school shortlists you.'}
             </p>
           )}
           {apps.map((app) => {

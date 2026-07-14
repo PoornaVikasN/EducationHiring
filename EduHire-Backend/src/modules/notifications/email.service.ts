@@ -65,13 +65,13 @@ export class EmailService {
     `);
   }
 
-  async sendShortlistNotification(to: string, seekerName: string, jobTitle: string, paymentDueBy: Date): Promise<void> {
+  async sendShortlistNotification(to: string, seekerName: string, jobTitle: string, paymentDueBy: Date, feeLabel: string): Promise<void> {
     const deadline = paymentDueBy.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-    const db = await this.renderFromDb('SHORTLIST_NOTIFICATION', { seekerName, jobTitle, fee: '₹99', deadline });
+    const db = await this.renderFromDb('SHORTLIST_NOTIFICATION', { seekerName, jobTitle, fee: feeLabel, deadline });
     await this.send(to, db?.subject ?? `You've been shortlisted for ${jobTitle}`, db?.html ?? `
       <p>Hi ${seekerName},</p>
       <p>You have been shortlisted for <strong>${jobTitle}</strong>.</p>
-      <p>Pay ₹99 to unlock the school's contact details. Payment deadline: <strong>${deadline}</strong>.</p>
+      <p>Pay ${feeLabel} to unlock the school's contact details. Payment deadline: <strong>${deadline}</strong>.</p>
       <br><p>— The SchoolTeacher Team</p>
     `);
   }
@@ -119,11 +119,11 @@ export class EmailService {
     `);
   }
 
-  async sendApplicantPaidEmail(to: string, jobTitle: string): Promise<void> {
-    const db = await this.renderFromDb('APPLICANT_PAID', { jobTitle }, 'recruiterEmail');
+  async sendApplicantPaidEmail(to: string, jobTitle: string, feeLabel: string): Promise<void> {
+    const db = await this.renderFromDb('APPLICANT_PAID', { jobTitle, fee: feeLabel }, 'recruiterEmail');
     await this.send(to, db?.subject ?? `A candidate confirmed interest — ${jobTitle}`, db?.html ?? `
       <p>Hi,</p>
-      <p>A shortlisted candidate has paid ₹99 for <strong>${jobTitle}</strong>.</p>
+      <p>A shortlisted candidate has paid ${feeLabel} for <strong>${jobTitle}</strong>.</p>
       <p>Their contact details are now visible to you in the Applicants section. Reach out to schedule an interview.</p>
       <br><p>— The SchoolTeacher Team</p>
     `);

@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { SiteHeader } from '../../common-components/site-header';
 import { usePublicPricing, formatRupees } from '../../hooks/use-public-pricing';
-import { APPLICATION_FEE_PAISE, RECRUITER_MONTHLY_PAISE } from '../../lib/shared/constants';
 
 function buildFaqSections(appFee: string, subMo: string) {
   return [
@@ -30,7 +29,7 @@ function buildFaqSections(appFee: string, subMo: string) {
         },
         {
           q: 'Can I apply to multiple schools at once?',
-          a: 'Yes. You can apply to as many teaching jobs as you like. The school contact is revealed only after shortlisting and your ₹99 confirmation.',
+          a: `Yes. You can apply to as many teaching jobs as you like. The school contact is revealed only after shortlisting and your ${appFee} confirmation.`,
         },
         {
           q: 'What types of teaching roles are listed?',
@@ -130,8 +129,8 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 export default function HelpPage() {
   const { pricing } = usePublicPricing();
-  const appFee = formatRupees(pricing.APPLICATION_FEE_PAISE ?? APPLICATION_FEE_PAISE);
-  const subMo  = formatRupees(pricing.RECRUITER_MONTHLY_PAISE ?? RECRUITER_MONTHLY_PAISE);
+  const appFee = pricing.APPLICATION_FEE_PAISE != null ? formatRupees(pricing.APPLICATION_FEE_PAISE) : 'the applicable fee';
+  const subMo  = pricing.RECRUITER_MONTHLY_PAISE != null ? formatRupees(pricing.RECRUITER_MONTHLY_PAISE) : 'the subscription fee';
   const FAQ_SECTIONS = buildFaqSections(appFee, subMo);
 
   return (

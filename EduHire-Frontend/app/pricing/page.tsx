@@ -4,17 +4,21 @@ import Link from 'next/link';
 import { ArrowRight, Briefcase, CheckCircle, Infinity } from 'lucide-react';
 import { SiteHeader } from '../../common-components/site-header';
 import { usePublicPricing, formatRupees } from '../../hooks/use-public-pricing';
-import {
-  RECRUITER_MONTHLY_PAISE,
-  APPLICATION_FEE_PAISE,
-  FREE_TIER_JOB_LIMIT,
-} from '../../lib/shared/constants';
+import { usePublicSettings } from '../../hooks/use-public-settings';
 
 export default function PricingPage() {
+  // FREE_TIER_JOB_LIMIT is a SystemConfig *setting*, not a *price* — it comes from
+  // /public/settings, not /public/pricing. (Previously this page read it from the
+  // pricing hook, which never actually contains that key, so it silently always fell
+  // back to a hardcoded "2" no matter what the admin configured — never live.)
   const { pricing } = usePublicPricing();
-  const subMo = pricing.RECRUITER_MONTHLY_PAISE ?? RECRUITER_MONTHLY_PAISE;
-  const appFee = pricing.APPLICATION_FEE_PAISE ?? APPLICATION_FEE_PAISE;
-  const freeLimit = pricing.FREE_TIER_JOB_LIMIT ?? FREE_TIER_JOB_LIMIT;
+  const { settings } = usePublicSettings();
+  const subMo = pricing.RECRUITER_MONTHLY_PAISE;
+  const appFee = pricing.APPLICATION_FEE_PAISE;
+  const freeLimit = settings.FREE_TIER_JOB_LIMIT;
+  const subMoText = subMo != null ? formatRupees(subMo) : 'the subscription price';
+  const appFeeText = appFee != null ? formatRupees(appFee) : 'a small fee';
+  const freeLimitText = freeLimit != null ? String(freeLimit) : 'a limited number of';
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -88,7 +92,7 @@ export default function PricingPage() {
                 You choose whether to proceed — and only then pay the small confirmation fee.
               </p>
               <div className="bg-white rounded-xl p-4 mb-4">
-                <p className="text-2xl font-bold text-text-primary">{formatRupees(appFee)} <span className="text-sm font-normal text-text-muted">per application</span></p>
+                <p className="text-2xl font-bold text-text-primary">{appFee != null ? formatRupees(appFee) : '—'} <span className="text-sm font-normal text-text-muted">per application</span></p>
                 <p className="text-xs text-text-muted mt-0.5">Charged only after school shortlists you</p>
               </div>
               <ul className="space-y-2 text-sm text-text-muted">
@@ -124,10 +128,10 @@ export default function PricingPage() {
               <div className="flex items-baseline gap-1 mb-1">
                 <span className="text-3xl font-bold text-text-primary">₹0</span>
               </div>
-              <p className="text-xs text-text-muted mb-6">{freeLimit} free job postings per month</p>
+              <p className="text-xs text-text-muted mb-6">{freeLimitText} free job postings per month</p>
               <ul className="space-y-2.5 mb-8">
                 {[
-                  `Post up to ${freeLimit} teaching jobs per month`,
+                  `Post up to ${freeLimitText} teaching jobs per month`,
                   'Admin-verified school badge',
                   'Teacher applications in your dashboard',
                   'Shortlist, chat & mark hired',
@@ -157,7 +161,7 @@ export default function PricingPage() {
               </div>
               <h3 className="font-bold text-text-primary text-lg mb-1">Unlimited Plan</h3>
               <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-3xl font-bold text-text-primary">{formatRupees(subMo)}</span>
+                <span className="text-3xl font-bold text-text-primary">{subMo != null ? formatRupees(subMo) : '—'}</span>
                 <span className="text-text-muted text-sm">/month</span>
               </div>
               <p className="text-xs text-text-muted mb-6">Unlimited job postings for 30 days</p>
@@ -199,11 +203,11 @@ export default function PricingPage() {
               },
               {
                 q: 'When exactly do I pay the confirmation fee as a teacher?',
-                a: `Only after a school shortlists you. You receive a notification, review the opportunity, and choose whether to pay ${formatRupees(appFee)} within 48 hours to confirm your interest and unlock the school's contact details. If you don't pay in 48 hours, the application auto-closes.`,
+                a: `Only after a school shortlists you. You receive a notification, review the opportunity, and choose whether to pay ${appFeeText} within 48 hours to confirm your interest and unlock the school's contact details. If you don't pay in 48 hours, the application auto-closes.`,
               },
               {
                 q: 'What are the free job posting limits for schools?',
-                a: `Schools get ${freeLimit} free job postings per month. After that, subscribe to the Unlimited Plan at ${formatRupees(subMo)}/month for unlimited postings.`,
+                a: `Schools get ${freeLimitText} free job postings per month. After that, subscribe to the Unlimited Plan at ${subMoText}/month for unlimited postings.`,
               },
               {
                 q: 'What job roles can schools post?',
@@ -227,7 +231,7 @@ export default function PricingPage() {
       <section className="py-16 px-6 bg-brand-primary text-white text-center">
         <h2 className="text-2xl font-bold mb-3">Ready to get started?</h2>
         <p className="text-blue-100 mb-8 max-w-md mx-auto text-sm">
-          Free for teachers. {freeLimit} free posts for schools. No hidden fees.
+          Free for teachers. {freeLimitText} free posts for schools. No hidden fees.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link

@@ -59,11 +59,6 @@ export function to12hr(t: string): string {
 
 export const JOB_TIMING_DISPLAY_OPTIONS = JOB_TIMING_OPTIONS.map((t) => ({ value: t, label: to12hr(t) }));
 
-// SchoolTeacher pricing fallbacks (overridden by /api/public/pricing at runtime)
-export const RECRUITER_MONTHLY_PAISE = 50_000;     // ₹500/month (school subscription)
-export const FREE_TIER_JOB_LIMIT = 2;              // free posts/month without subscription
-export const APPLICATION_FEE_PAISE = 9_900;        // ₹99 after shortlist (off by default)
-export const SHORTLIST_PAY_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 
 export function paiseToRupees(paise: number): number {

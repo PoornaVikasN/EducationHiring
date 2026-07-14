@@ -165,12 +165,18 @@ export class NotificationsService {
     paymentDueBy: Date | null;
   }) {
     // Message must match the actual gating — under the default config (TEACHER_PAID_ENABLED
-    // off) there is no payment step at all, so the old unconditional "Pay ₹99..." copy was
-    // simply false for every shortlist notification sent in the default configuration.
+    // off) there is no payment step at all. The fee itself is never hardcoded — always
+    // read live from SystemConfig (D29) so this copy can never drift from the real amount.
     const teacherPaidEnabled = await this.systemConfigService.getSettingBoolean('TEACHER_PAID_ENABLED', false);
-    const body = teacherPaidEnabled
-      ? 'Pay ₹99 within 48 hours to confirm your interview and reveal school details.'
-      : 'The school will be in touch soon. Check your chat for updates.';
+    let body = 'The school will be in touch soon. Check your chat for updates.';
+    if (teacherPaidEnabled) {
+      try {
+        const feePaise = await this.systemConfigService.getPricePaise('APPLICATION_FEE_PAISE');
+        body = `Pay ₹${(feePaise / 100).toLocaleString('en-IN')} within 48 hours to confirm your interview and reveal school details.`;
+      } catch {
+        body = 'Payment is required within 48 hours to confirm your interview and reveal school details — check your applications.';
+      }
+    }
     await this.notify(
       payload.seekerId,
       NotificationKind.APPLICATION_SHORTLISTED,
@@ -200,17 +206,26 @@ export class NotificationsService {
     // Notify recruiter
     const recruiterId = await this.getRecruiterIdForSchool(payload.schoolId);
     if (recruiterId) {
+      let feeLabel = 'the application fee';
+      try {
+        const feePaise = await this.systemConfigService.getPricePaise('APPLICATION_FEE_PAISE');
+        feeLabel = `₹${(feePaise / 100).toLocaleString('en-IN')}`;
+      } catch {
+        // No fallback number — the price is unset, so we say it generically rather than
+        // inventing an amount (D29: no hardcoded pricing, ever, not even as a fallback).
+      }
+
       await this.notify(
         recruiterId,
         NotificationKind.APPLICANT_PAID,
         'An applicant has confirmed interest 💳',
-        'A shortlisted teacher paid ₹99. Their contact details are now visible to you in Applicants.',
+        `A shortlisted teacher paid ${feeLabel}. Their contact details are now visible to you in Applicants.`,
         `/recruiter/applicants?job=${payload.jobId}`,
       );
 
       const recruiter = await this.userModel.findById(recruiterId).select('email').lean().exec();
       if (recruiter?.email) {
-        this.emailService.sendApplicantPaidEmail(recruiter.email, payload.jobTitle ?? 'the position').catch(() => {});
+        this.emailService.sendApplicantPaidEmail(recruiter.email, payload.jobTitle ?? 'the position', feeLabel).catch(() => {});
       }
     }
 

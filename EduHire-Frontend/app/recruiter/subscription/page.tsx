@@ -8,15 +8,17 @@ import { Button } from '../../../common-components/ui/button';
 import { useToast } from '../../../hooks/use-toast';
 import { useRazorpay } from '../../../hooks/use-razorpay';
 import { PaymentKind, SubscriptionStatus } from '../../../lib/shared/enums';
-import { RECRUITER_MONTHLY_PAISE } from '../../../lib/shared/constants';
 import { usePublicPricing, formatRupees } from '../../../hooks/use-public-pricing';
+import { usePublicSettings } from '../../../hooks/use-public-settings';
 
 export default function RecruiterSubscriptionPage() {
   const { toast } = useToast();
   const { pay } = useRazorpay();
   const qc = useQueryClient();
   const { pricing } = usePublicPricing();
-  const subPaise = pricing.RECRUITER_MONTHLY_PAISE ?? RECRUITER_MONTHLY_PAISE;
+  const { settings } = usePublicSettings();
+  const subPaise = pricing.RECRUITER_MONTHLY_PAISE;
+  const freeLimit = settings.FREE_TIER_JOB_LIMIT;
 
   const { data: school } = useQuery({
     queryKey: ['my-school'],
@@ -104,7 +106,7 @@ export default function RecruiterSubscriptionPage() {
             <AlertCircle className="w-4 h-4 text-text-muted" />
             <p className="text-sm font-semibold text-text-primary">No active subscription</p>
           </div>
-          <p className="text-xs text-text-muted">Subscribe to post unlimited teaching jobs beyond the 2 free/month limit.</p>
+          <p className="text-xs text-text-muted">Subscribe to post unlimited teaching jobs{freeLimit != null ? ` beyond the ${freeLimit} free/month limit` : ''}.</p>
         </div>
       )}
 
@@ -118,7 +120,7 @@ export default function RecruiterSubscriptionPage() {
             </div>
             <div>
               <p className="text-sm font-bold text-text-primary">School Unlimited Plan</p>
-              <p className="text-2xl font-black text-brand-primary">{formatRupees(subPaise)}<span className="text-sm font-medium text-text-muted">/month</span></p>
+              <p className="text-2xl font-black text-brand-primary">{subPaise != null ? formatRupees(subPaise) : '—'}<span className="text-sm font-medium text-text-muted">/month</span></p>
             </div>
           </div>
 
@@ -151,7 +153,7 @@ export default function RecruiterSubscriptionPage() {
             >
               {isExpiringSoon
                 ? `Renew Now — ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`
-                : `Subscribe Now — ${formatRupees(subPaise)}/month`}
+                : subPaise != null ? `Subscribe Now — ${formatRupees(subPaise)}/month` : 'Subscribe Now'}
             </Button>
           )}
         </div>

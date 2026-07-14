@@ -32,7 +32,7 @@ export class Application {
   @Prop({ type: Date, default: null, index: true })
   paymentDueBy!: Date | null;
 
-  // Set when teacher pays ₹99
+  // Set when teacher pays the application fee (SystemConfig 'APPLICATION_FEE_PAISE')
   @Prop({ type: Date, default: null })
   paidAt!: Date | null;
 

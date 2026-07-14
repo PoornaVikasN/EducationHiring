@@ -3,12 +3,9 @@ import { publicApi } from '../lib/api/public';
 
 export type SettingsMap = Record<string, number>;
 
-const FALLBACK: SettingsMap = {
-  TEACHER_PAID_ENABLED: 0,
-  SCHOOL_PAID_ENABLED: 1,
-  FREE_TIER_JOB_LIMIT: 2,
-};
-
+// No hardcoded fallback values, ever — every setting comes from the live API response.
+// While loading, `settings` is `{}`; callers must check `isLoading` before branching on
+// a specific key rather than assuming a default value.
 export function usePublicSettings(): { settings: SettingsMap; isLoading: boolean } {
   const { data, isLoading } = useQuery({
     queryKey: ['public-settings'],
@@ -19,7 +16,7 @@ export function usePublicSettings(): { settings: SettingsMap; isLoading: boolean
 
   const settings: SettingsMap = data
     ? Object.fromEntries(data.map((s) => [s.key, s.valueNumber]))
-    : FALLBACK;
+    : {};
 
   return { settings, isLoading };
 }

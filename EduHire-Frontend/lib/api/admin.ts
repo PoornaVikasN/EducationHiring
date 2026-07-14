@@ -307,6 +307,9 @@ export const adminApi = {
   updatePrice: (key: string, valueNumber: number) =>
     apiClient.patch(`/admin/config/pricing/${key}`, { valueNumber }),
 
+  createPrice: (data: { key: string; label: string; description: string; minValue: number; valueNumber: number }) =>
+    apiClient.post<PricingConfig>('/admin/config/pricing', data),
+
   getApiKeyStatuses: () =>
     apiClient.get<ApiKeyStatus[]>('/admin/config/env'),
 

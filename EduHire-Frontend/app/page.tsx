@@ -20,7 +20,6 @@ import { SiteHeader } from '../common-components/site-header';
 import { ScrollToTop } from '../common-components/scroll-to-top';
 import { LandingReveal } from '../common-components/landing-reveal';
 import { usePublicPricing, formatRupees } from '../hooks/use-public-pricing';
-import { RECRUITER_MONTHLY_PAISE } from '../lib/shared/constants';
 
 // ── Testimonial data ──────────────────────────────────────────────────────────
 const TESTIMONIALS = [
@@ -50,8 +49,8 @@ const SCHOOL_STEPS = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const { pricing } = usePublicPricing();
-  const recruitMonthly = pricing.RECRUITER_MONTHLY_PAISE ?? RECRUITER_MONTHLY_PAISE;
-  const appFee = pricing.APPLICATION_FEE_PAISE ?? 9_900;
+  const recruitMonthly = pricing.RECRUITER_MONTHLY_PAISE;
+  const appFee = pricing.APPLICATION_FEE_PAISE;
 
   const [heroMode, setHeroMode] = useState<'teacher' | 'school'>('teacher');
   const [audience, setAudience] = useState<'teacher' | 'school'>('teacher');
@@ -681,9 +680,11 @@ export default function LandingPage() {
                   <span className="text-3xl font-black text-white">2 free posts</span>
                   <span className="text-sm font-medium mb-1" style={{ color: '#94a3b8' }}>/month</span>
                 </div>
-                <p className="text-sm mt-1" style={{ color: '#94a3b8' }}>
-                  Or upgrade to <span className="text-white font-bold">{formatRupees(recruitMonthly)}/mo</span> for unlimited postings
-                </p>
+                {recruitMonthly != null && (
+                  <p className="text-sm mt-1" style={{ color: '#94a3b8' }}>
+                    Or upgrade to <span className="text-white font-bold">{formatRupees(recruitMonthly)}/mo</span> for unlimited postings
+                  </p>
+                )}
               </div>
               <ul className="space-y-3 mb-8">
                 {[
@@ -692,7 +693,7 @@ export default function LandingPage() {
                   'Search & shortlist teachers',
                   'Direct chat with candidates',
                   'Admin-moderated listings',
-                  `${formatRupees(appFee)} per confirmed hire (teacher pays)`,
+                  ...(appFee != null ? [`${formatRupees(appFee)} per confirmed hire (teacher pays)`] : []),
                 ].map(f => (
                   <li key={f} className="flex items-center gap-2.5 text-sm text-white">
                     <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#f59e0b' }} />

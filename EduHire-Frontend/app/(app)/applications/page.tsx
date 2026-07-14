@@ -12,7 +12,6 @@ import { ApplicationState, PaymentKind } from '../../../lib/shared/enums';
 import { useRazorpay } from '../../../hooks/use-razorpay';
 import { useToast } from '../../../hooks/use-toast';
 import { usePublicPricing, formatRupees } from '../../../hooks/use-public-pricing';
-import { APPLICATION_FEE_PAISE } from '../../../lib/shared/constants';
 import { enumLabel } from '../../../lib/utils/enum-options';
 
 // ── Progress steps ─────────────────────────────────────────────────────────────
@@ -63,10 +62,10 @@ function ProgressBar({ state }: { state: ApplicationState }) {
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
 
-function StateBadge({ state, appFee }: { state: ApplicationState; appFee: number }) {
+function StateBadge({ state, appFee }: { state: ApplicationState; appFee?: number }) {
   const configs: Record<ApplicationState, { label: string; cls: string; icon: React.ElementType }> = {
     [ApplicationState.INTERESTED]: { label: 'Under Review', cls: 'bg-blue-100 text-blue-700', icon: Clock },
-    [ApplicationState.SHORTLISTED]: { label: `Shortlisted — Pay ${formatRupees(appFee)}`, cls: 'bg-amber-100 text-amber-700', icon: Clock },
+    [ApplicationState.SHORTLISTED]: { label: appFee != null ? `Shortlisted — Pay ${formatRupees(appFee)}` : 'Shortlisted', cls: 'bg-amber-100 text-amber-700', icon: Clock },
     [ApplicationState.PAID]: { label: 'Paid — Awaiting Interview', cls: 'bg-purple-100 text-purple-700', icon: CheckCircle },
     [ApplicationState.WON]: { label: 'Hired! 🎉', cls: 'bg-green-100 text-green-700', icon: Award },
     [ApplicationState.CLOSED]: { label: 'Closed', cls: 'bg-slate-100 text-slate-500', icon: XCircle },
@@ -186,7 +185,7 @@ function SchoolRevealCard({ school }: { school: NonNullable<Application['school'
 
 function ApplicationCard({ app, onPay }: { app: Application; onPay: (app: Application) => void }) {
   const { pricing } = usePublicPricing();
-  const appFee = pricing.APPLICATION_FEE_PAISE ?? APPLICATION_FEE_PAISE;
+  const appFee = pricing.APPLICATION_FEE_PAISE;
   const isClosed = app.state === ApplicationState.CLOSED;
   const isWon = app.state === ApplicationState.WON;
 
@@ -259,7 +258,7 @@ function ApplicationCard({ app, onPay }: { app: Application; onPay: (app: Applic
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
                 <p className="text-sm font-bold text-amber-800 mb-1">
-                  Payment Required — {formatRupees(appFee)}
+                  {appFee != null ? `Payment Required — ${formatRupees(appFee)}` : 'Payment Required'}
                 </p>
                 <p className="text-xs text-amber-700 leading-relaxed">
                   You&apos;ve been shortlisted! Pay to confirm your interview slot. School contact details (phone, email, address) will be revealed immediately after payment.
@@ -277,7 +276,7 @@ function ApplicationCard({ app, onPay }: { app: Application; onPay: (app: Applic
               onClick={() => onPay(app)}
               className="bg-amber-600 hover:bg-amber-700 text-white mt-3 w-full sm:w-auto"
             >
-              Pay {formatRupees(appFee)} to Confirm →
+              {appFee != null ? `Pay ${formatRupees(appFee)} to Confirm →` : 'Pay to Confirm →'}
             </Button>
           </div>
         )}
@@ -322,7 +321,7 @@ export default function MyApplicationsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { pricing } = usePublicPricing();
-  const appFee = pricing.APPLICATION_FEE_PAISE ?? APPLICATION_FEE_PAISE;
+  const appFee = pricing.APPLICATION_FEE_PAISE;
 
   const { data: applications, isLoading } = useQuery({
     queryKey: ['my-applications'],

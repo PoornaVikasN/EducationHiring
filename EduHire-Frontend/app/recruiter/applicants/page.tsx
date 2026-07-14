@@ -12,6 +12,8 @@ import { ConfirmDialog } from '../../../common-components/ui/confirm-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../common-components/ui/dialog';
 import { SeekerProfileView } from '../../../common-components/seeker-profile-view';
 import { useToast } from '../../../hooks/use-toast';
+import { usePublicSettings } from '../../../hooks/use-public-settings';
+import { usePublicPricing, formatRupees } from '../../../hooks/use-public-pricing';
 import { ApplicationState } from '../../../lib/shared/enums';
 
 const STATE_BADGE: Record<ApplicationState, { label: string; cls: string }> = {
@@ -33,6 +35,10 @@ function ApplicantCard({ app, onShortlist, onWon, onClose }: {
   const badge = STATE_BADGE[app.state];
   const seeker = app.seeker?.seekerProfile;
   const name = seeker?.fullName ?? app.seeker?.email ?? 'Candidate';
+  const { settings } = usePublicSettings();
+  const teacherPaidEnabled = settings.TEACHER_PAID_ENABLED === 1;
+  const { pricing } = usePublicPricing();
+  const appFee = pricing.APPLICATION_FEE_PAISE;
 
   return (
     <>
@@ -83,10 +89,10 @@ function ApplicantCard({ app, onShortlist, onWon, onClose }: {
               </div>
             )}
 
-            {/* Status line for shortlisted — waiting for teacher payment */}
-            {app.state === ApplicationState.SHORTLISTED && (
+            {/* Status line for shortlisted — waiting for teacher payment (only meaningful when the fee is on) */}
+            {app.state === ApplicationState.SHORTLISTED && teacherPaidEnabled && (
               <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                ⏳ Awaiting ₹99 confirmation from the teacher — contact details unlock once they pay.
+                ⏳ Awaiting {appFee != null ? `${formatRupees(appFee)} ` : ''}confirmation from the teacher — contact details unlock once they pay.
               </div>
             )}
 

@@ -15,7 +15,6 @@ import {
   PaymentStatus,
   SubscriptionStatus,
 } from '../../shared/enums';
-import { SUBSCRIPTION_CYCLE_DAYS } from '../../shared/constants/pricing';
 import { Application, ApplicationDocument } from '../applications/schemas/application.schema';
 import { School, SchoolDocument } from '../schools/schemas/school.schema';
 import { Job, JobDocument } from '../jobs/schemas/job.schema';
@@ -122,7 +121,7 @@ export class PaymentsService {
 
     switch (payment.kind) {
       case PaymentKind.APPLICATION: {
-        // Teacher paid ₹99 — mark app PAID + reveal school
+        // Teacher paid the application fee — mark app PAID + reveal school
         await this.appModel.findByIdAndUpdate(entityId, {
           $set: {
             state: ApplicationState.PAID,
@@ -148,8 +147,9 @@ export class PaymentsService {
         const school = await this.schoolModel.findById(entityId).lean().exec();
         if (!school) break;
 
+        const cycleDays = await this.systemConfig.getSettingNumber('SUBSCRIPTION_CYCLE_DAYS', 30);
         const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + SUBSCRIPTION_CYCLE_DAYS);
+        expiresAt.setDate(expiresAt.getDate() + cycleDays);
 
         await this.subscriptionModel.findOneAndUpdate(
           { schoolId: school._id },

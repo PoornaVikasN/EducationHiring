@@ -25,7 +25,8 @@ import { useToast } from '../../../../hooks/use-toast';
 import { JobDepartment, Subject, SubscriptionStatus, TeacherPost, UploadKind } from '../../../../lib/shared/enums';
 import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
-import { DEGREE_OPTIONS, JOB_TIMING_DISPLAY_OPTIONS, RECRUITER_MONTHLY_PAISE } from '../../../../lib/shared/constants';
+import { DEGREE_OPTIONS, JOB_TIMING_DISPLAY_OPTIONS } from '../../../../lib/shared/constants';
+import { usePublicSettings } from '../../../../hooks/use-public-settings';
 import { usePublicPricing, formatRupees } from '../../../../hooks/use-public-pricing';
 import { createJobSchema, type CreateJobFormValues } from '../../../../lib/validations/jobs';
 import { enumComboboxOptions, enumLabel } from '../../../../lib/utils/enum-options';
@@ -39,7 +40,9 @@ function NewJobForm() {
   const router = useRouter();
   const { toast } = useToast();
   const { pricing } = usePublicPricing();
-  const subMo = pricing.RECRUITER_MONTHLY_PAISE ?? RECRUITER_MONTHLY_PAISE;
+  const { settings } = usePublicSettings();
+  const subMo = pricing.RECRUITER_MONTHLY_PAISE;
+  const freeLimit = settings.FREE_TIER_JOB_LIMIT;
   const docRef = useRef<HTMLInputElement>(null);
   const [docUploading, setDocUploading] = useState(false);
   const [jobDocumentUrl, setJobDocumentUrl] = useState<string | null>(null);
@@ -136,7 +139,7 @@ function NewJobForm() {
       <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="space-y-5">
         {/* Pricing info */}
         <div className="bg-brand-primary-light border border-brand-primary/20 rounded-2xl p-4 text-sm text-brand-primary">
-          📋 <strong>2 free listings/month</strong> — or subscribe at {formatRupees(subMo)}/mo for unlimited postings.
+          📋 <strong>{freeLimit != null ? `${freeLimit} free listings/month` : 'Free listings/month'}</strong> — or subscribe{subMo != null ? ` at ${formatRupees(subMo)}/mo` : ''} for unlimited postings.
           {hasActiveSub && <span className="ml-2 text-green-600 font-medium">✓ Active subscription</span>}
         </div>
 

@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
-import { IsInt, IsString, Min, MinLength } from 'class-validator';
+import { IsInt, IsString, Matches, Min, MaxLength, MinLength } from 'class-validator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ParseObjectIdPipe } from '../../common/pipes/parse-object-id.pipe';
@@ -17,6 +17,30 @@ import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 class UpdatePriceDto {
   @IsInt()
   @Min(100)
+  valueNumber!: number;
+}
+
+class CreatePriceDto {
+  @IsString()
+  @Matches(/^[A-Z][A-Z0-9_]*$/, { message: 'Key must be UPPER_SNAKE_CASE (letters, digits, underscore, starting with a letter)' })
+  @MaxLength(64)
+  key!: string;
+
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  label!: string;
+
+  @IsString()
+  @MaxLength(500)
+  description!: string;
+
+  @IsInt()
+  @Min(0)
+  minValue!: number;
+
+  @IsInt()
+  @Min(0)
   valueNumber!: number;
 }
 
@@ -146,6 +170,12 @@ export class AdminController {
   @Get('config/pricing')
   getPricing() {
     return this.systemConfigService.getAllPrices();
+  }
+
+  @Post('config/pricing')
+  @HttpCode(HttpStatus.CREATED)
+  createPrice(@Body() dto: CreatePriceDto, @CurrentUser() user: { sub: string; email: string }) {
+    return this.systemConfigService.createPrice(dto.key, dto.label, dto.description, dto.minValue, dto.valueNumber, user.sub, user.email);
   }
 
   @Patch('config/pricing/:key')

@@ -1,17 +1,20 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Download, Mail, RefreshCcw, Upload } from 'lucide-react';
+import {
+  AlertTriangle, ArrowLeft, Check, CheckCircle2, Clock, Download,
+  FileSpreadsheet, Mail, Upload, Users, XCircle,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import AdminTablePagination from '@/common-components/admin-table-pagination';
 import { FileDropzone } from '@/common-components/file-dropzone';
 import { Button } from '@/common-components/ui/button';
-import { Card, CardContent } from '@/common-components/ui/card';
 import { ConfirmDialog } from '@/common-components/ui/confirm-dialog';
 import { IndeterminateProgressBar } from '@/common-components/ui/progress-bar';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { adminApi, type ImportBatchSummary } from '@/lib/api/admin';
 import { validateParsedRows, type ClientValidationSummary } from '@/lib/validations/bulk-import';
 
@@ -24,22 +27,91 @@ function triggerBlobDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function StatCard({ label, value, tone = 'default' }: { label: string; value: number | string; tone?: 'default' | 'success' | 'danger' }) {
-  const color = tone === 'success' ? 'text-green-600' : tone === 'danger' ? 'text-red-600' : 'text-text-primary';
-  return (
-    <Card className="py-4">
-      <CardContent className="px-4">
-        <p className="text-xs text-text-muted">{label}</p>
-        <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
 function extractErrorMessage(err: unknown, fallback: string): string {
   const msg = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
   if (Array.isArray(msg)) return msg.join(' ');
   return typeof msg === 'string' ? msg : fallback;
+}
+
+// ── Step indicator ───────────────────────────────────────────────────────────
+
+const STEPS = ['Download template', 'Upload & validate', 'Review & import'];
+
+function StepIndicator({ current }: { current: number }) {
+  return (
+    <div className="flex items-center bg-bg-card border border-border-default rounded-2xl px-5 py-4">
+      {STEPS.map((label, i) => {
+        const step = i + 1;
+        const state = step < current ? 'done' : step === current ? 'active' : 'pending';
+        return (
+          <div key={label} className={cn('flex items-center', i < STEPS.length - 1 && 'flex-1')}>
+            <div className="flex items-center gap-2.5 shrink-0">
+              <div className={cn(
+                'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors',
+                state === 'done' && 'bg-brand-primary text-white',
+                state === 'active' && 'bg-brand-primary-light text-brand-primary border-2 border-brand-primary',
+                state === 'pending' && 'bg-bg-page text-text-muted border border-border-default',
+              )}>
+                {state === 'done' ? <Check className="w-3.5 h-3.5" /> : step}
+              </div>
+              <span className={cn(
+                'text-xs font-medium hidden sm:inline whitespace-nowrap',
+                state === 'pending' ? 'text-text-muted' : 'text-text-primary',
+              )}>
+                {label}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div className={cn('flex-1 h-px mx-3 transition-colors', state === 'done' ? 'bg-brand-primary' : 'bg-border-default')} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Section header (icon badge + title) ──────────────────────────────────────
+
+function SectionHeader({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="w-9 h-9 rounded-xl bg-brand-primary-light flex items-center justify-center shrink-0">
+        <Icon className="w-4.5 h-4.5 text-brand-primary" />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-text-primary">{title}</p>
+        <p className="text-xs text-text-muted mt-0.5">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Stat tile (icon badge → bold value → label) ──────────────────────────────
+
+const STAT_TONES = {
+  default: { bg: 'bg-blue-100', icon: 'text-blue-600', value: 'text-text-primary' },
+  success: { bg: 'bg-green-100', icon: 'text-green-600', value: 'text-green-600' },
+  danger: { bg: 'bg-red-100', icon: 'text-red-600', value: 'text-red-600' },
+  warning: { bg: 'bg-amber-100', icon: 'text-amber-600', value: 'text-text-primary' },
+} as const;
+
+function StatTile({ label, value, icon: Icon, tone = 'default' }: {
+  label: string;
+  value: number | string;
+  icon: React.ElementType;
+  tone?: keyof typeof STAT_TONES;
+}) {
+  const t = STAT_TONES[tone];
+  return (
+    <div className="bg-bg-card border border-border-default rounded-2xl p-4">
+      <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center mb-3', t.bg)}>
+        <Icon className={cn('w-4.5 h-4.5', t.icon)} />
+      </div>
+      <p className={cn('text-2xl font-bold', t.value)}>{value}</p>
+      <p className="text-xs text-text-muted mt-0.5">{label}</p>
+    </div>
+  );
 }
 
 export default function BulkImportPage() {
@@ -108,106 +180,150 @@ export default function BulkImportPage() {
   };
 
   const canProceed = !!validation && validation.headerErrors.length === 0 && validation.invalidCount === 0 && validation.rows.length > 0;
+  const isClean = !!validation && validation.headerErrors.length === 0 && validation.invalidCount === 0;
+  const currentStep = summary ? 3 : file ? 2 : 1;
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center gap-2">
-        <Link href="/admin/users" className="text-text-muted hover:text-text-primary">
+    <div className="space-y-6 max-w-6xl">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Link href="/admin/users" className="text-text-muted hover:text-text-primary transition-colors shrink-0">
           <ArrowLeft className="w-4 h-4" />
         </Link>
-        <h1 className="text-xl font-bold text-text-primary">Bulk User Import</h1>
+        <div className="w-10 h-10 rounded-xl bg-brand-primary-light flex items-center justify-center shrink-0">
+          <Upload className="w-5 h-5 text-brand-primary" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-text-primary">Bulk User Import</h1>
+          <p className="text-xs text-text-muted mt-0.5">Create School and Teacher accounts in bulk from an Excel file</p>
+        </div>
       </div>
 
+      <StepIndicator current={currentStep} />
+
       {!summary && (
-        <Card>
-          <CardContent className="space-y-5 px-6">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <p className="text-sm font-semibold text-text-primary">Step 1 — Download the template</p>
-                <p className="text-xs text-text-muted mt-0.5">One unified .xlsx with a User Type column (SCHOOL / TEACHER).</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => templateMutation.mutate()} disabled={templateMutation.isPending}>
-                <Download className="w-3.5 h-3.5 mr-1" /> {templateMutation.isPending ? 'Preparing…' : 'Download template'}
-              </Button>
-            </div>
+        <div className="bg-bg-card border border-border-default rounded-2xl p-6 space-y-6">
+          <SectionHeader
+            icon={Download}
+            title="Step 1 — Download the template"
+            description="One unified .xlsx with a User Type column (SCHOOL / TEACHER)."
+          />
+          <div className="pl-12">
+            <Button variant="outline" size="sm" onClick={() => templateMutation.mutate()} disabled={templateMutation.isPending}>
+              <Download className="w-3.5 h-3.5 mr-1.5" /> {templateMutation.isPending ? 'Preparing…' : 'Download template'}
+            </Button>
+          </div>
 
-            <div>
-              <p className="text-sm font-semibold text-text-primary mb-2">Step 2 — Upload the filled file</p>
-              <FileDropzone
-                accept=".xlsx,.xls"
-                hint=".xlsx or .xls only"
-                selectedFileName={file?.name}
-                onFileSelected={handleFileSelected}
-                disabled={uploadMutation.isPending}
-              />
-            </div>
+          <div className="h-px bg-border-default" />
 
-            {validation && (
-              <div className="rounded-xl border border-border-default p-4 space-y-2">
-                {validation.headerErrors.map((e) => (
-                  <p key={e} className="text-sm text-red-600 flex items-start gap-1.5"><AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />{e}</p>
-                ))}
-                {validation.headerErrors.length === 0 && (
-                  <>
-                    <p className="text-sm text-text-primary">
-                      {validation.rows.length} rows found — {validation.schoolCount} School, {validation.teacherCount} Teacher.
-                      {' '}<span className={validation.invalidCount > 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
-                        {validation.validCount} valid, {validation.invalidCount} invalid
-                      </span>
+          <SectionHeader
+            icon={FileSpreadsheet}
+            title="Step 2 — Upload the filled file"
+            description="Drag in the completed template, or click to browse."
+          />
+          <div className="pl-12">
+            <FileDropzone
+              accept=".xlsx,.xls"
+              hint=".xlsx or .xls only"
+              selectedFileName={file?.name}
+              onFileSelected={handleFileSelected}
+              disabled={uploadMutation.isPending}
+              success={isClean}
+            />
+          </div>
+
+          {validation && (
+            <div className="pl-12">
+              {validation.headerErrors.length > 0 ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-1.5">
+                  {validation.headerErrors.map((e) => (
+                    <p key={e} className="text-sm text-red-700 flex items-start gap-1.5">
+                      <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />{e}
                     </p>
-                    {validation.rows.filter((r) => !r.valid).slice(0, 10).map((r) => (
-                      <p key={r.rowNumber} className="text-xs text-red-600">Row {r.rowNumber}: {r.errors.join('; ')}</p>
-                    ))}
-                    {validation.invalidCount > 10 && (
-                      <p className="text-xs text-text-muted">…and {validation.invalidCount - 10} more invalid row(s). Fix and re-upload.</p>
+                  ))}
+                </div>
+              ) : (
+                <div className={cn(
+                  'rounded-xl border p-4 space-y-2',
+                  validation.invalidCount > 0 ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50',
+                )}>
+                  <div className="flex items-center gap-2">
+                    {validation.invalidCount > 0
+                      ? <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      : <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />}
+                    <p className="text-sm font-medium text-text-primary">
+                      {validation.rows.length} rows found
+                      <span className="text-text-muted font-normal"> — {validation.schoolCount} School, {validation.teacherCount} Teacher</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pl-6">
+                    <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">{validation.validCount} valid</span>
+                    {validation.invalidCount > 0 && (
+                      <span className="text-xs font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">{validation.invalidCount} invalid</span>
                     )}
-                  </>
-                )}
-              </div>
-            )}
-
-            {uploadMutation.isPending && (
-              <div className="space-y-2">
-                <IndeterminateProgressBar />
-                <p className="text-xs text-text-muted text-center">Processing… this may take a minute.</p>
-              </div>
-            )}
-
-            <div className="flex justify-end">
-              <Button onClick={() => setConfirmOpen(true)} disabled={!canProceed || uploadMutation.isPending}>
-                <Upload className="w-3.5 h-3.5 mr-1" /> Proceed to Import
-              </Button>
+                  </div>
+                  {validation.invalidCount > 0 && (
+                    <div className="pl-6 space-y-1 pt-1">
+                      {validation.rows.filter((r) => !r.valid).slice(0, 10).map((r) => (
+                        <p key={r.rowNumber} className="text-xs text-amber-800">
+                          <span className="font-semibold">Row {r.rowNumber}:</span> {r.errors.join('; ')}
+                        </p>
+                      ))}
+                      {validation.invalidCount > 10 && (
+                        <p className="text-xs text-text-muted">…and {validation.invalidCount - 10} more invalid row(s). Fix and re-upload.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          )}
+
+          {uploadMutation.isPending && (
+            <div className="pl-12 space-y-2">
+              <IndeterminateProgressBar />
+              <p className="text-xs text-text-muted text-center">Processing… this may take a minute.</p>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-1">
+            <Button onClick={() => setConfirmOpen(true)} disabled={!canProceed || uploadMutation.isPending}>
+              <Upload className="w-3.5 h-3.5 mr-1.5" /> Proceed to Import
+            </Button>
+          </div>
+        </div>
       )}
 
       {summary && (
-        <Card>
-          <CardContent className="space-y-5 px-6">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
+        <div className="bg-bg-card border border-border-default rounded-2xl p-6 space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-4.5 h-4.5 text-green-600" />
+            </div>
+            <div>
               <p className="text-sm font-semibold text-text-primary">Import complete</p>
+              <p className="text-xs text-text-muted mt-0.5">{summary.fileName}</p>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard label="Total Rows" value={summary.totalRows} />
-              <StatCard label="Successful" value={summary.successCount} tone="success" />
-              <StatCard label="Failed" value={summary.failedCount} tone={summary.failedCount > 0 ? 'danger' : 'default'} />
-              <StatCard label="Processing Time" value={`${(summary.processingDurationMs / 1000).toFixed(1)}s`} />
-              <StatCard label="Emails Queued" value={summary.emailsQueued} />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {summary.failedCount > 0 && (
-                <Button variant="outline" size="sm" onClick={() => errorReportMutation.mutate(summary._id)} disabled={errorReportMutation.isPending}>
-                  <Download className="w-3.5 h-3.5 mr-1" /> Download Error Report
-                </Button>
-              )}
-              <Button size="sm" onClick={resetImport}>Start New Import</Button>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <StatTile label="Total rows" value={summary.totalRows} icon={Users} />
+            <StatTile label="Successful" value={summary.successCount} icon={CheckCircle2} tone="success" />
+            <StatTile label="Failed" value={summary.failedCount} icon={XCircle} tone={summary.failedCount > 0 ? 'danger' : 'default'} />
+            <StatTile label="Processing time" value={`${(summary.processingDurationMs / 1000).toFixed(1)}s`} icon={Clock} tone="warning" />
+            <StatTile label="Emails queued" value={summary.emailsQueued} icon={Mail} />
+          </div>
+          <div className="flex gap-2 flex-wrap pt-1">
+            {summary.failedCount > 0 && (
+              <Button variant="outline" size="sm" onClick={() => errorReportMutation.mutate(summary._id)} disabled={errorReportMutation.isPending}>
+                <Download className="w-3.5 h-3.5 mr-1.5" /> Download Error Report
+              </Button>
+            )}
+            <Button size="sm" onClick={resetImport}>Start New Import</Button>
+          </div>
+        </div>
       )}
 
+      {/* Import History */}
       <div>
         <p className="text-sm font-semibold text-text-primary mb-2">Import History</p>
         <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden">
@@ -216,7 +332,10 @@ export default function BulkImportPage() {
               <div className="w-6 h-6 rounded-full border-2 border-brand-primary border-t-transparent animate-spin" />
             </div>
           ) : !historyQuery.data?.data.length ? (
-            <div className="p-10 text-center text-sm text-text-muted">No imports yet.</div>
+            <div className="p-10 text-center">
+              <FileSpreadsheet className="w-8 h-8 text-text-muted mx-auto mb-2 opacity-40" />
+              <p className="text-sm text-text-muted">No imports yet.</p>
+            </div>
           ) : (
             <>
               <table className="w-full">
@@ -229,17 +348,20 @@ export default function BulkImportPage() {
                 </thead>
                 <tbody>
                   {historyQuery.data.data.map((b) => (
-                    <tr key={b._id} className="border-b border-border-default">
-                      <td className="px-4 py-3 text-sm text-text-primary">{b.fileName}</td>
+                    <tr key={b._id} className="border-b border-border-default last:border-0 hover:bg-bg-page transition-colors">
+                      <td className="px-4 py-3 text-sm text-text-primary font-medium">{b.fileName}</td>
                       <td className="px-4 py-3 text-xs text-text-muted">{new Date(b.createdAt).toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-3 text-sm">{b.totalRows}</td>
-                      <td className="px-4 py-3 text-sm text-green-600">{b.successCount}</td>
-                      <td className="px-4 py-3 text-sm text-red-600">{b.failedCount}</td>
+                      <td className="px-4 py-3 text-sm text-text-primary">{b.totalRows}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-green-600">{b.successCount}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-red-600">{b.failedCount}</td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        <span className={cn(
+                          'text-xs font-medium px-2 py-0.5 rounded-full',
                           b.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                          b.status === 'FAILED' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700'
-                        }`}>{b.status.replace(/_/g, ' ')}</span>
+                          b.status === 'FAILED' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700',
+                        )}>
+                          {b.status.replace(/_/g, ' ')}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
@@ -249,7 +371,7 @@ export default function BulkImportPage() {
                             </Button>
                           )}
                           <Button size="sm" variant="outline" onClick={() => resendMutation.mutate(b._id)} disabled={resendMutation.isPending}>
-                            <Mail className="w-3.5 h-3.5 mr-1" /> Resend
+                            <Mail className="w-3.5 h-3.5 mr-1.5" /> Resend
                           </Button>
                         </div>
                       </td>

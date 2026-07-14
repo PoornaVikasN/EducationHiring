@@ -5,6 +5,8 @@ import type { Application } from '../lib/api/applications';
 import { ApplicationState, SalaryRange } from '../lib/shared/enums';
 import { SALARY_RANGE_LABELS } from '../lib/shared/constants';
 import { enumLabel } from '../lib/utils/enum-options';
+import { usePublicSettings } from '../hooks/use-public-settings';
+import { usePublicPricing, formatRupees } from '../hooks/use-public-pricing';
 
 const AVAILABILITY_LABELS: Record<string, string> = {
   IMMEDIATE: 'Immediate',
@@ -55,6 +57,10 @@ function Chips({ items, color = 'brand' }: { items: string[]; color?: 'brand' | 
 export function SeekerProfileView({ app, jobType: _jobType }: { app: Application; jobType?: unknown }) {
   const p = app.seeker?.seekerProfile;
   const canSeeContact = app.state === ApplicationState.PAID || app.state === ApplicationState.WON;
+  const { settings } = usePublicSettings();
+  const teacherPaidEnabled = settings.TEACHER_PAID_ENABLED === 1;
+  const { pricing } = usePublicPricing();
+  const appFee = pricing.APPLICATION_FEE_PAISE;
 
   if (!p) {
     return <p className="text-sm text-text-muted text-center py-8">Profile data not available.</p>;
@@ -114,11 +120,11 @@ export function SeekerProfileView({ app, jobType: _jobType }: { app: Application
         </div>
       )}
 
-      {!canSeeContact && (
+      {!canSeeContact && teacherPaidEnabled && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
           {app.state === ApplicationState.SHORTLISTED
-            ? 'Awaiting ₹99 confirmation from the candidate. Contact details will be unlocked once they pay.'
-            : 'Shortlist this candidate to invite them. Contact details unlock after they confirm with a ₹99 deposit.'}
+            ? `Awaiting ${appFee != null ? `${formatRupees(appFee)} ` : ''}confirmation from the candidate. Contact details will be unlocked once they pay.`
+            : `Shortlist this candidate to invite them. Contact details unlock after they confirm${appFee != null ? ` with a ${formatRupees(appFee)} deposit` : ''}.`}
         </div>
       )}
 

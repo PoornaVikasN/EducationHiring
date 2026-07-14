@@ -8,6 +8,8 @@ import { chatApi, type ChatMessage } from '../../../lib/api/chat';
 import { SOCKET_ORIGIN } from '../../../lib/api-client';
 import { useAuth } from '../../../lib/auth-context';
 import { useToast } from '../../../hooks/use-toast';
+import { usePublicSettings } from '../../../hooks/use-public-settings';
+import { usePublicPricing, formatRupees } from '../../../hooks/use-public-pricing';
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
@@ -24,6 +26,10 @@ export default function SchoolChatPage() {
   const selectedRef = useRef<Application | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { settings } = usePublicSettings();
+  const teacherPaidEnabled = settings.TEACHER_PAID_ENABLED === 1;
+  const { pricing } = usePublicPricing();
+  const appFee = pricing.APPLICATION_FEE_PAISE;
 
   // Load chat-unlocked applications for this school (SHORTLISTED/PAID + WON, gated server-side)
   useEffect(() => {
@@ -116,7 +122,9 @@ export default function SchoolChatPage() {
         <div className="flex-1 overflow-y-auto">
           {apps.length === 0 && (
             <p className="text-xs text-text-muted text-center py-8 px-4">
-              No active chats yet. Chats appear after a teacher confirms with ₹99.
+              {teacherPaidEnabled
+                ? `No active chats yet. Chats appear after a teacher confirms${appFee != null ? ` with ${formatRupees(appFee)}` : ''}.`
+                : 'No active chats yet. Chats appear once you shortlist a teacher.'}
             </p>
           )}
           {apps.map((app) => {

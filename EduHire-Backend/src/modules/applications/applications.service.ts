@@ -9,7 +9,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ApplicationState, JobStatus, Role } from '../../shared/enums';
-import { SHORTLIST_PAY_WINDOW_MS } from '../../shared/constants/pricing';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { School, SchoolDocument } from '../schools/schemas/school.schema';
 import { Job, JobDocument } from '../jobs/schemas/job.schema';
@@ -225,7 +224,8 @@ export class ApplicationsService {
     // application with the toggle off has no payment step to expire, so it must stay
     // null (not just cosmetically: runPayWindowSweep() would otherwise auto-CLOSE it).
     const teacherPaidEnabled = await this.systemConfig.getSettingBoolean('TEACHER_PAID_ENABLED', false);
-    const paymentDueBy = teacherPaidEnabled ? new Date(Date.now() + SHORTLIST_PAY_WINDOW_MS) : null;
+    const payWindowMs = teacherPaidEnabled ? await this.systemConfig.getShortlistPayWindowMs() : 0;
+    const paymentDueBy = teacherPaidEnabled ? new Date(Date.now() + payWindowMs) : null;
     const updated = await this.appModel
       .findByIdAndUpdate(
         applicationId,

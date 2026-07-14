@@ -11,7 +11,7 @@ import { Textarea } from '../../../../common-components/ui/textarea';
 import { applicationsApi } from '../../../../lib/api/applications';
 import { jobsApi } from '../../../../lib/api/jobs';
 import { useAuth } from '../../../../lib/auth-context';
-import { formatLpa, APPLICATION_FEE_PAISE, JOB_STATUS_BADGE } from '../../../../lib/shared/constants';
+import { formatLpa, JOB_STATUS_BADGE } from '../../../../lib/shared/constants';
 import { usePublicPricing, formatRupees } from '../../../../hooks/use-public-pricing';
 import { ApplicationState, JobStatus, Role } from '../../../../lib/shared/enums';
 import { enumLabel } from '../../../../lib/utils/enum-options';
@@ -31,7 +31,7 @@ function StatusPill({ status }: { status: JobStatus }) {
 
 export default function JobDetailPage() {
   const { pricing } = usePublicPricing();
-  const appFee = pricing.APPLICATION_FEE_PAISE ?? APPLICATION_FEE_PAISE;
+  const appFee = pricing.APPLICATION_FEE_PAISE;
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -214,7 +214,7 @@ export default function JobDetailPage() {
         <div className="bg-bg-card border border-border-default rounded-2xl p-6">
           <h2 className="text-sm font-semibold text-text-primary mb-3">Express Interest</h2>
           <p className="text-xs text-text-muted mb-4">
-            School contact details (phone, email, address) are revealed only after you&apos;re shortlisted and confirm payment of {formatRupees(appFee)}.
+            School contact details (phone, email, address) are revealed only after you&apos;re shortlisted{appFee != null ? ` and confirm payment of ${formatRupees(appFee)}` : ''}.
           </p>
           <Textarea
             value={coverNote}
