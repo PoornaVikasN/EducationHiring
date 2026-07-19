@@ -4,23 +4,34 @@ import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuid } from 'uuid';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { SystemConfigService } from '../system-config/system-config.service';
 import { MIME_ALLOWLIST, PresignDto, SIZE_LIMITS, type UploadKind } from './dto/presign.dto';
 
 @Injectable()
 export class UploadsService {
   private readonly logger = new Logger(UploadsService.name);
-  private s3: S3Client;
-  private bucket: string;
 
-  constructor(private config: ConfigService) {
-    this.s3 = new S3Client({
-      region: config.getOrThrow<string>('AWS_REGION'),
-      credentials: {
-        accessKeyId: config.getOrThrow<string>('AWS_ACCESS_KEY_ID'),
-        secretAccessKey: config.getOrThrow<string>('AWS_SECRET_ACCESS_KEY'),
-      },
-    });
-    this.bucket = config.getOrThrow<string>('AWS_BUCKET_NAME');
+  constructor(
+    private config: ConfigService,
+    private systemConfig: SystemConfigService,
+  ) {}
+
+  // AWS creds are admin-editable via Config → API Keys (no redeploy) — same pattern
+  // Razorpay already uses. Built fresh per-call (S3Client construction does no network
+  // I/O) rather than cached at boot, so an admin's saved change takes effect immediately.
+  private async getClient(): Promise<{ s3: S3Client; bucket: string; baseUrl: string | undefined }> {
+    const [region, accessKeyId, secretAccessKey, bucket, baseUrl] = await Promise.all([
+      this.systemConfig.getSecret('AWS_REGION'),
+      this.systemConfig.getSecret('AWS_ACCESS_KEY_ID'),
+      this.systemConfig.getSecret('AWS_SECRET_ACCESS_KEY'),
+      this.systemConfig.getSecret('AWS_BUCKET_NAME'),
+      this.systemConfig.getSecret('AWS_BASE_URL'),
+    ]);
+    if (!region || !accessKeyId || !secretAccessKey || !bucket) {
+      throw new BadRequestException('AWS storage is not fully configured. Set it via Admin → Config → API Keys.');
+    }
+    const s3 = new S3Client({ region, credentials: { accessKeyId, secretAccessKey } });
+    return { s3, bucket, baseUrl };
   }
 
   async presign(currentUser: JwtPayload, dto: PresignDto) {
@@ -34,22 +45,25 @@ export class UploadsService {
       throw new BadRequestException(`File too large. Max size for ${dto.kind}: ${maxSize / 1024 / 1024}MB`);
     }
 
+    const { s3, bucket, baseUrl } = await this.getClient();
     const ext = dto.contentType.split('/')[1]?.replace('jpeg', 'jpg') ?? 'bin';
     const key = `${dto.kind}/${currentUser.sub}/${uuid()}.${ext}`;
 
     const command = new PutObjectCommand({
-      Bucket: this.bucket,
+      Bucket: bucket,
       Key: key,
       ContentType: dto.contentType,
       ContentLength: dto.size,
     });
 
-    const url = await getSignedUrl(this.s3, command, { expiresIn: 300 }); // 5 min
+    const url = await getSignedUrl(s3, command, { expiresIn: 300 }); // 5 min
 
     return {
       uploadUrl: url,
       key,
-      publicUrl: `https://${this.bucket}.s3.amazonaws.com/${key}`,
+      // Prefer the admin-configured public base (custom domain/CDN or the correct
+      // regional endpoint) over the generic (region-less) virtual-hosted-style guess.
+      publicUrl: baseUrl ? `${baseUrl.replace(/\/$/, '')}/${key}` : `https://${bucket}.s3.amazonaws.com/${key}`,
       expiresAt: new Date(Date.now() + 300_000),
     };
   }
@@ -66,9 +80,10 @@ export class UploadsService {
     const key = this.extractKey(keyOrUrl);
     this.logger.log(`verifyUploadKey key=${key} expectedKind=${expectedKind ?? 'none'}`);
 
+    const { s3, bucket } = await this.getClient();
     let head;
     try {
-      head = await this.s3.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+      head = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
     } catch (err) {
       this.logger.error(`HeadObject failed key=${key}`, err instanceof Error ? err.message : String(err));
       throw new NotFoundException('Upload not found in storage');

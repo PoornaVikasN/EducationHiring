@@ -2,30 +2,32 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
+import { SystemConfigService } from '../system-config/system-config.service';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private readonly senderEmail: string;
-  private readonly senderName: string;
-  private readonly transporter: nodemailer.Transporter;
 
   constructor(
     private config: ConfigService,
+    private systemConfig: SystemConfigService,
     private emailTemplates: EmailTemplatesService,
-  ) {
-    this.senderEmail = this.config.get<string>('GMAIL_USER', 'noreply@schoolteacher.in');
-    this.senderName = this.config.get<string>('SMTP_SENDER_NAME', 'SchoolTeacher');
-    this.transporter = nodemailer.createTransport({
+  ) {}
+
+  // Gmail creds are admin-editable via Config → API Keys (no redeploy) — same pattern
+  // Razorpay already uses. Built fresh per-send (cheap; nodemailer only touches the
+  // network on sendMail, not on createTransport) rather than cached at boot, so an
+  // admin's saved change takes effect on the very next email, not after a restart.
+  private async getTransporter(): Promise<nodemailer.Transporter> {
+    const [user, clientId, clientSecret, refreshToken] = await Promise.all([
+      this.systemConfig.getSecret('GMAIL_USER'),
+      this.systemConfig.getSecret('GMAIL_CLIENT_ID'),
+      this.systemConfig.getSecret('GMAIL_CLIENT_SECRET'),
+      this.systemConfig.getSecret('GMAIL_REFRESH_TOKEN'),
+    ]);
+    return nodemailer.createTransport({
       service: 'gmail',
-      auth: {
-        type: 'OAuth2',
-        user: this.config.get<string>('GMAIL_USER'),
-        clientId: this.config.get<string>('GMAIL_CLIENT_ID'),
-        clientSecret: this.config.get<string>('GMAIL_CLIENT_SECRET'),
-        refreshToken: this.config.get<string>('GMAIL_REFRESH_TOKEN'),
-        // No static accessToken — nodemailer fetches a fresh one via refreshToken on every send
-      },
+      auth: { type: 'OAuth2', user, clientId, clientSecret, refreshToken },
     });
   }
 
@@ -244,13 +246,17 @@ export class EmailService {
   }
 
   private async send(to: string, subject: string, html: string): Promise<void> {
-    if (!this.config.get<string>('GMAIL_REFRESH_TOKEN')) {
+    const refreshToken = await this.systemConfig.getSecret('GMAIL_REFRESH_TOKEN');
+    if (!refreshToken) {
       this.logger.warn(`Email skipped (no GMAIL_REFRESH_TOKEN) — to: ${to}, subject: ${subject}`);
       return;
     }
+    const senderEmail = (await this.systemConfig.getSecret('GMAIL_USER')) ?? 'noreply@schoolteacher.in';
+    const senderName = this.config.get<string>('SMTP_SENDER_NAME', 'SchoolTeacher');
     try {
-      await this.transporter.sendMail({
-        from: `"${this.senderName}" <${this.senderEmail}>`,
+      const transporter = await this.getTransporter();
+      await transporter.sendMail({
+        from: `"${senderName}" <${senderEmail}>`,
         to,
         subject,
         html,

@@ -33,16 +33,31 @@ const resetSchema = z
 type EmailInput = z.infer<typeof emailSchema>;
 type ResetInput = z.infer<typeof resetSchema>;
 
+const RESEND_COOLDOWN = 60;
+
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [step, setStep] = useState<'email' | 'reset'>('email');
   const [sentEmail, setSentEmail] = useState('');
   const [serverError, setServerError] = useState('');
   const [done, setDone] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const { executeRecaptcha } = useGoogleReCaptcha();
 
   const emailForm = useForm<EmailInput>({ resolver: zodResolver(emailSchema) });
   const resetForm = useForm<ResetInput>({ resolver: zodResolver(resetSchema) });
+
+  // Shared across both steps deliberately — going back to "email" step and
+  // resubmitting must not bypass the cooldown a real resend would face.
+  function startCooldown() {
+    setResendCooldown(RESEND_COOLDOWN);
+    const id = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) { clearInterval(id); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  }
 
   const onSendOtp = async (data: EmailInput) => {
     setServerError('');
@@ -50,12 +65,27 @@ export default function ForgotPasswordPage() {
       const recaptchaToken = executeRecaptcha ? await executeRecaptcha('forgot_password') : undefined;
       await authApi.forgotPassword(data.email, recaptchaToken);
       setSentEmail(data.email);
+      startCooldown();
       setStep('reset');
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         'Something went wrong. Please try again.';
       setServerError(typeof msg === 'string' ? msg : 'Something went wrong.');
+    }
+  };
+
+  const handleResend = async () => {
+    setServerError('');
+    try {
+      const recaptchaToken = executeRecaptcha ? await executeRecaptcha('forgot_password') : undefined;
+      await authApi.forgotPassword(sentEmail, recaptchaToken);
+      startCooldown();
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Could not resend. Please try again.';
+      setServerError(typeof msg === 'string' ? msg : 'Could not resend.');
     }
   };
 
@@ -147,9 +177,19 @@ export default function ForgotPasswordPage() {
           <Button
             variant="link"
             className="h-auto p-0 text-brand-primary font-medium"
+            onClick={handleResend}
+            disabled={resendCooldown > 0}
+          >
+            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+          </Button>
+        </p>
+        <p className="mt-2 text-xs text-center text-text-muted">
+          <Button
+            variant="link"
+            className="h-auto p-0 text-text-muted hover:text-brand-primary font-medium"
             onClick={() => { setStep('email'); setServerError(''); }}
           >
-            Try again
+            Use a different email
           </Button>
         </p>
       </>
@@ -184,8 +224,17 @@ export default function ForgotPasswordPage() {
           </div>
         )}
 
-        <Button type="submit" className="w-full" size="lg" disabled={emailForm.formState.isSubmitting}>
-          {emailForm.formState.isSubmitting ? 'Sending…' : 'Send reset code'}
+        <Button
+          type="submit"
+          className="w-full"
+          size="lg"
+          disabled={emailForm.formState.isSubmitting || resendCooldown > 0}
+        >
+          {emailForm.formState.isSubmitting
+            ? 'Sending…'
+            : resendCooldown > 0
+              ? `Wait ${resendCooldown}s`
+              : 'Send reset code'}
         </Button>
         <RecaptchaNotice />
       </form>
