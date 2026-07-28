@@ -7,7 +7,7 @@ export const BULK_IMPORT_HEADERS: Array<{ header: string; key: string }> = [
   { header: 'Full Name*', key: 'fullName' },
   { header: 'Email*', key: 'email' },
   { header: 'Phone*', key: 'phone' },
-  { header: 'School Registration Number* (SCHOOL rows only)', key: 'schoolRegistrationNumber' },
+  { header: 'School Registration Number (SCHOOL rows only)', key: 'schoolRegistrationNumber' },
   { header: 'School Name (required for SCHOOL rows)', key: 'schoolName' },
   { header: 'School Address (required for SCHOOL rows)', key: 'schoolAddress' },
   { header: 'School City (required for SCHOOL rows)', key: 'schoolCity' },
@@ -21,7 +21,10 @@ export const BULK_IMPORT_HEADERS: Array<{ header: string; key: string }> = [
   { header: 'Current School Name (optional, free text, TEACHER rows — not validated)', key: 'currentSchoolName' },
 ];
 
-const REQUIRED_HEADER_KEYS = ['userType', 'fullName', 'email', 'phone', 'schoolRegistrationNumber'];
+// schoolRegistrationNumber is intentionally excluded — it's only ever required as a
+// per-row VALUE for SCHOOL rows (enforced by superRefine below), never as a column that
+// must exist in the sheet. A TEACHER-only file may omit it entirely.
+const REQUIRED_HEADER_KEYS = ['userType', 'fullName', 'email', 'phone'];
 
 export const bulkImportRowSchema = z
   .object({
@@ -78,7 +81,14 @@ export interface ClientValidationSummary {
   teacherCount: number;
   validCount: number;
   invalidCount: number;
+  totalRowCount: number;
+  skippedFullValidation: boolean;
 }
+
+// Above this row count, skip the full per-row zod validation pass client-side (the actual
+// main-thread freeze risk on a 30k-row file) and only check header existence — the server
+// still validates every row; the downloadable Error Report shows exactly what failed.
+export const LARGE_FILE_ROW_THRESHOLD = 3000;
 
 // Reads header row values (as returned by xlsx's sheet_to_json first-row keys) and maps
 // them to BulkImportRow keys via BULK_IMPORT_HEADERS, then runs the same conditional
@@ -86,7 +96,7 @@ export interface ClientValidationSummary {
 export function validateParsedRows(rawRows: Array<Record<string, unknown>>): ClientValidationSummary {
   const headerErrors: string[] = [];
   if (rawRows.length === 0) {
-    return { headerErrors: ['No data rows found in the file.'], rows: [], schoolCount: 0, teacherCount: 0, validCount: 0, invalidCount: 0 };
+    return { headerErrors: ['No data rows found in the file.'], rows: [], schoolCount: 0, teacherCount: 0, validCount: 0, invalidCount: 0, totalRowCount: 0, skippedFullValidation: false };
   }
 
   const firstRowKeys = new Set(Object.keys(rawRows[0]!));
@@ -149,5 +159,47 @@ export function validateParsedRows(rawRows: Array<Record<string, unknown>>): Cli
     teacherCount: results.filter((r) => r.raw.userType === 'TEACHER').length,
     validCount: results.filter((r) => r.valid).length,
     invalidCount: results.filter((r) => !r.valid).length,
+    totalRowCount: results.length,
+    skippedFullValidation: false,
+  };
+}
+
+// Large-file path: only checks header existence + counts rows/types, skipping the
+// per-row zod pass entirely. Server-side validation and the downloadable Error Report
+// are the source of truth for correctness on files this large.
+export function checkHeadersOnly(rawRows: Array<Record<string, unknown>>): ClientValidationSummary {
+  if (rawRows.length === 0) {
+    return { headerErrors: ['No data rows found in the file.'], rows: [], schoolCount: 0, teacherCount: 0, validCount: 0, invalidCount: 0, totalRowCount: 0, skippedFullValidation: true };
+  }
+
+  const headerErrors: string[] = [];
+  const firstRowKeys = new Set(Object.keys(rawRows[0]!));
+  const headerToKey = new Map(BULK_IMPORT_HEADERS.map((h) => [h.header, h.key]));
+  const presentKeys = new Set([...firstRowKeys].map((h) => headerToKey.get(h)).filter(Boolean));
+  const missing = REQUIRED_HEADER_KEYS.filter((k) => !presentKeys.has(k));
+  if (missing.length > 0) {
+    headerErrors.push(`Missing required columns: ${missing.join(', ')}. Use the downloaded template without renaming columns.`);
+  }
+
+  const userTypeHeader = BULK_IMPORT_HEADERS.find((h) => h.key === 'userType')?.header;
+  let schoolCount = 0;
+  let teacherCount = 0;
+  if (userTypeHeader) {
+    for (const raw of rawRows) {
+      const v = String(raw[userTypeHeader] ?? '').trim().toUpperCase();
+      if (v === 'SCHOOL') schoolCount++;
+      else if (v === 'TEACHER') teacherCount++;
+    }
+  }
+
+  return {
+    headerErrors,
+    rows: [],
+    schoolCount,
+    teacherCount,
+    validCount: rawRows.length,
+    invalidCount: 0,
+    totalRowCount: rawRows.length,
+    skippedFullValidation: true,
   };
 }

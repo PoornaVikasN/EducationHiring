@@ -24,5 +24,6 @@ import { ImportBatch, ImportBatchSchema } from './schemas/import-batch.schema';
   ],
   controllers: [BulkImportController],
   providers: [BulkImportService],
+  exports: [BulkImportService],
 })
 export class BulkImportModule {}

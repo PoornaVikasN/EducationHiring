@@ -20,6 +20,13 @@ import { HEADERS, buildTemplateWorkbook } from './template-builder';
 
 const ACTIVATION_TOKEN_TTL_MS = 72 * 60 * 60 * 1000; // 72 hours, per spec's suggested 24-72h window
 const DUPLICATE_IMPORT_WINDOW_MS = 24 * 60 * 60 * 1000;
+const INSERT_CHUNK_SIZE = 1000;
+const EMAIL_SEND_CHUNK_SIZE = 25;
+const EMAIL_SEND_CHUNK_DELAY_MS = 750;
+// Keeps the ImportBatch document well clear of MongoDB's 16MB BSON document limit even
+// on a catastrophic near-total-failure import — the full list is still available by
+// re-downloading the Error Report immediately after a run; only the *inline copy* is capped.
+const INLINE_FAILED_ROW_CAP = 2000;
 
 interface RawRow {
   rowNumber: number;
@@ -47,6 +54,21 @@ interface FailedRow {
   errorReason: string;
 }
 
+type PendingRowRef = { rowNumber: number; raw: Record<string, unknown> };
+type PendingUserDoc = Record<string, unknown> & { _id: Types.ObjectId };
+
+interface EmailInfo {
+  email: string;
+  role: Role;
+  fullName: string;
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
 @Injectable()
 export class BulkImportService {
   private readonly logger = new Logger(BulkImportService.name);
@@ -65,6 +87,10 @@ export class BulkImportService {
     return buildTemplateWorkbook();
   }
 
+  // Fast synchronous half: dedupe/parse/cap-check, then hand off the heavy lifting to
+  // runImportBatch() in the background so the HTTP request returns immediately — a 30k-row
+  // file's actual processing (validation, batched writes, paced emails) can take well past
+  // any reasonable request timeout, but the upload response itself must not.
   async processUpload(
     buffer: Buffer,
     fileName: string,
@@ -101,6 +127,48 @@ export class BulkImportService {
       throw new BadRequestException('No data rows found in the "Users" sheet.');
     }
 
+    const batch = await this.importBatchModel.create({
+      importedByAdminId: new Types.ObjectId(adminId),
+      importedByAdminEmail: adminEmail,
+      fileName,
+      fileChecksum,
+      totalRows: rows.length,
+      successCount: 0,
+      failedCount: 0,
+      status: 'PROCESSING',
+      startedAt,
+      completedAt: null,
+      processingDurationMs: null,
+      emailsQueued: 0,
+      emailsSent: 0,
+      emailsFailed: 0,
+      failedRows: [],
+      failedRowsTruncated: false,
+    });
+
+    const batchId = batch._id.toString();
+    setImmediate(() => {
+      this.runImportBatch(batchId, rows, adminId, adminEmail, fileName, startedAt).catch((err: unknown) => {
+        this.logger.error(`Bulk import batch ${batchId} crashed: ${String((err as Error)?.stack ?? err)}`);
+      });
+    });
+
+    return batch;
+  }
+
+  // The async half — everything that used to run inline in the request. Never throws
+  // out to a caller (there isn't one awaiting it); any unexpected failure is caught by
+  // the setImmediate wrapper above and logged, leaving the batch stuck at PROCESSING.
+  // Acceptable for an occasional internal admin operation at this scale (see plan notes);
+  // would need a persisted/resumable job store if 30k-row imports become routine.
+  private async runImportBatch(
+    batchId: string,
+    rows: RawRow[],
+    adminId: string,
+    adminEmail: string,
+    fileName: string,
+    startedAt: Date,
+  ): Promise<void> {
     const failedRows: FailedRow[] = [];
     const validRows: Array<{ rowNumber: number; dto: BulkImportRowDto; raw: Record<string, unknown> }> = [];
 
@@ -208,77 +276,262 @@ export class BulkImportService {
       finalValidRows.push(row);
     }
 
-    // ── Create: SCHOOL rows first, then TEACHER rows (order no longer load-bearing for
-    // linking — TEACHER rows are fully independent — but harmless to keep grouped) ──
-    const createdUsers: UserDocument[] = [];
+    // ── Batched creation ──────────────────────────────────────────────────────
+    // Build every document in memory first with pre-generated ObjectIds (so
+    // recruiterProfile.schoolId / School.adminUserId are correct at insert time — no
+    // post-insert findByIdAndUpdate needed), then insertMany in chunks instead of one
+    // create() per row. Schools are inserted before their Users: if a School insert fails
+    // (e.g. a registration-number race from a concurrent import), we skip creating that
+    // row's User entirely rather than risk a User pointing at a School that doesn't exist.
+    // The mirror-image edge case — a School succeeding while its paired User insert then
+    // fails on an email/phone race — is accepted as a rare residual risk at this scale (the
+    // existing-value checks above already rule out the common case; this only bites on a
+    // genuine concurrent-import collision).
+    const pendingEmailInfo = new Map<string, EmailInfo>();
+
+    const schoolUserDocs: PendingUserDoc[] = [];
+    const schoolDocs: PendingUserDoc[] = [];
+    const schoolRowRefs: PendingRowRef[] = [];
 
     for (const row of finalValidRows.filter((r) => r.dto.userType === ImportUserType.SCHOOL)) {
-      try {
-        const user = await this.createSchoolUserAndProfile(row.dto);
-        createdUsers.push(user);
-      } catch (err: unknown) {
-        failedRows.push({ rowNumber: row.rowNumber, data: row.raw, errorReason: `Creation failed: ${String((err as Error).message ?? err)}` });
-      }
+      const dto = row.dto;
+      const phone = normalizePhoneNumber(dto.phone);
+      const userId = new Types.ObjectId();
+      const schoolId = new Types.ObjectId();
+
+      schoolUserDocs.push({
+        _id: userId,
+        role: Role.RECRUITER,
+        email: dto.email.toLowerCase().trim(),
+        phone,
+        passwordHash: null,
+        emailVerified: true,
+        recruiterProfile: { fullName: dto.fullName, schoolId },
+      });
+      schoolDocs.push({
+        _id: schoolId,
+        name: dto.schoolName!,
+        registrationNumber: dto.schoolRegistrationNumber!,
+        address: dto.schoolAddress!,
+        city: dto.schoolCity!,
+        state: dto.schoolState!,
+        pincode: dto.schoolPincode!,
+        contactEmail: (dto.schoolContactEmail ?? dto.email).toLowerCase().trim(),
+        contactPhone: dto.schoolContactPhone ?? phone,
+        adminUserId: userId,
+      });
+      schoolRowRefs.push({ rowNumber: row.rowNumber, raw: row.raw });
+      pendingEmailInfo.set(userId.toString(), { email: schoolUserDocs.at(-1)!.email as string, role: Role.RECRUITER, fullName: dto.fullName });
     }
+
+    const teacherUserDocs: PendingUserDoc[] = [];
+    const teacherRowRefs: PendingRowRef[] = [];
 
     for (const row of finalValidRows.filter((r) => r.dto.userType === ImportUserType.TEACHER)) {
+      const dto = row.dto;
+      const phone = normalizePhoneNumber(dto.phone);
+      const userId = new Types.ObjectId();
+
+      teacherUserDocs.push({
+        _id: userId,
+        role: Role.TEACHER,
+        email: dto.email.toLowerCase().trim(),
+        phone,
+        passwordHash: null,
+        emailVerified: true,
+        seekerProfile: {
+          fullName: dto.fullName,
+          headline: null, bio: null, resumeUrl: null, introVideoUrl: null,
+          city: dto.city ?? null, state: dto.state ?? null, availability: null,
+          experienceYears: dto.experienceYears ?? null, skills: [], certUrls: [], desiredCities: [],
+          age: null, gender: null, maritalStatus: null, degrees: [],
+          whatsappNumber: null, whatsappVerified: false, pincode: null,
+          currentSchool: dto.currentSchoolName ?? null, employmentType: null,
+          expertise: [], academics: null, salaryRange: null,
+          availableTimings: [], interestedToCover: [], indemnityInsurance: null,
+          isRegisteredWithBoard: null, boardRegistrationName: null,
+        },
+      });
+      teacherRowRefs.push({ rowNumber: row.rowNumber, raw: row.raw });
+      pendingEmailInfo.set(userId.toString(), { email: teacherUserDocs.at(-1)!.email as string, role: Role.TEACHER, fullName: dto.fullName });
+    }
+
+    const succeededSchools = await this.insertManyTolerant(this.schoolModel, schoolDocs, schoolRowRefs, failedRows, 'School creation failed');
+    const succeededSchoolIds = new Set(succeededSchools.map((s) => s._id.toString()));
+
+    const combinedUserDocs: PendingUserDoc[] = [];
+    const combinedRowRefs: PendingRowRef[] = [];
+    for (let i = 0; i < schoolUserDocs.length; i++) {
+      const userDoc = schoolUserDocs[i]!;
+      const schoolId = (userDoc.recruiterProfile as { schoolId: Types.ObjectId }).schoolId;
+      if (succeededSchoolIds.has(schoolId.toString())) {
+        combinedUserDocs.push(userDoc);
+        combinedRowRefs.push(schoolRowRefs[i]!);
+      } else {
+        pendingEmailInfo.delete(userDoc._id.toString());
+      }
+    }
+    combinedUserDocs.push(...teacherUserDocs);
+    combinedRowRefs.push(...teacherRowRefs);
+
+    const succeededUsers = await this.insertManyTolerant(this.userModel, combinedUserDocs, combinedRowRefs, failedRows, 'User creation failed');
+
+    if (succeededUsers.length > 0) {
+      await this.userModel.updateMany(
+        { _id: { $in: succeededUsers.map((u) => u._id) } },
+        { $set: { importBatchId: new Types.ObjectId(batchId) } },
+      );
+    }
+
+    // ── Activation tokens, batched ────────────────────────────────────────────
+    const rawTokenByUserId = new Map<string, string>();
+    const tokenDocs: Array<Record<string, unknown>> = [];
+    for (const user of succeededUsers) {
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      rawTokenByUserId.set(user._id.toString(), rawToken);
+      tokenDocs.push({
+        userId: user._id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + ACTIVATION_TOKEN_TTL_MS),
+        used: false,
+      });
+    }
+    for (const c of chunk(tokenDocs, INSERT_CHUNK_SIZE)) {
       try {
-        const user = await this.createTeacherUser(row.dto);
-        createdUsers.push(user);
+        await this.activationTokenModel.insertMany(c, { ordered: false });
       } catch (err: unknown) {
-        failedRows.push({ rowNumber: row.rowNumber, data: row.raw, errorReason: `Creation failed: ${String((err as Error).message ?? err)}` });
+        this.logger.warn(`Some activation tokens failed to insert (batch ${batchId}): ${String(err)}`);
       }
     }
 
-    // ── Activation tokens + fire-and-forget onboarding emails ────────────────
-    let emailsQueued = 0;
-    for (const user of createdUsers) {
-      emailsQueued++;
-      this.issueActivationAndEmail(user).catch((err: unknown) => {
-        this.logger.warn(`Activation email failed for ${user._id.toString()}: ${String(err)}`);
-      });
-    }
+    // ── Paced activation emails (Gmail daily-send-cap aware) ──────────────────
+    const emailCap = await this.systemConfig.getSettingNumber('EMAIL_DAILY_SEND_CAP', 400);
+    const toEmailNow = succeededUsers.slice(0, emailCap);
+    const emailResult = await this.sendActivationEmailsPaced(toEmailNow, rawTokenByUserId, pendingEmailInfo);
 
+    // ── Finalize batch ────────────────────────────────────────────────────────
     const completedAt = new Date();
-    const status = failedRows.length === 0 ? 'COMPLETED' : createdUsers.length === 0 ? 'FAILED' : 'COMPLETED_WITH_ERRORS';
+    const status = failedRows.length === 0 ? 'COMPLETED' : succeededUsers.length === 0 ? 'FAILED' : 'COMPLETED_WITH_ERRORS';
+    const failedRowsTruncated = failedRows.length > INLINE_FAILED_ROW_CAP;
+    const storedFailedRows = failedRowsTruncated ? failedRows.slice(0, INLINE_FAILED_ROW_CAP) : failedRows;
 
-    const batch = await this.importBatchModel.create({
-      importedByAdminId: new Types.ObjectId(adminId),
-      importedByAdminEmail: adminEmail,
-      fileName,
-      fileChecksum,
-      totalRows: rows.length,
-      successCount: createdUsers.length,
-      failedCount: failedRows.length,
-      status,
-      startedAt,
-      completedAt,
-      processingDurationMs: completedAt.getTime() - startedAt.getTime(),
-      emailsQueued,
-      emailsSent: 0,
-      emailsFailed: 0,
-      failedRows,
+    await this.importBatchModel.findByIdAndUpdate(batchId, {
+      $set: {
+        successCount: succeededUsers.length,
+        failedCount: failedRows.length,
+        status,
+        completedAt,
+        processingDurationMs: completedAt.getTime() - startedAt.getTime(),
+        emailsQueued: succeededUsers.length,
+        emailsSent: emailResult.sent,
+        emailsFailed: emailResult.failed,
+        failedRows: storedFailedRows,
+        failedRowsTruncated,
+      },
     });
-
-    if (createdUsers.length > 0) {
-      await this.userModel.updateMany(
-        { _id: { $in: createdUsers.map((u) => u._id) } },
-        { $set: { importBatchId: batch._id } },
-      );
-    }
 
     this.auditService.log(
       adminId,
       adminEmail,
       'BULK_USER_IMPORT',
       'user',
-      batch._id.toString(),
+      batchId,
       fileName,
       {},
-      { totalRows: rows.length, successCount: createdUsers.length, failedCount: failedRows.length },
+      { totalRows: rows.length, successCount: succeededUsers.length, failedCount: failedRows.length },
     );
+  }
 
-    return batch;
+  // Inserts `docs` (parallel-indexed with `rowRefs`) in chunks, tolerating partial
+  // per-document failures (e.g. a duplicate-key race from a concurrent import) without
+  // aborting the whole chunk (`ordered: false`). Successfully inserted docs are returned;
+  // failed ones are pushed to `failedRows` with the row data they came from.
+  private async insertManyTolerant<T extends PendingUserDoc>(
+    model: Model<any>,
+    docs: T[],
+    rowRefs: PendingRowRef[],
+    failedRows: FailedRow[],
+    errorLabel: string,
+  ): Promise<T[]> {
+    if (docs.length === 0) return [];
+    const succeeded: T[] = [];
+    const docChunks = chunk(docs, INSERT_CHUNK_SIZE);
+    const refChunks = chunk(rowRefs, INSERT_CHUNK_SIZE);
+
+    for (let c = 0; c < docChunks.length; c++) {
+      const chunkDocs = docChunks[c]!;
+      const chunkRefs = refChunks[c]!;
+      try {
+        await model.insertMany(chunkDocs, { ordered: false });
+        succeeded.push(...chunkDocs);
+      } catch (err: unknown) {
+        const bulkErr = err as {
+          insertedDocs?: Array<{ _id: Types.ObjectId }>;
+          writeErrors?: Array<{ index: number; err?: { errmsg?: string }; errmsg?: string }>;
+        };
+        const insertedIds = new Set((bulkErr.insertedDocs ?? []).map((d) => d._id.toString()));
+        for (const d of chunkDocs) {
+          if (insertedIds.has(d._id.toString())) succeeded.push(d);
+        }
+        for (let i = 0; i < chunkDocs.length; i++) {
+          const d = chunkDocs[i]!;
+          if (insertedIds.has(d._id.toString())) continue;
+          const ref = chunkRefs[i];
+          if (!ref) continue;
+          const writeErr = (bulkErr.writeErrors ?? []).find((e) => e.index === i);
+          const reason = writeErr?.err?.errmsg ?? writeErr?.errmsg ?? String((err as Error).message ?? err);
+          failedRows.push({ rowNumber: ref.rowNumber, data: ref.raw, errorReason: `${errorLabel}: ${reason}` });
+        }
+      }
+    }
+    return succeeded;
+  }
+
+  // Sends in small concurrent groups with a short delay between groups — never a single
+  // instantaneous burst even within the daily cap already applied by the caller. Marks
+  // each successfully-sent user's activationEmailSentAt so later resend passes (see
+  // resendEmails) know who still needs a first email.
+  private async sendActivationEmailsPaced(
+    users: PendingUserDoc[],
+    rawTokenByUserId: Map<string, string>,
+    emailInfo: Map<string, EmailInfo>,
+  ): Promise<{ sent: number; failed: number }> {
+    let sent = 0;
+    let failed = 0;
+    const sentUserIds: Types.ObjectId[] = [];
+    const publicUrl = process.env.PUBLIC_FRONTEND_URL || 'https://schoolteacher.co.in';
+    const groups = chunk(users, EMAIL_SEND_CHUNK_SIZE);
+
+    for (let g = 0; g < groups.length; g++) {
+      const group = groups[g]!;
+      const results = await Promise.allSettled(
+        group.map((user) => {
+          const info = emailInfo.get(user._id.toString());
+          const rawToken = rawTokenByUserId.get(user._id.toString());
+          if (!info || !rawToken) return Promise.reject(new Error('missing email info or activation token'));
+          const activationLink = `${publicUrl}/activate/${rawToken}`;
+          return this.emailService.sendAccountActivationEmail(info.email, info.fullName, info.role, activationLink);
+        }),
+      );
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled') {
+          sent++;
+          sentUserIds.push(group[i]!._id);
+        } else {
+          failed++;
+          this.logger.warn(`Activation email failed for ${group[i]!._id.toString()}: ${String(r.reason)}`);
+        }
+      });
+      if (g < groups.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, EMAIL_SEND_CHUNK_DELAY_MS));
+      }
+    }
+
+    if (sentUserIds.length > 0) {
+      await this.userModel.updateMany({ _id: { $in: sentUserIds } }, { $set: { activationEmailSentAt: new Date() } });
+    }
+    return { sent, failed };
   }
 
   async getHistory(page = 1, limit = 20) {
@@ -294,7 +547,33 @@ export class BulkImportService {
         .exec(),
       this.importBatchModel.countDocuments({}),
     ]);
-    return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+
+    const batchIds = data.map((b) => (b as unknown as { _id: Types.ObjectId })._id);
+    const pendingCounts = batchIds.length
+      ? await this.userModel.aggregate([
+          { $match: { importBatchId: { $in: batchIds }, activationEmailSentAt: null, deletedAt: null } },
+          { $group: { _id: '$importBatchId', count: { $sum: 1 } } },
+        ])
+      : [];
+    const pendingByBatch = new Map(pendingCounts.map((p: { _id: Types.ObjectId; count: number }) => [p._id.toString(), p.count]));
+
+    const withPending = data.map((b) => ({
+      ...b,
+      pendingEmailCount: pendingByBatch.get((b as unknown as { _id: Types.ObjectId })._id.toString()) ?? 0,
+    }));
+
+    return { data: withPending, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  }
+
+  async getBatch(batchId: string) {
+    const batch = await this.importBatchModel.findById(batchId).select('-failedRows.data').lean().exec();
+    if (!batch) throw new NotFoundException('Import batch not found');
+    const pendingEmailCount = await this.userModel.countDocuments({
+      importBatchId: batch._id,
+      activationEmailSentAt: null,
+      deletedAt: null,
+    });
+    return { ...batch, pendingEmailCount };
   }
 
   async getErrorReport(batchId: string): Promise<Buffer> {
@@ -303,81 +582,100 @@ export class BulkImportService {
     return buildErrorReportWorkbook(batch.failedRows);
   }
 
+  // Auto-trickle mode (no userIds given): targets only users from this batch who have
+  // never received their activation email (Gmail's real daily send limit means a large
+  // batch can't all be emailed at once). Explicit userIds bypasses that filter — it's the
+  // admin deliberately re-sending to specific people regardless of prior sends. Shared by
+  // the admin-triggered "Resend" action and the automated daily sweep (below).
+  private async findPendingUsers(batchId: string, userIds: string[] | undefined, limit: number): Promise<UserDocument[]> {
+    const filter: Record<string, unknown> = { importBatchId: new Types.ObjectId(batchId), deletedAt: null };
+    if (userIds && userIds.length > 0) {
+      filter['_id'] = { $in: userIds.map((id) => new Types.ObjectId(id)) };
+    } else {
+      filter['activationEmailSentAt'] = null;
+    }
+    return this.userModel.find(filter).limit(limit).exec();
+  }
+
+  // Sends in small concurrent groups with a delay between groups (same shape as
+  // sendActivationEmailsPaced) — never a single unbounded simultaneous burst. A first cut
+  // at this fired every user in one go with zero pacing and reproducibly tripped a real
+  // Gmail "421 Temporary System Problem" throttle response during live testing.
+  private async sendPendingUserEmailsPaced(users: UserDocument[]): Promise<{ sent: number; failed: number }> {
+    let sent = 0;
+    let failed = 0;
+    const groups = chunk(users, EMAIL_SEND_CHUNK_SIZE);
+
+    for (let g = 0; g < groups.length; g++) {
+      const group = groups[g]!;
+      const results = await Promise.allSettled(group.map((user) => this.issueActivationAndEmail(user)));
+      const sentIds: Types.ObjectId[] = [];
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled') {
+          sent++;
+          sentIds.push(group[i]!._id);
+        } else {
+          failed++;
+          this.logger.warn(`Pending-email dispatch failed for ${group[i]!._id.toString()}: ${String(r.reason)}`);
+        }
+      });
+      if (sentIds.length > 0) {
+        await this.userModel.updateMany({ _id: { $in: sentIds } }, { $set: { activationEmailSentAt: new Date() } });
+      }
+      if (g < groups.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, EMAIL_SEND_CHUNK_DELAY_MS));
+      }
+    }
+    return { sent, failed };
+  }
+
   async resendEmails(batchId: string, userIds: string[] | undefined, adminId: string, adminEmail: string): Promise<{ queued: number }> {
     const batch = await this.importBatchModel.findById(batchId).lean().exec();
     if (!batch) throw new NotFoundException('Import batch not found');
 
-    const filter: Record<string, unknown> = { importBatchId: new Types.ObjectId(batchId), activatedAt: null, deletedAt: null };
-    if (userIds && userIds.length > 0) {
-      filter['_id'] = { $in: userIds.map((id) => new Types.ObjectId(id)) };
-    }
-    const users = await this.userModel.find(filter).exec();
+    const emailCap = await this.systemConfig.getSettingNumber('EMAIL_DAILY_SEND_CAP', 500);
+    const users = await this.findPendingUsers(batchId, userIds, emailCap);
 
-    let queued = 0;
-    for (const user of users) {
-      queued++;
-      this.issueActivationAndEmail(user).catch((err: unknown) => {
-        this.logger.warn(`Resend activation email failed for ${user._id.toString()}: ${String(err)}`);
-      });
-    }
+    // Fire-and-forget the whole paced pass (not per-user) — keeps the admin's "Resend"
+    // click fast, matching this codebase's existing "don't block the caller on email
+    // delivery" convention, while still pacing internally (see sendPendingUserEmailsPaced).
+    this.sendPendingUserEmailsPaced(users).catch((err: unknown) => {
+      this.logger.warn(`Paced resend dispatch crashed for batch ${batchId}: ${String(err)}`);
+    });
 
-    this.auditService.log(adminId, adminEmail, 'BULK_IMPORT_EMAILS_RESENT', 'user', batchId, batch.fileName, {}, { queued });
-    return { queued };
+    this.auditService.log(adminId, adminEmail, 'BULK_IMPORT_EMAILS_RESENT', 'user', batchId, batch.fileName, {}, { queued: users.length });
+    return { queued: users.length };
   }
 
-  // ── Row -> DB creation ──────────────────────────────────────────────────────
+  // Automated daily trickle: finds every bulk-import batch that still has at least one
+  // user pending their first activation email and dispatches the next wave for each,
+  // respecting EMAIL_DAILY_SEND_CAP per batch per run — so a 4,000-row import (or larger)
+  // finishes emailing everyone over a handful of days with zero manual "Resend" clicks.
+  // Called from a daily cron (see src/scheduler) rather than the admin UI, so — matching
+  // the existing job-expiry/pay-window/payment-reconciliation sweeps in this codebase —
+  // it does not attribute an audit-log entry to any admin; it's a system action. Batches
+  // are processed sequentially (awaited, not fire-and-forget) since a background cron has
+  // no caller waiting on a fast response, and racing multiple batches' sends concurrently
+  // would risk compounding into the same Gmail rate-limit window.
+  async runPendingEmailSweep(): Promise<{ batchesProcessed: number; totalQueued: number; totalSent: number; totalFailed: number }> {
+    const pendingBatchIds = await this.userModel.aggregate<{ _id: Types.ObjectId }>([
+      { $match: { importBatchId: { $ne: null }, activationEmailSentAt: null, deletedAt: null } },
+      { $group: { _id: '$importBatchId' } },
+    ]);
 
-  private async createSchoolUserAndProfile(dto: BulkImportRowDto): Promise<UserDocument> {
-    const phone = normalizePhoneNumber(dto.phone);
-    const user = await this.userModel.create({
-      role: Role.RECRUITER,
-      email: dto.email.toLowerCase().trim(),
-      phone,
-      passwordHash: null,
-      emailVerified: true,
-      recruiterProfile: { fullName: dto.fullName, schoolId: null },
-    });
+    const emailCap = await this.systemConfig.getSettingNumber('EMAIL_DAILY_SEND_CAP', 500);
+    let totalQueued = 0;
+    let totalSent = 0;
+    let totalFailed = 0;
 
-    const school = await this.schoolModel.create({
-      name: dto.schoolName!,
-      registrationNumber: dto.schoolRegistrationNumber!,
-      address: dto.schoolAddress!,
-      city: dto.schoolCity!,
-      state: dto.schoolState!,
-      pincode: dto.schoolPincode!,
-      contactEmail: (dto.schoolContactEmail ?? dto.email).toLowerCase().trim(),
-      contactPhone: dto.schoolContactPhone ?? phone,
-      adminUserId: user._id,
-    });
-
-    await this.userModel.findByIdAndUpdate(user._id, {
-      $set: { 'recruiterProfile.schoolId': school._id },
-    });
-    user.recruiterProfile!.schoolId = school._id;
-    return user;
-  }
-
-  private async createTeacherUser(dto: BulkImportRowDto): Promise<UserDocument> {
-    const phone = normalizePhoneNumber(dto.phone);
-    return this.userModel.create({
-      role: Role.TEACHER,
-      email: dto.email.toLowerCase().trim(),
-      phone,
-      passwordHash: null,
-      emailVerified: true,
-      seekerProfile: {
-        fullName: dto.fullName,
-        headline: null, bio: null, resumeUrl: null, introVideoUrl: null,
-        city: dto.city ?? null, state: dto.state ?? null, availability: null,
-        experienceYears: dto.experienceYears ?? null, skills: [], certUrls: [], desiredCities: [],
-        age: null, gender: null, maritalStatus: null, degrees: [],
-        whatsappNumber: null, whatsappVerified: false, pincode: null,
-        currentSchool: dto.currentSchoolName ?? null, employmentType: null,
-        expertise: [], academics: null, salaryRange: null,
-        availableTimings: [], interestedToCover: [], indemnityInsurance: null,
-        isRegisteredWithBoard: null, boardRegistrationName: null,
-      },
-    });
+    for (const { _id } of pendingBatchIds) {
+      const users = await this.findPendingUsers(_id.toString(), undefined, emailCap);
+      totalQueued += users.length;
+      const { sent, failed } = await this.sendPendingUserEmailsPaced(users);
+      totalSent += sent;
+      totalFailed += failed;
+    }
+    return { batchesProcessed: pendingBatchIds.length, totalQueued, totalSent, totalFailed };
   }
 
   private async issueActivationAndEmail(user: UserDocument): Promise<void> {
@@ -417,7 +715,10 @@ export class BulkImportService {
       if (match) columnIndexToKey.set(colNumber, match.key);
     });
 
-    const requiredHeaders = ['userType', 'fullName', 'email', 'phone', 'schoolRegistrationNumber'];
+    // schoolRegistrationNumber is intentionally excluded — it's only ever required as a
+    // per-row VALUE for SCHOOL rows (enforced by BulkImportRowDto's @ValidateIf), never as
+    // a column that must exist in the sheet. A TEACHER-only file may omit it entirely.
+    const requiredHeaders = ['userType', 'fullName', 'email', 'phone'];
     const foundKeys = new Set(columnIndexToKey.values());
     const missing = requiredHeaders.filter((k) => !foundKeys.has(k));
     if (missing.length > 0) {

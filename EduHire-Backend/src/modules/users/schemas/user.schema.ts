@@ -174,6 +174,13 @@ export class User {
   // Traceability only — which bulk-import batch created this user, if any.
   @Prop({ type: Types.ObjectId, ref: 'ImportBatch', default: null })
   importBatchId!: Types.ObjectId | null;
+
+  // Set once this user's activation email has actually been sent (initial import pass or
+  // a later resend) — distinct from `activatedAt` (only set once they set a password).
+  // Bulk import uses this to trickle emails across multiple days under Gmail's real daily
+  // sending cap: "resend" only targets users where this is still null.
+  @Prop({ type: Date, default: null })
+  activationEmailSentAt!: Date | null;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

@@ -105,11 +105,22 @@ const SETTING_SEEDS: SettingSeed[] = [
     key: 'BULK_IMPORT_MAX_ROWS',
     label: 'Bulk Import Max Rows',
     description:
-      'Maximum number of data rows accepted in a single Admin → Users bulk-import Excel file. Uploads processed synchronously within the request, so keep this bounded to what completes in a reasonable time.',
+      'Maximum number of data rows accepted in a single Admin → Users bulk-import Excel file. Processing runs in the background, so this is a sanity ceiling rather than a hard technical limit — raise it only if a genuinely larger one-off import is needed.',
     valueNumber: 2000,
     minValue: 100,
     maxValue: 5000,
     unit: 'rows',
+    displayKind: 'number',
+  },
+  {
+    key: 'EMAIL_DAILY_SEND_CAP',
+    label: 'Bulk Import Daily Email Cap',
+    description:
+      'Maximum number of account-activation emails a single bulk-import send/resend pass will dispatch. Exists because Google itself caps how many emails a regular Gmail account may send per rolling 24 hours to 500 (Google Workspace accounts get 2,000/day) — set to Google\'s official regular-account limit. Users beyond the cap are created immediately either way; their activation email just waits for the next "Resend emails" pass (e.g. the following day). Raise toward 2,000 only if this account is upgraded to Google Workspace.',
+    valueNumber: 500,
+    minValue: 10,
+    maxValue: 2000,
+    unit: 'emails',
     displayKind: 'number',
   },
 ];

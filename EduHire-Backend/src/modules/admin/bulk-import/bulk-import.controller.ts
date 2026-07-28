@@ -69,6 +69,12 @@ export class BulkImportController {
     return this.bulkImportService.getHistory(Number(page) || 1, Number(limit) || 20);
   }
 
+  @Get(':batchId')
+  getBatch(@Param('batchId') batchId: string) {
+    if (!batchId || batchId.length !== 24) throw new NotFoundException('Import batch not found');
+    return this.bulkImportService.getBatch(batchId);
+  }
+
   @Get(':batchId/errors')
   @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
   @Header('Content-Disposition', 'attachment; filename="bulk-import-errors.xlsx"')

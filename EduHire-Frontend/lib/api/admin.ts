@@ -239,14 +239,16 @@ export interface ImportBatchSummary {
   totalRows: number;
   successCount: number;
   failedCount: number;
-  status: 'COMPLETED' | 'COMPLETED_WITH_ERRORS' | 'FAILED';
+  status: 'PROCESSING' | 'COMPLETED' | 'COMPLETED_WITH_ERRORS' | 'FAILED';
   startedAt: string;
-  completedAt: string;
-  processingDurationMs: number;
+  completedAt: string | null;
+  processingDurationMs: number | null;
   emailsQueued: number;
   emailsSent: number;
   emailsFailed: number;
   failedRows: FailedImportRow[];
+  failedRowsTruncated: boolean;
+  pendingEmailCount: number;
   createdAt: string;
 }
 
@@ -355,10 +357,17 @@ export const adminApi = {
     const formData = new FormData();
     formData.append('file', file);
     if (force) formData.append('force', 'true');
+    // Processing now runs in the background (see backend PROCESSING status) — this request
+    // just parses/validates/queues, but a bumped timeout is cheap defense-in-depth in case
+    // a very large file's synchronous parse step alone runs long.
     return apiClient.post<ImportBatchSummary>('/admin/bulk-import/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60_000,
     });
   },
+
+  getBulkImportBatch: (batchId: string) =>
+    apiClient.get<ImportBatchSummary>(`/admin/bulk-import/${batchId}`),
 
   listBulkImportHistory: (page = 1, limit = 20) =>
     apiClient.get<PaginatedImportBatches>('/admin/bulk-import/history', { params: { page, limit } }),

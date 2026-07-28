@@ -15,8 +15,8 @@ import { ConfirmDialog } from '@/common-components/ui/confirm-dialog';
 import { IndeterminateProgressBar } from '@/common-components/ui/progress-bar';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { adminApi, type ImportBatchSummary } from '@/lib/api/admin';
-import { validateParsedRows, type ClientValidationSummary } from '@/lib/validations/bulk-import';
+import { adminApi } from '@/lib/api/admin';
+import { checkHeadersOnly, LARGE_FILE_ROW_THRESHOLD, validateParsedRows, type ClientValidationSummary } from '@/lib/validations/bulk-import';
 
 function triggerBlobDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -120,13 +120,22 @@ export default function BulkImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [validation, setValidation] = useState<ClientValidationSummary | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [summary, setSummary] = useState<ImportBatchSummary | null>(null);
+  const [batchId, setBatchId] = useState<string | null>(null);
   const [historyPage, setHistoryPage] = useState(1);
 
   const historyQuery = useQuery({
     queryKey: ['bulk-import-history', historyPage],
     queryFn: () => adminApi.listBulkImportHistory(historyPage, 10).then((r) => r.data),
   });
+
+  // Processing now runs in the background — poll while PROCESSING, stop once terminal.
+  const batchQuery = useQuery({
+    queryKey: ['bulk-import-batch', batchId],
+    queryFn: () => adminApi.getBulkImportBatch(batchId as string).then((r) => r.data),
+    enabled: !!batchId,
+    refetchInterval: (query) => (query.state.data?.status === 'PROCESSING' ? 2000 : false),
+  });
+  const summary = batchQuery.data ?? null;
 
   const templateMutation = useMutation({
     mutationFn: () => adminApi.downloadBulkImportTemplate(),
@@ -137,7 +146,7 @@ export default function BulkImportPage() {
   const uploadMutation = useMutation({
     mutationFn: () => adminApi.bulkImportUpload(file as File),
     onSuccess: (res) => {
-      setSummary(res.data);
+      setBatchId(res.data._id);
       setConfirmOpen(false);
       qc.invalidateQueries({ queryKey: ['bulk-import-history'] });
     },
@@ -154,32 +163,38 @@ export default function BulkImportPage() {
   });
 
   const resendMutation = useMutation({
-    mutationFn: (batchId: string) => adminApi.resendBulkImportEmails(batchId),
-    onSuccess: (res) => toast({ title: `Resent ${res.data.queued} onboarding email(s)` }),
+    mutationFn: (targetBatchId: string) => adminApi.resendBulkImportEmails(targetBatchId),
+    onSuccess: (res) => {
+      toast({ title: `Resent ${res.data.queued} onboarding email(s)` });
+      qc.invalidateQueries({ queryKey: ['bulk-import-history'] });
+      qc.invalidateQueries({ queryKey: ['bulk-import-batch'] });
+    },
     onError: (err) => toast({ title: 'Resend failed', description: extractErrorMessage(err, 'Please try again.'), variant: 'destructive' }),
   });
 
   const handleFileSelected = async (selected: File) => {
     setFile(selected);
-    setSummary(null);
+    setBatchId(null);
     try {
       const buffer = await selected.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: 'array' });
       const sheet = workbook.Sheets['Users'] ?? workbook.Sheets[workbook.SheetNames[0]!];
       const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: undefined });
-      setValidation(validateParsedRows(rawRows));
+      setValidation(
+        rawRows.length > LARGE_FILE_ROW_THRESHOLD ? checkHeadersOnly(rawRows) : validateParsedRows(rawRows),
+      );
     } catch {
-      setValidation({ headerErrors: ['Could not read this file. Make sure it is a valid .xlsx file.'], rows: [], schoolCount: 0, teacherCount: 0, validCount: 0, invalidCount: 0 });
+      setValidation({ headerErrors: ['Could not read this file. Make sure it is a valid .xlsx file.'], rows: [], schoolCount: 0, teacherCount: 0, validCount: 0, invalidCount: 0, totalRowCount: 0, skippedFullValidation: false });
     }
   };
 
   const resetImport = () => {
     setFile(null);
     setValidation(null);
-    setSummary(null);
+    setBatchId(null);
   };
 
-  const canProceed = !!validation && validation.headerErrors.length === 0 && validation.invalidCount === 0 && validation.rows.length > 0;
+  const canProceed = !!validation && validation.headerErrors.length === 0 && validation.invalidCount === 0 && validation.totalRowCount > 0;
   const isClean = !!validation && validation.headerErrors.length === 0 && validation.invalidCount === 0;
   const currentStep = summary ? 3 : file ? 2 : 1;
 
@@ -252,16 +267,24 @@ export default function BulkImportPage() {
                       ? <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                       : <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />}
                     <p className="text-sm font-medium text-text-primary">
-                      {validation.rows.length} rows found
+                      {validation.totalRowCount} rows found
                       <span className="text-text-muted font-normal"> — {validation.schoolCount} School, {validation.teacherCount} Teacher</span>
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 pl-6">
-                    <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">{validation.validCount} valid</span>
-                    {validation.invalidCount > 0 && (
-                      <span className="text-xs font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">{validation.invalidCount} invalid</span>
-                    )}
-                  </div>
+                  {!validation.skippedFullValidation && (
+                    <div className="flex items-center gap-2 pl-6">
+                      <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">{validation.validCount} valid</span>
+                      {validation.invalidCount > 0 && (
+                        <span className="text-xs font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">{validation.invalidCount} invalid</span>
+                      )}
+                    </div>
+                  )}
+                  {validation.skippedFullValidation && (
+                    <p className="text-xs text-text-muted pl-6">
+                      Large file detected — skipping full preview validation. Rows will be validated on the
+                      server; download the Error Report after import to see any issues.
+                    </p>
+                  )}
                   {validation.invalidCount > 0 && (
                     <div className="pl-6 space-y-1 pt-1">
                       {validation.rows.filter((r) => !r.valid).slice(0, 10).map((r) => (
@@ -294,7 +317,24 @@ export default function BulkImportPage() {
         </div>
       )}
 
-      {summary && (
+      {summary && summary.status === 'PROCESSING' && (
+        <div className="bg-bg-card border border-border-default rounded-2xl p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+              <Clock className="w-4.5 h-4.5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-text-primary">Import running in the background</p>
+              <p className="text-xs text-text-muted mt-0.5">
+                {summary.fileName} — {summary.totalRows} rows. You can leave this page; check Import History for progress.
+              </p>
+            </div>
+          </div>
+          <IndeterminateProgressBar />
+        </div>
+      )}
+
+      {summary && summary.status !== 'PROCESSING' && (
         <div className="bg-bg-card border border-border-default rounded-2xl p-6 space-y-5">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
@@ -309,13 +349,25 @@ export default function BulkImportPage() {
             <StatTile label="Total rows" value={summary.totalRows} icon={Users} />
             <StatTile label="Successful" value={summary.successCount} icon={CheckCircle2} tone="success" />
             <StatTile label="Failed" value={summary.failedCount} icon={XCircle} tone={summary.failedCount > 0 ? 'danger' : 'default'} />
-            <StatTile label="Processing time" value={`${(summary.processingDurationMs / 1000).toFixed(1)}s`} icon={Clock} tone="warning" />
-            <StatTile label="Emails queued" value={summary.emailsQueued} icon={Mail} />
+            <StatTile label="Processing time" value={summary.processingDurationMs != null ? `${(summary.processingDurationMs / 1000).toFixed(1)}s` : '—'} icon={Clock} tone="warning" />
+            <StatTile label="Emails pending" value={summary.pendingEmailCount} icon={Mail} tone={summary.pendingEmailCount > 0 ? 'warning' : 'default'} />
           </div>
+          {summary.pendingEmailCount > 0 && (
+            <p className="text-xs text-text-muted">
+              {summary.pendingEmailCount} activation email(s) are still queued — Gmail's daily sending limit
+              means large batches send in waves. Use &quot;Resend&quot; below (or from Import History) once a day
+              until everyone's been emailed.
+            </p>
+          )}
           <div className="flex gap-2 flex-wrap pt-1">
             {summary.failedCount > 0 && (
               <Button variant="outline" size="sm" onClick={() => errorReportMutation.mutate(summary._id)} disabled={errorReportMutation.isPending}>
                 <Download className="w-3.5 h-3.5 mr-1.5" /> Download Error Report
+              </Button>
+            )}
+            {summary.pendingEmailCount > 0 && (
+              <Button variant="outline" size="sm" onClick={() => resendMutation.mutate(summary._id)} disabled={resendMutation.isPending}>
+                <Mail className="w-3.5 h-3.5 mr-1.5" /> Resend Pending Emails
               </Button>
             )}
             <Button size="sm" onClick={resetImport}>Start New Import</Button>
@@ -358,10 +410,14 @@ export default function BulkImportPage() {
                         <span className={cn(
                           'text-xs font-medium px-2 py-0.5 rounded-full',
                           b.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                          b.status === 'FAILED' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700',
+                          b.status === 'FAILED' ? 'bg-red-100 text-red-600' :
+                          b.status === 'PROCESSING' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700',
                         )}>
                           {b.status.replace(/_/g, ' ')}
                         </span>
+                        {b.pendingEmailCount > 0 && (
+                          <span className="block text-[11px] text-amber-600 mt-0.5">{b.pendingEmailCount} email(s) pending</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
@@ -370,7 +426,12 @@ export default function BulkImportPage() {
                               <Download className="w-3.5 h-3.5" />
                             </Button>
                           )}
-                          <Button size="sm" variant="outline" onClick={() => resendMutation.mutate(b._id)} disabled={resendMutation.isPending}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => resendMutation.mutate(b._id)}
+                            disabled={resendMutation.isPending || b.status === 'PROCESSING' || b.pendingEmailCount === 0}
+                          >
                             <Mail className="w-3.5 h-3.5 mr-1.5" /> Resend
                           </Button>
                         </div>

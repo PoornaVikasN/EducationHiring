@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
-export type ImportBatchStatus = 'COMPLETED' | 'COMPLETED_WITH_ERRORS' | 'FAILED';
+export type ImportBatchStatus = 'PROCESSING' | 'COMPLETED' | 'COMPLETED_WITH_ERRORS' | 'FAILED';
 
 @Schema({ _id: false })
 class FailedImportRow {
@@ -42,17 +42,18 @@ export class ImportBatch {
   @Prop({ type: Number, required: true })
   failedCount!: number;
 
-  @Prop({ type: String, enum: ['COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED'], required: true })
+  @Prop({ type: String, enum: ['PROCESSING', 'COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED'], required: true })
   status!: ImportBatchStatus;
 
   @Prop({ type: Date, required: true })
   startedAt!: Date;
 
-  @Prop({ type: Date, required: true })
-  completedAt!: Date;
+  // Null while status is PROCESSING — set once runImportBatch finishes.
+  @Prop({ type: Date, default: null })
+  completedAt!: Date | null;
 
-  @Prop({ type: Number, required: true })
-  processingDurationMs!: number;
+  @Prop({ type: Number, default: null })
+  processingDurationMs!: number | null;
 
   @Prop({ type: Number, default: 0 })
   emailsQueued!: number;
@@ -65,6 +66,11 @@ export class ImportBatch {
 
   @Prop({ type: [FailedImportRowSchema], default: [] })
   failedRows!: FailedImportRow[];
+
+  // True when failedRows was capped (see INLINE_FAILED_ROW_CAP in bulk-import.service.ts) —
+  // the full list is still available via the Error Report download right after the run.
+  @Prop({ type: Boolean, default: false })
+  failedRowsTruncated!: boolean;
 }
 
 export const ImportBatchSchema = SchemaFactory.createForClass(ImportBatch);
