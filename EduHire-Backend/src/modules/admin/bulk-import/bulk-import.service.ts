@@ -13,6 +13,7 @@ import { School, SchoolDocument } from '../../schools/schemas/school.schema';
 import { SystemConfigService } from '../../system-config/system-config.service';
 import { User, UserDocument } from '../../users/schemas/user.schema';
 import { BulkImportRowDto, ImportUserType } from './dto/bulk-import-row.dto';
+import { buildEmailStatusReportWorkbook } from './email-status-report-builder';
 import { buildErrorReportWorkbook } from './error-report-builder';
 import { ActivationToken, ActivationTokenDocument } from './schemas/activation-token.schema';
 import { ImportBatch, ImportBatchDocument } from './schemas/import-batch.schema';
@@ -21,12 +22,23 @@ import { HEADERS, buildTemplateWorkbook } from './template-builder';
 const ACTIVATION_TOKEN_TTL_MS = 72 * 60 * 60 * 1000; // 72 hours, per spec's suggested 24-72h window
 const DUPLICATE_IMPORT_WINDOW_MS = 24 * 60 * 60 * 1000;
 const INSERT_CHUNK_SIZE = 1000;
-const EMAIL_SEND_CHUNK_SIZE = 25;
-const EMAIL_SEND_CHUNK_DELAY_MS = 750;
+// EmailService now pools SMTP connections (maxConnections: 3), so these groups queue
+// through a handful of real connections rather than each opening a fresh one — kept
+// modest anyway as defense-in-depth against Gmail's connection-level throttling.
+const EMAIL_SEND_CHUNK_SIZE = 10;
+const EMAIL_SEND_CHUNK_DELAY_MS = 1000;
 // Keeps the ImportBatch document well clear of MongoDB's 16MB BSON document limit even
 // on a catastrophic near-total-failure import — the full list is still available by
 // re-downloading the Error Report immediately after a run; only the *inline copy* is capped.
 const INLINE_FAILED_ROW_CAP = 2000;
+// Same idea for the per-email failure reasons embedded in an audit log entry — keeps
+// individual audit_log documents small even on a pass with a very high failure count.
+const INLINE_AUDIT_FAILURE_CAP = 50;
+
+interface EmailFailure {
+  email: string;
+  reason: string;
+}
 
 interface RawRow {
   rowNumber: number;
@@ -406,7 +418,7 @@ export class BulkImportService {
     }
 
     // ── Paced activation emails (Gmail daily-send-cap aware) ──────────────────
-    const emailCap = await this.systemConfig.getSettingNumber('EMAIL_DAILY_SEND_CAP', 400);
+    const emailCap = await this.systemConfig.getSettingNumber('EMAIL_DAILY_SEND_CAP', 500);
     const toEmailNow = succeededUsers.slice(0, emailCap);
     const emailResult = await this.sendActivationEmailsPaced(toEmailNow, rawTokenByUserId, pendingEmailInfo);
 
@@ -439,7 +451,16 @@ export class BulkImportService {
       batchId,
       fileName,
       {},
-      { totalRows: rows.length, successCount: succeededUsers.length, failedCount: failedRows.length },
+      {
+        totalRows: rows.length,
+        successCount: succeededUsers.length,
+        failedCount: failedRows.length,
+        emailsAttempted: toEmailNow.length,
+        emailsSent: emailResult.sent,
+        emailsFailed: emailResult.failed,
+        failures: emailResult.failures,
+        failuresTruncated: emailResult.failuresTruncated,
+      },
     );
   }
 
@@ -496,9 +517,11 @@ export class BulkImportService {
     users: PendingUserDoc[],
     rawTokenByUserId: Map<string, string>,
     emailInfo: Map<string, EmailInfo>,
-  ): Promise<{ sent: number; failed: number }> {
+  ): Promise<{ sent: number; failed: number; failures: EmailFailure[]; failuresTruncated: boolean }> {
     let sent = 0;
     let failed = 0;
+    const failures: EmailFailure[] = [];
+    let failuresTruncated = false;
     const sentUserIds: Types.ObjectId[] = [];
     const publicUrl = process.env.PUBLIC_FRONTEND_URL || 'https://schoolteacher.co.in';
     const groups = chunk(users, EMAIL_SEND_CHUNK_SIZE);
@@ -520,7 +543,11 @@ export class BulkImportService {
           sentUserIds.push(group[i]!._id);
         } else {
           failed++;
-          this.logger.warn(`Activation email failed for ${group[i]!._id.toString()}: ${String(r.reason)}`);
+          const email = emailInfo.get(group[i]!._id.toString())?.email ?? group[i]!._id.toString();
+          const reason = String((r.reason as Error)?.message ?? r.reason);
+          this.logger.warn(`Activation email failed for ${email}: ${reason}`);
+          if (failures.length < INLINE_AUDIT_FAILURE_CAP) failures.push({ email, reason });
+          else failuresTruncated = true;
         }
       });
       if (g < groups.length - 1) {
@@ -531,7 +558,7 @@ export class BulkImportService {
     if (sentUserIds.length > 0) {
       await this.userModel.updateMany({ _id: { $in: sentUserIds } }, { $set: { activationEmailSentAt: new Date() } });
     }
-    return { sent, failed };
+    return { sent, failed, failures, failuresTruncated };
   }
 
   async getHistory(page = 1, limit = 20) {
@@ -576,10 +603,43 @@ export class BulkImportService {
     return { ...batch, pendingEmailCount };
   }
 
-  async getErrorReport(batchId: string): Promise<Buffer> {
+  async getErrorReport(batchId: string, adminId: string, adminEmail: string): Promise<Buffer> {
     const batch = await this.importBatchModel.findById(batchId).lean().exec();
     if (!batch) throw new NotFoundException('Import batch not found');
+    this.auditService.log(
+      adminId, adminEmail, 'BULK_IMPORT_ERRORS_DOWNLOADED', 'user', batchId, batch.fileName,
+      {}, { rowCount: batch.failedRows.length },
+    );
     return buildErrorReportWorkbook(batch.failedRows);
+  }
+
+  // Per-user visibility into exactly who got their activation email and who's still
+  // pending — the "did we actually send anything" question a downloaded stats card alone
+  // can't answer.
+  async getEmailStatusReport(batchId: string, adminId: string, adminEmail: string): Promise<Buffer> {
+    const batch = await this.importBatchModel.findById(batchId).lean().exec();
+    if (!batch) throw new NotFoundException('Import batch not found');
+
+    const users = await this.userModel
+      .find({ importBatchId: new Types.ObjectId(batchId), deletedAt: null })
+      .select('email role activationEmailSentAt seekerProfile.fullName recruiterProfile.fullName')
+      .sort({ activationEmailSentAt: -1 })
+      .lean()
+      .exec();
+
+    const rows = users.map((u) => ({
+      fullName: u.seekerProfile?.fullName ?? u.recruiterProfile?.fullName ?? '',
+      email: u.email ?? '',
+      role: u.role,
+      activationEmailSentAt: u.activationEmailSentAt ?? null,
+    }));
+
+    this.auditService.log(
+      adminId, adminEmail, 'BULK_IMPORT_EMAIL_STATUS_DOWNLOADED', 'user', batchId, batch.fileName,
+      {}, { userCount: rows.length, sentCount: rows.filter((r) => r.activationEmailSentAt).length },
+    );
+
+    return buildEmailStatusReportWorkbook(rows);
   }
 
   // Auto-trickle mode (no userIds given): targets only users from this batch who have
@@ -601,9 +661,11 @@ export class BulkImportService {
   // sendActivationEmailsPaced) — never a single unbounded simultaneous burst. A first cut
   // at this fired every user in one go with zero pacing and reproducibly tripped a real
   // Gmail "421 Temporary System Problem" throttle response during live testing.
-  private async sendPendingUserEmailsPaced(users: UserDocument[]): Promise<{ sent: number; failed: number }> {
+  private async sendPendingUserEmailsPaced(users: UserDocument[]): Promise<{ sent: number; failed: number; failures: EmailFailure[]; failuresTruncated: boolean }> {
     let sent = 0;
     let failed = 0;
+    const failures: EmailFailure[] = [];
+    let failuresTruncated = false;
     const groups = chunk(users, EMAIL_SEND_CHUNK_SIZE);
 
     for (let g = 0; g < groups.length; g++) {
@@ -616,7 +678,11 @@ export class BulkImportService {
           sentIds.push(group[i]!._id);
         } else {
           failed++;
-          this.logger.warn(`Pending-email dispatch failed for ${group[i]!._id.toString()}: ${String(r.reason)}`);
+          const email = group[i]!.email ?? group[i]!._id.toString();
+          const reason = String((r.reason as Error)?.message ?? r.reason);
+          this.logger.warn(`Pending-email dispatch failed for ${email}: ${reason}`);
+          if (failures.length < INLINE_AUDIT_FAILURE_CAP) failures.push({ email, reason });
+          else failuresTruncated = true;
         }
       });
       if (sentIds.length > 0) {
@@ -626,7 +692,7 @@ export class BulkImportService {
         await new Promise((resolve) => setTimeout(resolve, EMAIL_SEND_CHUNK_DELAY_MS));
       }
     }
-    return { sent, failed };
+    return { sent, failed, failures, failuresTruncated };
   }
 
   async resendEmails(batchId: string, userIds: string[] | undefined, adminId: string, adminEmail: string): Promise<{ queued: number }> {
@@ -639,11 +705,22 @@ export class BulkImportService {
     // Fire-and-forget the whole paced pass (not per-user) — keeps the admin's "Resend"
     // click fast, matching this codebase's existing "don't block the caller on email
     // delivery" convention, while still pacing internally (see sendPendingUserEmailsPaced).
-    this.sendPendingUserEmailsPaced(users).catch((err: unknown) => {
-      this.logger.warn(`Paced resend dispatch crashed for batch ${batchId}: ${String(err)}`);
-    });
+    // The audit entry is written once the pass actually finishes (not at trigger time) so
+    // it records the real sent/failed outcome, not just an optimistic "attempted" count.
+    // Also $inc the batch's cumulative emailsSent/emailsFailed — those fields used to only
+    // ever be set once at initial-import completion, going stale after the first resend.
+    this.sendPendingUserEmailsPaced(users)
+      .then(async ({ sent, failed, failures, failuresTruncated }) => {
+        await this.importBatchModel.updateOne({ _id: batchId }, { $inc: { emailsSent: sent, emailsFailed: failed } });
+        this.auditService.log(
+          adminId, adminEmail, 'BULK_IMPORT_EMAILS_RESENT', 'user', batchId, batch.fileName,
+          {}, { attempted: users.length, sent, failed, failures, failuresTruncated },
+        );
+      })
+      .catch((err: unknown) => {
+        this.logger.warn(`Paced resend dispatch crashed for batch ${batchId}: ${String(err)}`);
+      });
 
-    this.auditService.log(adminId, adminEmail, 'BULK_IMPORT_EMAILS_RESENT', 'user', batchId, batch.fileName, {}, { queued: users.length });
     return { queued: users.length };
   }
 
@@ -651,12 +728,12 @@ export class BulkImportService {
   // user pending their first activation email and dispatches the next wave for each,
   // respecting EMAIL_DAILY_SEND_CAP per batch per run — so a 4,000-row import (or larger)
   // finishes emailing everyone over a handful of days with zero manual "Resend" clicks.
-  // Called from a daily cron (see src/scheduler) rather than the admin UI, so — matching
-  // the existing job-expiry/pay-window/payment-reconciliation sweeps in this codebase —
-  // it does not attribute an audit-log entry to any admin; it's a system action. Batches
-  // are processed sequentially (awaited, not fire-and-forget) since a background cron has
-  // no caller waiting on a fast response, and racing multiple batches' sends concurrently
-  // would risk compounding into the same Gmail rate-limit window.
+  // Called from a daily cron (see src/scheduler). Batches are processed sequentially
+  // (awaited, not fire-and-forget) since a background cron has no caller waiting on a
+  // fast response, and racing multiple batches' sends concurrently would risk compounding
+  // into the same Gmail rate-limit window. Each batch gets its own audit-log entry
+  // (system-attributed, no admin) with the real sent/failed outcome — same visibility as
+  // a manual "Resend" click, so every automated pass is traceable in Admin → Audit Logs.
   async runPendingEmailSweep(): Promise<{ batchesProcessed: number; totalQueued: number; totalSent: number; totalFailed: number }> {
     const pendingBatchIds = await this.userModel.aggregate<{ _id: Types.ObjectId }>([
       { $match: { importBatchId: { $ne: null }, activationEmailSentAt: null, deletedAt: null } },
@@ -669,11 +746,19 @@ export class BulkImportService {
     let totalFailed = 0;
 
     for (const { _id } of pendingBatchIds) {
-      const users = await this.findPendingUsers(_id.toString(), undefined, emailCap);
+      const batchId = _id.toString();
+      const batch = await this.importBatchModel.findById(batchId).select('fileName').lean().exec();
+      const users = await this.findPendingUsers(batchId, undefined, emailCap);
       totalQueued += users.length;
-      const { sent, failed } = await this.sendPendingUserEmailsPaced(users);
+      const { sent, failed, failures, failuresTruncated } = await this.sendPendingUserEmailsPaced(users);
       totalSent += sent;
       totalFailed += failed;
+      await this.importBatchModel.updateOne({ _id: batchId }, { $inc: { emailsSent: sent, emailsFailed: failed } });
+
+      this.auditService.logSystemEvent(
+        'BULK_IMPORT_EMAILS_AUTO_RESENT', 'user', batchId, batch?.fileName ?? 'Unknown file',
+        {}, { attempted: users.length, sent, failed, failures, failuresTruncated },
+      );
     }
     return { batchesProcessed: pendingBatchIds.length, totalQueued, totalSent, totalFailed };
   }

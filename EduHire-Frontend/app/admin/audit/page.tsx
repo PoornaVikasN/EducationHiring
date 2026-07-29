@@ -16,6 +16,11 @@ const ACTION_COLORS: Record<string, string> = {
   SCHOOL_VERIFIED: 'bg-green-100 text-green-700',
   SCHOOL_REJECTED: 'bg-red-100 text-red-700',
   JOB_DISABLED: 'bg-orange-100 text-orange-700',
+  BULK_USER_IMPORT: 'bg-indigo-100 text-indigo-700',
+  BULK_IMPORT_EMAILS_RESENT: 'bg-amber-100 text-amber-700',
+  BULK_IMPORT_EMAILS_AUTO_RESENT: 'bg-amber-100 text-amber-700',
+  BULK_IMPORT_ERRORS_DOWNLOADED: 'bg-slate-100 text-slate-600',
+  BULK_IMPORT_EMAIL_STATUS_DOWNLOADED: 'bg-slate-100 text-slate-600',
 };
 
 function formatChange(log: AuditLog): string {
@@ -36,6 +41,17 @@ function formatChange(log: AuditLog): string {
   if (log.action === 'SCHOOL_VERIFIED') return `${before?.status ?? '?'} → Verified`;
   if (log.action === 'SCHOOL_REJECTED') return `${before?.status ?? '?'} → Rejected`;
   if (log.action === 'JOB_DISABLED') return `${before?.status ?? '?'} → Disabled`;
+  if (log.action === 'BULK_USER_IMPORT') {
+    return `${after?.successCount ?? 0}/${after?.totalRows ?? 0} rows, ${after?.emailsSent ?? 0}/${after?.emailsAttempted ?? 0} emails sent`;
+  }
+  if (log.action === 'BULK_IMPORT_EMAILS_RESENT' || log.action === 'BULK_IMPORT_EMAILS_AUTO_RESENT') {
+    // Fallback to the older `queued`-only shape for entries logged before sent/failed
+    // breakdown existed, so legacy rows don't render "undefined".
+    const attempted = after?.attempted ?? after?.queued ?? 0;
+    return `${after?.sent ?? 0} sent, ${after?.failed ?? 0} failed (of ${attempted})`;
+  }
+  if (log.action === 'BULK_IMPORT_ERRORS_DOWNLOADED') return `${after?.rowCount ?? 0} failed row(s)`;
+  if (log.action === 'BULK_IMPORT_EMAIL_STATUS_DOWNLOADED') return `${after?.sentCount ?? 0}/${after?.userCount ?? 0} sent`;
   return JSON.stringify(after ?? {});
 }
 
@@ -66,6 +82,9 @@ function AuditContent() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-audit', page, entityType],
     queryFn: () => adminApi.listAuditLogs(page, 20, entityType === 'ALL' ? undefined : entityType).then((r) => r.data),
+    // Cron sweeps and background resend passes write new entries with nobody watching —
+    // poll lightly so they show up without requiring a manual reload or window refocus.
+    refetchInterval: 20_000,
   });
 
   return (
@@ -117,7 +136,7 @@ function AuditContent() {
                         <p className="text-xs font-medium text-text-primary">{new Date(log.createdAt).toLocaleDateString('en-IN')}</p>
                         <p className="text-[11px] text-text-muted">{timeAgo(log.createdAt)}</p>
                       </td>
-                      <td className="px-4 py-3 text-xs text-text-muted">{log.adminEmail}</td>
+                      <td className="px-4 py-3 text-xs text-text-muted">{log.adminEmail ?? 'System (auto)'}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ACTION_COLORS[log.action] ?? 'bg-slate-100 text-slate-600'}`}>
                           {log.action.replace(/_/g, ' ')}

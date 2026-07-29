@@ -283,7 +283,7 @@ export default function AdminDashboardPage() {
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-text-primary truncate">{log.entityLabel ?? log.entityId ?? '—'}</p>
-                  <p className="text-[11px] text-text-muted">{log.adminEmail}</p>
+                  <p className="text-[11px] text-text-muted">{log.adminEmail ?? 'System (auto)'}</p>
                 </div>
                 <span className="text-[11px] text-text-muted shrink-0">{timeAgo(log.createdAt)}</span>
               </div>

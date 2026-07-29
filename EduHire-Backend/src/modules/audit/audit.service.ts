@@ -3,6 +3,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AuditLog, AuditLogDocument } from './schemas/audit-log.schema';
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
@@ -36,10 +40,14 @@ export class AuditService {
       .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
   }
 
-  async list(page = 1, limit = 20, entityType?: string) {
+  async list(page = 1, limit = 20, entityType?: string, actionPrefix?: string, entityId?: string) {
     const skip = (page - 1) * limit;
     const filter: Record<string, unknown> = {};
     if (entityType) filter['entityType'] = entityType;
+    // Prefix match (e.g. "BULK_IMPORT") lets a caller pull every related action without
+    // enumerating an exact list — used by the Bulk Import page's own Audit Log tab.
+    if (actionPrefix) filter['action'] = { $regex: `^${escapeRegex(actionPrefix)}` };
+    if (entityId) filter['entityId'] = entityId;
 
     const [data, total] = await Promise.all([
       this.auditModel
@@ -53,6 +61,31 @@ export class AuditService {
     ]);
 
     return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  }
+
+  // Fire-and-forget — system-initiated events with no acting admin (e.g. the daily
+  // bulk-import email-trickle cron). Mirrors log() exactly but never attempts
+  // `new Types.ObjectId(adminId)` on a value that doesn't exist for a scheduled job.
+  logSystemEvent(
+    action: string,
+    entityType: string,
+    entityId: string,
+    entityLabel: string,
+    before?: Record<string, unknown>,
+    after?: Record<string, unknown>,
+  ): void {
+    this.auditModel
+      .create({
+        adminId: null,
+        adminEmail: null,
+        action,
+        entityType,
+        entityId,
+        entityLabel,
+        before,
+        after,
+      })
+      .catch((err) => this.logger.error(`System audit log failed: ${err.message}`));
   }
 
   // Fire-and-forget — anonymous auth-flow audit trail (no acting admin). Used to

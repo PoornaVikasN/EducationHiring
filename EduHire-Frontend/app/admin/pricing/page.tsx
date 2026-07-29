@@ -72,7 +72,7 @@ function PriceCard({ config, onSave, lastAudit, disabled, disabledNote }: { conf
         <p className="text-[11px] text-text-muted">Min: ₹{minRupees}</p>
         {lastAudit && (
           <p className="text-[11px] text-text-muted">
-            Updated {new Date(lastAudit.createdAt).toLocaleDateString('en-IN')} by {lastAudit.adminEmail.split('@')[0]}
+            Updated {new Date(lastAudit.createdAt).toLocaleDateString('en-IN')} by {lastAudit.adminEmail?.split('@')[0] ?? 'System'}
           </p>
         )}
       </div>

@@ -62,7 +62,7 @@ const SETTING_SEEDS: SettingSeed[] = [
     key: 'TEACHER_PAID_ENABLED',
     label: 'Teacher shortlist fee is paid',
     description:
-      'When ON, a shortlisted teacher must pay the application fee (see APPLICATION_FEE_PAISE) within the pay window to unlock school contact details and move to WON. When OFF (default), shortlisted teachers move straight through to WON/CLOSED with no payment step.',
+      'When ON, a shortlisted teacher must pay the application fee (see APPLICATION_FEE_PAISE) within the pay window to unlock the school\'s contact details. Paying does not by itself mark the application WON — the school still makes that call manually afterward. When OFF (default), shortlisted teachers unlock contact details immediately with no payment step, and the school still decides WON/CLOSED the same way.',
     valueNumber: 0,
     minValue: 0,
     maxValue: 1,
@@ -114,9 +114,9 @@ const SETTING_SEEDS: SettingSeed[] = [
   },
   {
     key: 'EMAIL_DAILY_SEND_CAP',
-    label: 'Bulk Import Daily Email Cap',
+    label: 'Bulk Import Email Cap (per send/resend)',
     description:
-      'Maximum number of account-activation emails a single bulk-import send/resend pass will dispatch. Exists because Google itself caps how many emails a regular Gmail account may send per rolling 24 hours to 500 (Google Workspace accounts get 2,000/day) — set to Google\'s official regular-account limit. Users beyond the cap are created immediately either way; their activation email just waits for the next "Resend emails" pass (e.g. the following day). Raise toward 2,000 only if this account is upgraded to Google Workspace.',
+      'Maximum number of account-activation emails ONE bulk-import send, ONE manual "Resend" click, or ONE batch within the nightly auto-resend sweep will dispatch — not a strictly-enforced global daily total. If multiple batches have pending emails, or you click Resend and the nightly sweep both land the same day, actual emails sent that day can add up to more than this number. Set comfortably below Google\'s real per-account limit (~500/day on a regular Gmail account, ~2,000/day on Google Workspace) so any single pass stays safely under it. Users beyond the cap are created immediately either way; their activation email just waits for the next pass (a later manual Resend, or the next night\'s automatic sweep).',
     valueNumber: 500,
     minValue: 10,
     maxValue: 2000,

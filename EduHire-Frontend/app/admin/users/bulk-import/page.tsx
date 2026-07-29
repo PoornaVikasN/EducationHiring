@@ -6,16 +6,18 @@ import {
   FileSpreadsheet, Mail, Upload, Users, XCircle,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
 import * as XLSX from 'xlsx';
 import AdminTablePagination from '@/common-components/admin-table-pagination';
 import { FileDropzone } from '@/common-components/file-dropzone';
 import { Button } from '@/common-components/ui/button';
 import { ConfirmDialog } from '@/common-components/ui/confirm-dialog';
 import { IndeterminateProgressBar } from '@/common-components/ui/progress-bar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/common-components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { adminApi } from '@/lib/api/admin';
+import { adminApi, type AuditLog } from '@/lib/api/admin';
 import { checkHeadersOnly, LARGE_FILE_ROW_THRESHOLD, validateParsedRows, type ClientValidationSummary } from '@/lib/validations/bulk-import';
 
 function triggerBlobDownload(blob: Blob, filename: string) {
@@ -114,26 +116,176 @@ function StatTile({ label, value, icon: Icon, tone = 'default' }: {
   );
 }
 
-export default function BulkImportPage() {
+// ── Audit Log tab ─────────────────────────────────────────────────────────────
+
+const BULK_ACTION_META: Record<string, { label: string; color: string }> = {
+  BULK_USER_IMPORT: { label: 'Import ran', color: 'bg-indigo-100 text-indigo-700' },
+  BULK_IMPORT_EMAILS_RESENT: { label: 'Manual resend', color: 'bg-amber-100 text-amber-700' },
+  BULK_IMPORT_EMAILS_AUTO_RESENT: { label: 'Auto resend (cron)', color: 'bg-purple-100 text-purple-700' },
+  BULK_IMPORT_ERRORS_DOWNLOADED: { label: 'Error report downloaded', color: 'bg-slate-100 text-slate-600' },
+  BULK_IMPORT_EMAIL_STATUS_DOWNLOADED: { label: 'Email status downloaded', color: 'bg-slate-100 text-slate-600' },
+};
+
+function auditTimeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function BulkImportAuditRow({ log }: { log: AuditLog }) {
+  const after = (log.after ?? {}) as Record<string, unknown>;
+  const meta = BULK_ACTION_META[log.action] ?? { label: log.action.replace(/_/g, ' '), color: 'bg-slate-100 text-slate-600' };
+  const failures = (after.failures ?? []) as Array<{ email: string; reason: string }>;
+  const failuresTruncated = !!after.failuresTruncated;
+
+  let detail: string;
+  if (log.action === 'BULK_USER_IMPORT') {
+    detail = `${after.successCount ?? 0}/${after.totalRows ?? 0} rows imported · ${after.emailsSent ?? 0}/${after.emailsAttempted ?? 0} emails sent`;
+  } else if (log.action === 'BULK_IMPORT_EMAILS_RESENT' || log.action === 'BULK_IMPORT_EMAILS_AUTO_RESENT') {
+    const attempted = after.attempted ?? after.queued ?? 0;
+    detail = `${after.sent ?? 0} sent, ${after.failed ?? 0} failed (of ${attempted} attempted)`;
+  } else if (log.action === 'BULK_IMPORT_ERRORS_DOWNLOADED') {
+    detail = `${after.rowCount ?? 0} failed row(s) in the report`;
+  } else if (log.action === 'BULK_IMPORT_EMAIL_STATUS_DOWNLOADED') {
+    detail = `${after.sentCount ?? 0}/${after.userCount ?? 0} shown as sent`;
+  } else {
+    detail = JSON.stringify(after);
+  }
+
+  return (
+    <tr className="border-b border-border-default last:border-0">
+      <td className="px-4 py-3 align-top">
+        <p className="text-xs font-medium text-text-primary">{new Date(log.createdAt).toLocaleString('en-IN')}</p>
+        <p className="text-[11px] text-text-muted">{auditTimeAgo(log.createdAt)}</p>
+      </td>
+      <td className="px-4 py-3 align-top">
+        <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap', meta.color)}>{meta.label}</span>
+      </td>
+      <td className="px-4 py-3 align-top text-xs text-text-muted">{log.adminEmail ?? 'System (auto)'}</td>
+      <td className="px-4 py-3 align-top text-sm text-text-primary font-medium">{log.entityLabel ?? '—'}</td>
+      <td className="px-4 py-3 align-top">
+        <p className="text-xs text-text-muted">{detail}</p>
+        {failures.length > 0 && (
+          <details className="mt-1">
+            <summary className="text-[11px] text-red-600 cursor-pointer hover:underline">
+              Why {failures.length} failed{failuresTruncated ? ' (showing first 50)' : ''}
+            </summary>
+            <ul className="mt-1 space-y-0.5 max-h-40 overflow-y-auto">
+              {failures.map((f, i) => (
+                <li key={i} className="text-[11px] text-text-muted">
+                  <span className="font-medium text-text-primary">{f.email}</span> — {f.reason}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function BulkImportAuditTab({ batchId, isDispatching }: { batchId: string | null; isDispatching: boolean }) {
+  const [page, setPage] = useState(1);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['bulk-import-audit', page, batchId],
+    queryFn: () => adminApi.listAuditLogs(page, 20, undefined, 'BULK_', batchId ?? undefined).then((r) => r.data),
+    // Cron sweeps and background resend passes write entries with nobody watching — poll
+    // lightly always, faster while a dispatch is actively in flight.
+    refetchInterval: isDispatching ? 3000 : 15000,
+  });
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-text-muted">
+        {batchId
+          ? 'Showing activity for the selected batch only — click a different History row (on the Import tab) to switch, or reload without a batch selected to see everything.'
+          : 'Showing every bulk-import action across all batches — imports, manual resends, automatic nightly resends, and report downloads.'}
+      </p>
+      <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden">
+        {isLoading ? (
+          <div className="p-8 flex justify-center">
+            <div className="w-6 h-6 rounded-full border-2 border-brand-primary border-t-transparent animate-spin" />
+          </div>
+        ) : !data?.data.length ? (
+          <div className="p-10 text-center">
+            <FileSpreadsheet className="w-8 h-8 text-text-muted mx-auto mb-2 opacity-40" />
+            <p className="text-sm text-text-muted">No bulk-import activity yet.</p>
+          </div>
+        ) : (
+          <>
+            <table className="w-full">
+              <thead className="bg-bg-page border-b border-border-default">
+                <tr>
+                  {['Date / Time', 'Action', 'Who', 'File', 'Details'].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.data.map((log) => <BulkImportAuditRow key={log._id} log={log} />)}
+              </tbody>
+            </table>
+            <AdminTablePagination
+              page={page}
+              totalPages={data.meta.totalPages}
+              onPageChange={setPage}
+              totalItems={data.meta.total}
+              pageSize={20}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BulkImportContent() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [file, setFile] = useState<File | null>(null);
   const [validation, setValidation] = useState<ClientValidationSummary | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [batchId, setBatchId] = useState<string | null>(null);
+  // Initialized from ?batch=<id> so a page reload (or sharing the link) keeps showing
+  // the same batch's detail panel instead of losing it to a fresh, empty page load.
+  const [batchId, setBatchId] = useState<string | null>(() => searchParams.get('batch'));
   const [historyPage, setHistoryPage] = useState(1);
+  // While non-null and in the future, keeps polling both queries below even though the
+  // batch's own status is already terminal — a Resend dispatch runs paced in the
+  // background for tens of seconds after the click returns, and without this the
+  // pendingEmailCount/history table would look frozen until a manual refresh.
+  const [dispatchingUntil, setDispatchingUntil] = useState<number | null>(null);
+
+  const selectBatch = (id: string | null) => {
+    setBatchId(id);
+    const params = new URLSearchParams(searchParams.toString());
+    if (id) params.set('batch', id); else params.delete('batch');
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+
+  const isDispatching = dispatchingUntil !== null && Date.now() < dispatchingUntil;
 
   const historyQuery = useQuery({
     queryKey: ['bulk-import-history', historyPage],
     queryFn: () => adminApi.listBulkImportHistory(historyPage, 10).then((r) => r.data),
+    refetchInterval: isDispatching ? 3000 : false,
   });
 
-  // Processing now runs in the background — poll while PROCESSING, stop once terminal.
+  // Processing now runs in the background — poll while PROCESSING or while a Resend
+  // dispatch is still in flight, stop once neither applies.
   const batchQuery = useQuery({
     queryKey: ['bulk-import-batch', batchId],
     queryFn: () => adminApi.getBulkImportBatch(batchId as string).then((r) => r.data),
     enabled: !!batchId,
-    refetchInterval: (query) => (query.state.data?.status === 'PROCESSING' ? 2000 : false),
+    refetchInterval: (query) => (query.state.data?.status === 'PROCESSING' || isDispatching ? 2000 : false),
   });
   const summary = batchQuery.data ?? null;
 
@@ -146,7 +298,7 @@ export default function BulkImportPage() {
   const uploadMutation = useMutation({
     mutationFn: () => adminApi.bulkImportUpload(file as File),
     onSuccess: (res) => {
-      setBatchId(res.data._id);
+      selectBatch(res.data._id);
       setConfirmOpen(false);
       qc.invalidateQueries({ queryKey: ['bulk-import-history'] });
     },
@@ -162,10 +314,20 @@ export default function BulkImportPage() {
     onError: (err) => toast({ title: 'Download failed', description: extractErrorMessage(err, 'Please try again.'), variant: 'destructive' }),
   });
 
+  const emailStatusMutation = useMutation({
+    mutationFn: (batchId: string) => adminApi.downloadBulkImportEmailStatus(batchId),
+    onSuccess: (res) => triggerBlobDownload(res.data, 'bulk-import-email-status.xlsx'),
+    onError: (err) => toast({ title: 'Download failed', description: extractErrorMessage(err, 'Please try again.'), variant: 'destructive' }),
+  });
+
   const resendMutation = useMutation({
     mutationFn: (targetBatchId: string) => adminApi.resendBulkImportEmails(targetBatchId),
     onSuccess: (res) => {
-      toast({ title: `Resent ${res.data.queued} onboarding email(s)` });
+      toast({ title: `Dispatching ${res.data.queued} email(s)…`, description: 'Counts below will keep updating for a bit while they send.' });
+      // Sends are paced in the background (not finished when this resolves) — keep both
+      // queries polling for a window so pendingEmailCount actually reflects reality
+      // instead of looking unchanged until someone happens to refresh.
+      setDispatchingUntil(Date.now() + 120_000);
       qc.invalidateQueries({ queryKey: ['bulk-import-history'] });
       qc.invalidateQueries({ queryKey: ['bulk-import-batch'] });
     },
@@ -174,7 +336,7 @@ export default function BulkImportPage() {
 
   const handleFileSelected = async (selected: File) => {
     setFile(selected);
-    setBatchId(null);
+    selectBatch(null);
     try {
       const buffer = await selected.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: 'array' });
@@ -191,7 +353,7 @@ export default function BulkImportPage() {
   const resetImport = () => {
     setFile(null);
     setValidation(null);
-    setBatchId(null);
+    selectBatch(null);
   };
 
   const canProceed = !!validation && validation.headerErrors.length === 0 && validation.invalidCount === 0 && validation.totalRowCount > 0;
@@ -214,6 +376,13 @@ export default function BulkImportPage() {
         </div>
       </div>
 
+      <Tabs defaultValue="import" className="w-full">
+        <TabsList className="w-full justify-start gap-1 h-auto bg-bg-page border border-border-default rounded-xl p-1">
+          <TabsTrigger value="import" className="text-sm px-4 py-2 rounded-lg">Import</TabsTrigger>
+          <TabsTrigger value="audit" className="text-sm px-4 py-2 rounded-lg">Audit Log</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="import" className="mt-5 space-y-6">
       <StepIndicator current={currentStep} />
 
       {!summary && (
@@ -365,6 +534,9 @@ export default function BulkImportPage() {
                 <Download className="w-3.5 h-3.5 mr-1.5" /> Download Error Report
               </Button>
             )}
+            <Button variant="outline" size="sm" onClick={() => emailStatusMutation.mutate(summary._id)} disabled={emailStatusMutation.isPending}>
+              <Mail className="w-3.5 h-3.5 mr-1.5" /> Who Got Emailed?
+            </Button>
             {summary.pendingEmailCount > 0 && (
               <Button variant="outline" size="sm" onClick={() => resendMutation.mutate(summary._id)} disabled={resendMutation.isPending}>
                 <Mail className="w-3.5 h-3.5 mr-1.5" /> Resend Pending Emails
@@ -400,7 +572,14 @@ export default function BulkImportPage() {
                 </thead>
                 <tbody>
                   {historyQuery.data.data.map((b) => (
-                    <tr key={b._id} className="border-b border-border-default last:border-0 hover:bg-bg-page transition-colors">
+                    <tr
+                      key={b._id}
+                      onClick={() => selectBatch(b._id)}
+                      className={cn(
+                        'border-b border-border-default last:border-0 hover:bg-bg-page transition-colors cursor-pointer',
+                        batchId === b._id && 'bg-brand-primary-light/40',
+                      )}
+                    >
                       <td className="px-4 py-3 text-sm text-text-primary font-medium">{b.fileName}</td>
                       <td className="px-4 py-3 text-xs text-text-muted">{new Date(b.createdAt).toLocaleString('en-IN')}</td>
                       <td className="px-4 py-3 text-sm text-text-primary">{b.totalRows}</td>
@@ -419,13 +598,16 @@ export default function BulkImportPage() {
                           <span className="block text-[11px] text-amber-600 mt-0.5">{b.pendingEmailCount} email(s) pending</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5">
                           {b.failedCount > 0 && (
-                            <Button size="sm" variant="outline" onClick={() => errorReportMutation.mutate(b._id)}>
+                            <Button size="sm" variant="outline" onClick={() => errorReportMutation.mutate(b._id)} title="Download Error Report">
                               <Download className="w-3.5 h-3.5" />
                             </Button>
                           )}
+                          <Button size="sm" variant="outline" onClick={() => emailStatusMutation.mutate(b._id)} title="Who got emailed?">
+                            <FileSpreadsheet className="w-3.5 h-3.5" />
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
@@ -451,6 +633,12 @@ export default function BulkImportPage() {
           )}
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="audit" className="mt-5">
+          <BulkImportAuditTab batchId={batchId} isDispatching={isDispatching} />
+        </TabsContent>
+      </Tabs>
 
       <ConfirmDialog
         open={confirmOpen}
@@ -462,5 +650,13 @@ export default function BulkImportPage() {
         onConfirm={() => uploadMutation.mutate()}
       />
     </div>
+  );
+}
+
+export default function BulkImportPage() {
+  return (
+    <Suspense>
+      <BulkImportContent />
+    </Suspense>
   );
 }

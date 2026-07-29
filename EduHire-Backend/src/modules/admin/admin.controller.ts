@@ -161,8 +161,10 @@ export class AdminController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('entityType') entityType?: string,
+    @Query('actionPrefix') actionPrefix?: string,
+    @Query('entityId') entityId?: string,
   ) {
-    return this.auditService.list(Number(page) || 1, Number(limit) || 20, entityType);
+    return this.auditService.list(Number(page) || 1, Number(limit) || 20, entityType, actionPrefix, entityId);
   }
 
   // ── Pricing config ──────────────────────────────────────────────────────────

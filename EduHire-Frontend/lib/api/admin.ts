@@ -88,7 +88,7 @@ export interface AdminStats {
 
 export interface AuditLog {
   _id: string;
-  adminEmail: string;
+  adminEmail: string | null;
   action: string;
   entityType: string;
   entityId?: string;
@@ -327,8 +327,8 @@ export const adminApi = {
   getConfigStatus: () =>
     apiClient.get<Record<string, boolean>>('/admin/config/status'),
 
-  listAuditLogs: (page = 1, limit = 20, entityType?: string) =>
-    apiClient.get<PaginatedAuditLogs>('/admin/audit', { params: { page, limit, entityType } }),
+  listAuditLogs: (page = 1, limit = 20, entityType?: string, actionPrefix?: string, entityId?: string) =>
+    apiClient.get<PaginatedAuditLogs>('/admin/audit', { params: { page, limit, entityType, actionPrefix, entityId } }),
 
   getEmailTemplates: () =>
     apiClient.get<EmailTemplate[]>('/admin/config/email-templates'),
@@ -374,6 +374,9 @@ export const adminApi = {
 
   downloadBulkImportErrors: (batchId: string) =>
     apiClient.get<Blob>(`/admin/bulk-import/${batchId}/errors`, { responseType: 'blob' }),
+
+  downloadBulkImportEmailStatus: (batchId: string) =>
+    apiClient.get<Blob>(`/admin/bulk-import/${batchId}/email-status`, { responseType: 'blob' }),
 
   resendBulkImportEmails: (batchId: string, userIds?: string[]) =>
     apiClient.post<{ queued: number }>(`/admin/bulk-import/${batchId}/resend-emails`, { userIds }),

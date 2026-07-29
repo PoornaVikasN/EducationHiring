@@ -78,9 +78,24 @@ export class BulkImportController {
   @Get(':batchId/errors')
   @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
   @Header('Content-Disposition', 'attachment; filename="bulk-import-errors.xlsx"')
-  async downloadErrors(@Param('batchId') batchId: string): Promise<StreamableFile> {
+  async downloadErrors(
+    @Param('batchId') batchId: string,
+    @CurrentUser() user: { sub: string; email: string },
+  ): Promise<StreamableFile> {
     if (!batchId || batchId.length !== 24) throw new NotFoundException('Import batch not found');
-    const buffer = await this.bulkImportService.getErrorReport(batchId);
+    const buffer = await this.bulkImportService.getErrorReport(batchId, user.sub, user.email);
+    return new StreamableFile(buffer);
+  }
+
+  @Get(':batchId/email-status')
+  @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  @Header('Content-Disposition', 'attachment; filename="bulk-import-email-status.xlsx"')
+  async downloadEmailStatus(
+    @Param('batchId') batchId: string,
+    @CurrentUser() user: { sub: string; email: string },
+  ): Promise<StreamableFile> {
+    if (!batchId || batchId.length !== 24) throw new NotFoundException('Import batch not found');
+    const buffer = await this.bulkImportService.getEmailStatusReport(batchId, user.sub, user.email);
     return new StreamableFile(buffer);
   }
 

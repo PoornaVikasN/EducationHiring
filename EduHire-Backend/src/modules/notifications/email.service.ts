@@ -4,9 +4,24 @@ import * as nodemailer from 'nodemailer';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { SystemConfigService } from '../system-config/system-config.service';
 
+// Gmail's SMTP relay throttles concurrent connections/re-authentications per account far
+// more aggressively than its per-day send count — building a brand-new transporter (fresh
+// TCP + TLS + OAuth2 login) for every single email, fired 25-at-a-time during a bulk
+// import, reproducibly triggered a real "421 4.3.0 Temporary System Problem" from Google.
+// Two changes fix this together: `pool: true` below makes nodemailer actually reuse a
+// small set of authenticated connections across many sendMail() calls instead of opening
+// a new one per email (this is the load-bearing fix — a plain, non-pooled SMTP transport
+// opens a fresh connection per send *regardless* of whether the same Transporter object
+// is reused); and caching that pooled transporter instance for a short TTL (rather than
+// constructing a fresh pool on every call, which would defeat the pooling entirely) while
+// still picking up an admin's rotated credential within a few minutes, not only after a restart.
+const TRANSPORTER_CACHE_TTL_MS = 3 * 60 * 1000;
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
+  private cachedTransporter: nodemailer.Transporter | null = null;
+  private cachedTransporterAt = 0;
 
   constructor(
     private config: ConfigService,
@@ -15,20 +30,29 @@ export class EmailService {
   ) {}
 
   // Gmail creds are admin-editable via Config → API Keys (no redeploy) — same pattern
-  // Razorpay already uses. Built fresh per-send (cheap; nodemailer only touches the
-  // network on sendMail, not on createTransport) rather than cached at boot, so an
-  // admin's saved change takes effect on the very next email, not after a restart.
+  // Razorpay already uses. Cached for TRANSPORTER_CACHE_TTL_MS so a burst of sends (e.g.
+  // bulk import) reuses one authenticated connection instead of re-authenticating per
+  // email; still re-reads from SystemConfig every few minutes so a saved credential
+  // change takes effect without a restart.
   private async getTransporter(): Promise<nodemailer.Transporter> {
+    const isStale = !this.cachedTransporter || Date.now() - this.cachedTransporterAt > TRANSPORTER_CACHE_TTL_MS;
+    if (!isStale) return this.cachedTransporter!;
+
     const [user, clientId, clientSecret, refreshToken] = await Promise.all([
       this.systemConfig.getSecret('GMAIL_USER'),
       this.systemConfig.getSecret('GMAIL_CLIENT_ID'),
       this.systemConfig.getSecret('GMAIL_CLIENT_SECRET'),
       this.systemConfig.getSecret('GMAIL_REFRESH_TOKEN'),
     ]);
-    return nodemailer.createTransport({
+    this.cachedTransporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { type: 'OAuth2', user, clientId, clientSecret, refreshToken },
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 100,
     });
+    this.cachedTransporterAt = Date.now();
+    return this.cachedTransporter;
   }
 
   async sendRegistrationOtpEmail(to: string, name: string, otp: string): Promise<void> {
@@ -253,18 +277,40 @@ export class EmailService {
     }
     const senderEmail = (await this.systemConfig.getSecret('GMAIL_USER')) ?? 'noreply@schoolteacher.in';
     const senderName = this.config.get<string>('SMTP_SENDER_NAME', 'SchoolTeacher');
-    try {
-      const transporter = await this.getTransporter();
-      await transporter.sendMail({
-        from: `"${senderName}" <${senderEmail}>`,
-        to,
-        subject,
-        html,
-      });
-      this.logger.log(`Email sent → ${to} subject="${subject}"`);
-    } catch (err: unknown) {
-      this.logger.error(`Email send failed to ${to}: ${String(err)}`);
-      throw err;
+
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const transporter = await this.getTransporter();
+        await transporter.sendMail({
+          from: `"${senderName}" <${senderEmail}>`,
+          to,
+          subject,
+          html,
+        });
+        this.logger.log(`Email sent → ${to} subject="${subject}"`);
+        return;
+      } catch (err: unknown) {
+        if (this.isTransientSmtpError(err) && attempt < MAX_ATTEMPTS) {
+          this.logger.warn(`Transient email failure to ${to} (attempt ${attempt}/${MAX_ATTEMPTS}), retrying: ${String(err)}`);
+          // The retry gets a fresh pooled connection in case the specific one that
+          // failed is what Gmail is currently throttling.
+          this.cachedTransporter = null;
+          await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
+          continue;
+        }
+        this.logger.error(`Email send failed to ${to}: ${String(err)}`);
+        throw err;
+      }
     }
+  }
+
+  // Gmail's 4xx SMTP codes (421, 450, 451…) mean "temporary, try again later" — worth a
+  // retry. 5xx codes (bad address, rejected auth, etc.) are permanent — fail immediately.
+  private isTransientSmtpError(err: unknown): boolean {
+    const code = (err as { responseCode?: number })?.responseCode;
+    if (typeof code === 'number') return code >= 400 && code < 500;
+    const message = String((err as Error)?.message ?? err);
+    return /\b4\d{2}[\s-]/.test(message);
   }
 }
