@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Role } from '../../shared/enums';
@@ -19,6 +20,7 @@ export class DisputesService {
     @InjectModel(Dispute.name) private disputeModel: Model<DisputeDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private emailService: EmailService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async create(user: JwtPayload, dto: CreateDisputeDto): Promise<DisputeDocument> {
@@ -66,10 +68,25 @@ export class DisputesService {
           ? (user.recruiterProfile as { fullName?: string } | null)?.fullName
           : (user.seekerProfile as { fullName?: string } | null)?.fullName) ?? 'there';
         const channel = user.role === Role.RECRUITER ? 'recruiterEmail' : 'seekerEmail';
+        const audience = user.role === Role.RECRUITER ? 'recruiter' : 'seeker';
         if (status === DisputeStatus.RESOLVED) {
           this.emailService.sendDisputeResolvedEmail(user.email, name, doc.subject, dto.adminNote, channel).catch(() => {});
+          this.eventEmitter.emit('dispute.resolved', {
+            userId: doc.raisedBy.toString(),
+            audience,
+            name,
+            subject: doc.subject,
+            adminNote: dto.adminNote,
+          });
         } else {
           this.emailService.sendDisputeRejectedEmail(user.email, name, doc.subject, dto.adminNote, channel).catch(() => {});
+          this.eventEmitter.emit('dispute.rejected', {
+            userId: doc.raisedBy.toString(),
+            audience,
+            name,
+            subject: doc.subject,
+            adminNote: dto.adminNote,
+          });
         }
       }
     }

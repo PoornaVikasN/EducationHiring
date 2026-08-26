@@ -27,24 +27,28 @@ function StatCard({ label, value, icon: Icon, bg, iconColor, sub }: {
   );
 }
 
-function SimpleBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs text-text-muted w-28 shrink-0 truncate">{label}</span>
-      <div className="flex-1 h-2 bg-bg-page rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
-      </div>
-      <span className="text-xs font-medium text-text-primary w-8 text-right">{value}</span>
-    </div>
-  );
-}
-
 function KpiCard({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
     <div className="bg-bg-card border border-border-default rounded-xl p-4 text-center">
       <p className={`text-2xl font-extrabold ${color}`}>{value}</p>
       <p className="text-xs text-text-muted mt-1">{label}</p>
+    </div>
+  );
+}
+
+// A labeled count with a color dot — used instead of a bar chart for small sets of
+// discrete categories (job statuses). A relative-width bar only reads clearly when
+// the values actually vary a lot; with a handful of low counts, ties are common and
+// every bar ends up the same length, which conveys nothing. A tile you can read at a
+// glance without comparing lengths works regardless of how the numbers fall.
+function StatusTile({ label, value, dot, text }: { label: string; value: number; dot: string; text: string }) {
+  return (
+    <div className="bg-bg-page border border-border-default rounded-xl p-3.5">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <span className={`w-2 h-2 rounded-full ${dot} shrink-0`} />
+        <span className="text-[11px] text-text-muted truncate">{label}</span>
+      </div>
+      <p className={`text-xl font-extrabold ${text}`}>{value}</p>
     </div>
   );
 }
@@ -68,23 +72,22 @@ export default function AdminAnalyticsPage() {
   const filled = stats?.filledJobs ?? 0;
   const active = stats?.activeJobs ?? 0;
   const fillRate = (active + filled) > 0 ? Math.round((filled / (active + filled)) * 100) : 0;
-  const seekerPct = totalUsers > 0 ? Math.round((totalSeekers / totalUsers) * 100) : 0;
-  const recruiterPct = totalUsers > 0 ? Math.round((totalRecruiters / totalUsers) * 100) : 0;
 
   const jobsByStatus = jobs?.data?.reduce<Record<string, number>>((acc, j) => {
     acc[j.status] = (acc[j.status] ?? 0) + 1;
     return acc;
   }, {}) ?? {};
 
-  const maxJobStatus = Math.max(...Object.values(jobsByStatus), 1);
-
-  const jobStatusColors: Record<string, string> = {
-    ACTIVE: 'bg-green-500',
-    FILLED: 'bg-blue-500',
-    EXPIRED: 'bg-amber-500',
-    AUTO_DISABLED: 'bg-red-400',
-    DISABLED_BY_ADMIN: 'bg-red-600',
+  // Same hue per status for both the dot and the count — order here also sets the
+  // fixed display order below (severity-ish: healthy states first, problem states last).
+  const jobStatusStyle: Record<string, { dot: string; text: string }> = {
+    ACTIVE: { dot: 'bg-green-500', text: 'text-green-600' },
+    FILLED: { dot: 'bg-blue-500', text: 'text-blue-600' },
+    EXPIRED: { dot: 'bg-amber-500', text: 'text-amber-600' },
+    AUTO_DISABLED: { dot: 'bg-red-400', text: 'text-red-500' },
+    DISABLED_BY_ADMIN: { dot: 'bg-red-600', text: 'text-red-700' },
   };
+  const statusOrder = ['ACTIVE', 'FILLED', 'EXPIRED', 'AUTO_DISABLED', 'DISABLED_BY_ADMIN'];
 
   return (
     <div className="space-y-6">
@@ -122,39 +125,35 @@ export default function AdminAnalyticsPage() {
             <h2 className="font-bold text-text-primary">User Breakdown</h2>
           </div>
           {statsLoading ? (
-            <div className="space-y-3">{[1,2,3].map((i) => <div key={i} className="h-4 bg-slate-100 rounded animate-pulse" />)}</div>
+            <div className="grid grid-cols-3 gap-3">{[1,2,3].map((i) => <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />)}</div>
           ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <KpiCard label="Total" value={totalUsers} color="text-blue-600" />
-                <KpiCard label="Teachers" value={totalSeekers} color="text-sky-600" />
-                <KpiCard label="Schools" value={totalRecruiters} color="text-indigo-600" />
-              </div>
-              <SimpleBar label="Teachers" value={seekerPct} max={100} color="bg-sky-500" />
-              <SimpleBar label="Schools" value={recruiterPct} max={100} color="bg-indigo-500" />
-              <p className="text-[11px] text-text-muted">% of total user base</p>
+            <div className="grid grid-cols-3 gap-3">
+              <KpiCard label="Total" value={totalUsers} color="text-blue-600" />
+              <KpiCard label="Teachers" value={totalSeekers} color="text-sky-600" />
+              <KpiCard label="Schools" value={totalRecruiters} color="text-indigo-600" />
             </div>
           )}
         </div>
 
-        {/* Job Type Split */}
+        {/* Job Fill Progress — this product has exactly one posting type (no
+            urgent/substitute mode), so there's no "type" dimension to break down;
+            this panel tracks how the current job pool is progressing instead. */}
         <div className="bg-bg-card border border-border-default rounded-2xl p-6">
           <div className="flex items-center gap-2 mb-5">
             <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center">
               <Briefcase className="w-4 h-4 text-green-600" />
             </div>
-            <h2 className="font-bold text-text-primary">Active Jobs by Type</h2>
+            <h2 className="font-bold text-text-primary">Job Fill Progress</h2>
           </div>
           {statsLoading ? (
-            <div className="space-y-3">{[1,2,3].map((i) => <div key={i} className="h-4 bg-slate-100 rounded animate-pulse" />)}</div>
+            <div className="grid grid-cols-3 gap-3">{[1,2,3].map((i) => <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />)}</div>
           ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
                 <KpiCard label="Active" value={active} color="text-green-600" />
                 <KpiCard label="Filled" value={filled} color="text-blue-600" />
                 <KpiCard label="Fill Rate" value={`${fillRate}%`} color="text-brand-primary" />
               </div>
-              <SimpleBar label="Teaching Jobs" value={active} max={Math.max(active, 1)} color="bg-green-500" />
               <p className="text-[11px] text-text-muted">Fill rate = Filled / (Active + Filled)</p>
             </div>
           )}
@@ -170,24 +169,24 @@ export default function AdminAnalyticsPage() {
           <h2 className="font-bold text-text-primary">Jobs by Status</h2>
         </div>
         {jobsLoading ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-4 bg-slate-100 rounded animate-pulse" />
+              <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />
             ))}
           </div>
         ) : Object.keys(jobsByStatus).length === 0 ? (
           <p className="text-sm text-text-muted text-center py-6">No job data available</p>
         ) : (
-          <div className="space-y-3">
-            {Object.entries(jobsByStatus)
-              .sort((a, b) => b[1] - a[1])
-              .map(([status, count]) => (
-                <SimpleBar
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {statusOrder
+              .filter((status) => jobsByStatus[status] !== undefined)
+              .map((status) => (
+                <StatusTile
                   key={status}
                   label={status.replace(/_/g, ' ')}
-                  value={count}
-                  max={maxJobStatus}
-                  color={jobStatusColors[status] ?? 'bg-slate-400'}
+                  value={jobsByStatus[status]}
+                  dot={jobStatusStyle[status]?.dot ?? 'bg-slate-400'}
+                  text={jobStatusStyle[status]?.text ?? 'text-slate-500'}
                 />
               ))}
           </div>

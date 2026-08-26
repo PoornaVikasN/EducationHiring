@@ -351,6 +351,38 @@ export class NotificationsService {
     }
   }
 
+  // Email for dispute resolution/rejection is sent directly by DisputesService
+  // (it already has the recipient's email in hand); these two only add the in-app
+  // half, which was previously missing entirely despite DISPUTE_RESOLVED/DISPUTE_REJECTED
+  // both having in-app copy configured in Admin → Email Templates.
+  @OnEvent('dispute.resolved')
+  async onDisputeResolved(payload: { userId: string; audience: 'seeker' | 'recruiter'; name: string; subject: string; adminNote: string }) {
+    await this.notifyFromTemplate(
+      payload.userId,
+      NotificationKind.DISPUTE_RESOLVED,
+      'DISPUTE_RESOLVED',
+      payload.audience,
+      { name: payload.name, subject: payload.subject, adminNote: payload.adminNote },
+      'Your dispute has been resolved ✅',
+      `Your dispute regarding "${payload.subject}" has been resolved in your favour.`,
+      payload.audience === 'recruiter' ? '/recruiter/settings' : '/settings',
+    );
+  }
+
+  @OnEvent('dispute.rejected')
+  async onDisputeRejected(payload: { userId: string; audience: 'seeker' | 'recruiter'; name: string; subject: string; adminNote: string }) {
+    await this.notifyFromTemplate(
+      payload.userId,
+      NotificationKind.DISPUTE_REJECTED,
+      'DISPUTE_REJECTED',
+      payload.audience,
+      { name: payload.name, subject: payload.subject, adminNote: payload.adminNote },
+      'Update on your dispute',
+      `We reviewed your dispute regarding "${payload.subject}" and were unable to uphold it.`,
+      payload.audience === 'recruiter' ? '/recruiter/settings' : '/settings',
+    );
+  }
+
   @OnEvent('school.registered')
   async onSchoolRegistered(payload: { schoolId: string; schoolName: string }) {
     // Notify all active admins

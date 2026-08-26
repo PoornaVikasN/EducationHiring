@@ -12,6 +12,9 @@ import { Dispute, DisputeSchema } from './schemas/dispute.schema';
       { name: Dispute.name, schema: DisputeSchema },
       { name: User.name, schema: UserSchema },
     ]),
+    // Provides EmailService (used directly below). NotificationsService itself is
+    // wired via the dispute.resolved/dispute.rejected events emitted below, not by
+    // injecting it here — matches the EventEmitter2 pattern every other module uses.
     NotificationsModule,
   ],
   controllers: [DisputesController],

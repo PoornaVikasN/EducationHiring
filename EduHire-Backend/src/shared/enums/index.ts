@@ -205,6 +205,9 @@ export enum NotificationKind {
   SUB_RENEWED = 'SUB_RENEWED',
   SUB_RENEWAL_FAILED = 'SUB_RENEWAL_FAILED',
   SCHOOL_VERIFIED = 'SCHOOL_VERIFIED',
+  // Either audience — dispute raiser can be a teacher or a school
+  DISPUTE_RESOLVED = 'DISPUTE_RESOLVED',
+  DISPUTE_REJECTED = 'DISPUTE_REJECTED',
   // Admin-facing
   SCHOOL_REGISTERED = 'SCHOOL_REGISTERED',
   SYSTEM_ALERT = 'SYSTEM_ALERT',
