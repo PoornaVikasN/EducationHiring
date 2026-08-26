@@ -34,6 +34,10 @@ export default function RecruiterSchoolPage() {
   const [photos, setPhotos] = useState<(string | null)[]>([null, null, null]);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState<boolean[]>([false, false, false]);
+  // logoUrl/photos live outside react-hook-form (they're set from an async upload,
+  // not a field the user types into), so RHF's isDirty never sees them change —
+  // without this, uploading only a logo/photo left the Save button disabled forever.
+  const [mediaDirty, setMediaDirty] = useState(false);
 
   const { data: school, isLoading } = useQuery({
     queryKey: ['my-school'],
@@ -70,6 +74,7 @@ export default function RecruiterSchoolPage() {
       setLogoUrl(school.logoUrl);
       const existingPhotos = school.photos ?? [];
       setPhotos([existingPhotos[0] ?? null, existingPhotos[1] ?? null, existingPhotos[2] ?? null]);
+      setMediaDirty(false);
     } else {
       // Pre-fill contact from registration for a new school
       reset({
@@ -118,6 +123,7 @@ export default function RecruiterSchoolPage() {
     try {
       const url = await uploadFile(UploadKind.LOGO, file);
       setLogoUrl(url);
+      setMediaDirty(true);
       toast({ title: 'Logo uploaded!' });
     } catch {
       toast({ title: 'Upload failed', variant: 'destructive' });
@@ -133,6 +139,7 @@ export default function RecruiterSchoolPage() {
     try {
       const url = await uploadFile(UploadKind.SCHOOL_PHOTO, file);
       setPhotos((prev) => { const next = [...prev]; next[index] = url; return next; });
+      setMediaDirty(true);
       toast({ title: 'Photo uploaded!' });
     } catch {
       toast({ title: 'Upload failed', variant: 'destructive' });
@@ -393,7 +400,7 @@ export default function RecruiterSchoolPage() {
                     size="sm"
                     variant="outline"
                     className="w-full text-xs"
-                    onClick={() => setPhotos((prev) => { const next = [...prev]; next[i] = null; return next; })}
+                    onClick={() => { setPhotos((prev) => { const next = [...prev]; next[i] = null; return next; }); setMediaDirty(true); }}
                   >
                     Remove
                   </Button>
@@ -403,7 +410,7 @@ export default function RecruiterSchoolPage() {
           </div>
         </div>
 
-        <Button type="submit" className="w-full" disabled={isSubmitting || mutation.isPending || (!isDirty && !!school && !uploadingLogo)}>
+        <Button type="submit" className="w-full" disabled={isSubmitting || mutation.isPending || (!isDirty && !mediaDirty && !!school && !uploadingLogo)}>
           {isSubmitting || mutation.isPending
             ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Saving…</>
             : school ? 'Save Changes' : 'Submit School Profile'}

@@ -1,17 +1,25 @@
 import { z } from 'zod';
 import { Availability, AvailableTimings, Gender, MaritalStatus, SalaryRange, Subject, TeacherPost, TypeOfPractice } from '../shared/enums';
 
+// register(name, { valueAsNumber: true }) reads input.valueAsNumber, which is NaN
+// (not undefined) for a cleared/blank <input type="number">. Left as a bare
+// z.number().optional(), that NaN fails validation instead of satisfying
+// "optional" — silently blocking the whole form's submit for any user who
+// leaves the field blank, with no visible error. Coerce NaN to undefined first.
+const optionalNumber = (schema: z.ZodNumber) =>
+  z.preprocess((v) => (typeof v === 'number' && Number.isNaN(v) ? undefined : v), schema.optional());
+
 export const seekerProfileSchema = z.object({
   fullName: z.string().min(2, 'Name is required').max(80),
   headline: z.string().max(120).optional().or(z.literal('')),
   city: z.string().min(2, 'City is required').optional().or(z.literal('')),
   state: z.string().min(2, 'State is required').optional().or(z.literal('')),
-  experienceYears: z.number().min(0).max(50).optional(),
+  experienceYears: optionalNumber(z.number().min(0).max(50)),
   availability: z.nativeEnum(Availability).optional(),
   gender: z.nativeEnum(Gender).optional(),
   bio: z.string().max(500).optional().or(z.literal('')),
   skills: z.string().optional().or(z.literal('')),
-  age: z.number().min(18, 'Must be at least 18').max(80).optional(),
+  age: optionalNumber(z.number().min(18, 'Must be at least 18').max(80)),
   maritalStatus: z.nativeEnum(MaritalStatus).optional(),
   degrees: z.array(z.string()).optional(),
   desiredCities: z.array(z.string()).optional(),
@@ -42,13 +50,13 @@ export const schoolProfileSchema = z.object({
   contactEmail: z.string().email('Enter a valid email'),
   description: z.string().max(1000).optional().or(z.literal('')),
   website: z.string().url('Enter a valid URL').optional().or(z.literal('')),
-  noOfClassrooms: z.number().min(0).optional(),
+  noOfClassrooms: optionalNumber(z.number().min(0)),
   campusFacilities: z.array(z.string()).optional(),
-  noOfLabsOrSpecialRooms: z.number().min(0).optional(),
+  noOfLabsOrSpecialRooms: optionalNumber(z.number().min(0)),
   photos: z.array(z.string().url()).max(3).optional(),
   scopeOfServices: z.string().max(1000).optional().or(z.literal('')),
-  schoolStrength: z.number().min(0).optional(),
-  studentCapacity: z.number().min(0).optional(),
+  schoolStrength: optionalNumber(z.number().min(0)),
+  studentCapacity: optionalNumber(z.number().min(0)),
   accreditations: z.array(z.string()).optional(),
   departments: z.array(z.nativeEnum(Subject)).optional(),
 });
