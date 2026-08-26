@@ -12,6 +12,7 @@ import { Payment, PaymentDocument } from '../payments/schemas/payment.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { Application, ApplicationDocument } from '../applications/schemas/application.schema';
 import { Subscription, SubscriptionDocument } from '../subscriptions/schemas/subscription.schema';
+import { Dispute, DisputeDocument, DisputeStatus } from '../disputes/schemas/dispute.schema';
 import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 
 @Injectable()
@@ -25,6 +26,7 @@ export class AdminService {
     @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
     @InjectModel(Application.name) private appModel: Model<ApplicationDocument>,
     @InjectModel(Subscription.name) private subscriptionModel: Model<SubscriptionDocument>,
+    @InjectModel(Dispute.name) private disputeModel: Model<DisputeDocument>,
     private eventEmitter: EventEmitter2,
     private auditService: AuditService,
   ) {}
@@ -297,6 +299,8 @@ export class AdminService {
       filledJobs,
       revenueAll,
       revenueMonthly,
+      suspendedUsers,
+      openDisputes,
     ] = await Promise.all([
       this.userModel.countDocuments({ deletedAt: null }),
       this.userModel.countDocuments({ role: Role.TEACHER, deletedAt: null }),
@@ -313,6 +317,11 @@ export class AdminService {
         { $match: { status: PaymentStatus.PAID, createdAt: { $gte: thirtyDaysAgo } } },
         { $group: { _id: null, total: { $sum: '$amountPaise' } } },
       ]),
+      // isActive is also set false on soft-delete (see suspendUser/softDelete*), so
+      // deletedAt: null is required here — otherwise every deleted user double-counts
+      // as "suspended" too.
+      this.userModel.countDocuments({ isActive: false, deletedAt: null }),
+      this.disputeModel.countDocuments({ status: { $in: [DisputeStatus.OPEN, DisputeStatus.IN_REVIEW] } }),
     ]);
 
     const totalRevenuePaise: number = revenueAll[0]?.total ?? 0;
@@ -328,6 +337,8 @@ export class AdminService {
       filledJobs,
       totalRevenuePaise,
       monthlyRevenuePaise,
+      suspendedUsers,
+      openDisputes,
     };
   }
 }

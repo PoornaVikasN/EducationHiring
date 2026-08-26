@@ -84,6 +84,8 @@ export interface AdminStats {
   filledJobs: number;
   totalRevenuePaise: number;
   monthlyRevenuePaise: number;
+  suspendedUsers: number;
+  openDisputes: number;
 }
 
 export interface AuditLog {

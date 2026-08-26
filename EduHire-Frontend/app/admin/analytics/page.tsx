@@ -200,8 +200,8 @@ export default function AdminAnalyticsPage() {
         <div className="grid sm:grid-cols-3 gap-4">
           {[
             { label: 'Schools awaiting verification', value: stats?.pendingSchools ?? '—', color: 'text-amber-600', href: '/admin/schools' },
-            { label: 'Open disputes', value: '—', color: 'text-red-600', href: '/admin/disputes' },
-            { label: 'Suspended users', value: '—', color: 'text-text-muted', href: '/admin/users' },
+            { label: 'Open disputes', value: stats?.openDisputes ?? '—', color: 'text-red-600', href: '/admin/disputes' },
+            { label: 'Suspended users', value: stats?.suspendedUsers ?? '—', color: 'text-text-muted', href: '/admin/users' },
           ].map(({ label, value, color, href }) => (
             <a key={label} href={href} className="bg-bg-page rounded-xl p-4 border border-border-default hover:border-brand-primary transition-colors block">
               <div className={`text-2xl font-extrabold ${color} mb-1`}>{statsLoading ? '—' : value}</div>

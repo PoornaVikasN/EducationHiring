@@ -6,6 +6,7 @@ import { Payment, PaymentSchema } from '../payments/schemas/payment.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { Application, ApplicationSchema } from '../applications/schemas/application.schema';
 import { Subscription, SubscriptionSchema } from '../subscriptions/schemas/subscription.schema';
+import { Dispute, DisputeSchema } from '../disputes/schemas/dispute.schema';
 import { AuditModule } from '../audit/audit.module';
 import { EmailTemplatesModule } from '../email-templates/email-templates.module';
 import { LegalContentModule } from '../legal-content/legal-content.module';
@@ -23,6 +24,7 @@ import { AdminService } from './admin.service';
       { name: Payment.name, schema: PaymentSchema },
       { name: Application.name, schema: ApplicationSchema },
       { name: Subscription.name, schema: SubscriptionSchema },
+      { name: Dispute.name, schema: DisputeSchema },
     ]),
     SystemConfigModule,
     SystemHealthModule,
