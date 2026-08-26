@@ -19,7 +19,10 @@ interface LegalPage {
 
 async function getLegalPage(key: string): Promise<LegalPage | null> {
   try {
-    const res = await fetch(`${API_BASE_URL}/public/legal/${key}`, { next: { revalidate: 300 } });
+    // No time-based cache: an admin editing Terms/Privacy via Config → Legal Pages
+    // expects the change live on the next page load, not up to 5 minutes later.
+    // Traffic to these pages is low enough that fetching fresh every time is free.
+    const res = await fetch(`${API_BASE_URL}/public/legal/${key}`, { cache: 'no-store' });
     if (!res.ok) return null;
     return res.json();
   } catch {
