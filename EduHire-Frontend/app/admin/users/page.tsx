@@ -95,12 +95,13 @@ function UserRow({
   );
 }
 
-type UserTab = 'ALL' | 'TEACHER' | 'RECRUITER';
+type UserTab = 'ALL' | 'TEACHER' | 'RECRUITER' | 'ADMIN';
 
 const USER_TABS: { id: UserTab; label: string }[] = [
   { id: 'ALL', label: 'All Users' },
   { id: 'TEACHER', label: 'Teachers' },
   { id: 'RECRUITER', label: 'Schools' },
+  { id: 'ADMIN', label: 'Admins' },
 ];
 
 interface Filters {
@@ -221,7 +222,7 @@ function UsersContent() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-text-primary flex items-center gap-2"><Users className="w-5 h-5" /> Users</h1>
-          <p className="text-sm text-text-muted mt-0.5">{data?.meta.total ?? 0} {userTab !== 'ALL' ? roleLabel(userTab).toLowerCase() + 's' : 'total'} users</p>
+          <p className="text-sm text-text-muted mt-0.5">{data?.meta.total ?? 0} {userTab === 'ALL' ? 'total users' : roleLabel(userTab).toLowerCase() + 's'}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <SearchBar
