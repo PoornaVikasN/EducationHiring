@@ -228,7 +228,17 @@ export default function AdminConfigPage() {
     setTplBody(tpl.body);
     setTplDesc(tpl.description);
     setTplActive(tpl.isActive);
-    setTplChannels(tpl.channels ?? DEFAULT_CHANNELS);
+    const channels = tpl.channels ?? DEFAULT_CHANNELS;
+    // Auth/transactional templates only expose one combined toggle (bound to
+    // seekerEmail), so normalize recruiterEmail/in-app to match on open — otherwise
+    // any prior drift between the two email flags (e.g. from a stale save before this
+    // fix existed) would keep round-tripping silently on every future save, since the
+    // toggle can only ever display and write seekerEmail's half of the pair.
+    setTplChannels(
+      TRANSACTIONAL_KEYS.has(tpl.key)
+        ? { seekerEmail: channels.seekerEmail, recruiterEmail: channels.seekerEmail, seekerInApp: false, recruiterInApp: false }
+        : channels,
+    );
     setTplInAppSeekerTitle(tpl.inAppSeekerTitle ?? '');
     setTplInAppSeekerBody(tpl.inAppSeekerBody ?? '');
     setTplInAppRecruiterTitle(tpl.inAppRecruiterTitle ?? '');
@@ -471,7 +481,13 @@ export default function AdminConfigPage() {
                   </div>
                   <Switch
                     checked={tplChannels.seekerEmail}
-                    onCheckedChange={(v) => setTplChannels((c) => ({ ...c, seekerEmail: v }))}
+                    // "Global" is the whole point of this switch for auth/transactional
+                    // templates — teacher and recruiter go through the identical OTP/reset
+                    // flow, so there's no legitimate reason for the two to independently
+                    // drift. Setting both explicitly (rather than leaving recruiterEmail at
+                    // whatever value happened to be in local state when the dialog opened)
+                    // is what stops an unrelated field edit + save from silently reverting it.
+                    onCheckedChange={(v) => setTplChannels((c) => ({ ...c, seekerEmail: v, recruiterEmail: v }))}
                   />
                 </div>
               ) : (
