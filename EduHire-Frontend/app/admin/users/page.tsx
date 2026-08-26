@@ -188,8 +188,21 @@ function UsersContent() {
     onError: () => toast({ title: 'Restore failed', variant: 'destructive' }),
   });
 
-  const handleExport = () => {
-    downloadCsv('admin-users', rows, [
+  const handleExport = async () => {
+    const total = data?.meta.total ?? rows.length;
+    const all = total > rows.length
+      ? (await adminApi.listUsers(
+          1, total,
+          debouncedSearch || undefined,
+          roleParam,
+          isActiveParam,
+          filters.city || undefined,
+          filters.joinedFrom || undefined,
+          filters.joinedTo || undefined,
+          showDeleted,
+        )).data.data
+      : rows;
+    downloadCsv('admin-users', all, [
       { header: 'Name', key: (u) => u.seekerProfile?.fullName ?? u.recruiterProfile?.fullName ?? '' },
       { header: 'Email', key: 'email' },
       { header: 'Phone', key: 'phone' },

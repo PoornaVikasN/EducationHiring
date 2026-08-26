@@ -32,13 +32,13 @@ export const seekerProfileSchema = z.object({
 export type SeekerProfileFormValues = z.infer<typeof seekerProfileSchema>;
 
 export const schoolProfileSchema = z.object({
-  name: z.string().min(2, 'School name is required').max(120),
-  registrationNumber: z.string().min(3, 'Affiliation number / recognition number is required'),
-  address: z.string().min(5, 'Address is required'),
-  city: z.string().min(2, 'City is required'),
-  state: z.string().min(2, 'State is required'),
-  pincode: z.string().regex(/^\d{6}$/, 'Enter a valid 6-digit pincode'),
-  contactPhone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number'),
+  name: z.string({ message: 'School name is required' }).min(2, 'School name is required').max(120),
+  registrationNumber: z.string({ message: 'Affiliation number / recognition number is required' }).min(3, 'Affiliation number / recognition number is required'),
+  address: z.string({ message: 'Address is required' }).min(5, 'Address is required'),
+  city: z.string({ message: 'City is required — select a location from the search suggestions' }).min(2, 'City is required — select a location from the search suggestions'),
+  state: z.string({ message: 'State is required — select a location from the search suggestions' }).min(2, 'State is required — select a location from the search suggestions'),
+  pincode: z.string({ message: 'Pincode is required' }).regex(/^\d{6}$/, 'Enter a valid 6-digit pincode'),
+  contactPhone: z.string({ message: 'Contact phone is required' }).regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit mobile number'),
   contactEmail: z.string().email('Enter a valid email'),
   description: z.string().max(1000).optional().or(z.literal('')),
   website: z.string().url('Enter a valid URL').optional().or(z.literal('')),

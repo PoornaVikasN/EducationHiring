@@ -49,3 +49,8 @@ coverage/
 
 # Claude memory (local only)
 .claude/
+
+# Local-only QA/debug artifacts (playwright output, ad-hoc debug scripts, screenshots) —
+# never shipped, kept locally until triaged.
+local-artifacts/
+.playwright-mcp/

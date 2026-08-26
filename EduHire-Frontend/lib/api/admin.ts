@@ -98,6 +98,18 @@ export interface AuditLog {
   createdAt: string;
 }
 
+// Current status of a critical integration (Gmail, AWS S3, …) — set by the backend
+// service itself the moment a credential/account-level failure is detected, cleared
+// the moment it succeeds again. Not a history log — see AuditLog for that.
+export interface SystemHealthFlag {
+  key: string;
+  label: string;
+  status: 'ok' | 'down';
+  lastError: string | null;
+  downSince: string | null;
+  lastOkAt: string | null;
+}
+
 export interface PaginatedAuditLogs {
   data: AuditLog[];
   meta: { page: number; limit: number; total: number; totalPages: number };
@@ -326,6 +338,9 @@ export const adminApi = {
 
   getConfigStatus: () =>
     apiClient.get<Record<string, boolean>>('/admin/config/status'),
+
+  getSystemHealth: () =>
+    apiClient.get<SystemHealthFlag[]>('/admin/system-health'),
 
   listAuditLogs: (page = 1, limit = 20, entityType?: string, actionPrefix?: string, entityId?: string) =>
     apiClient.get<PaginatedAuditLogs>('/admin/audit', { params: { page, limit, entityType, actionPrefix, entityId } }),

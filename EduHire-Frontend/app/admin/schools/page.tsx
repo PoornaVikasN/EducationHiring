@@ -158,8 +158,24 @@ function SchoolsContent() {
   const applyFilter = () => { setFilters(draft); setPage(1); setFilterOpen(false); };
   const clearFilter = () => { setDraft(DEFAULT_FILTERS); setFilters(DEFAULT_FILTERS); setPage(1); setFilterOpen(false); };
 
-  const handleExport = () => {
-    downloadCsv('admin-schools', rows, [
+  const handleExport = async () => {
+    const total = data?.meta.total ?? (data?.data.length ?? 0);
+    const source = total > (data?.data.length ?? 0)
+      ? (await adminApi.listSchools(
+          1, total,
+          verifiedParam,
+          debouncedSearch || undefined,
+          filters.registeredFrom || undefined,
+          filters.registeredTo || undefined,
+        )).data.data
+      : (data?.data ?? []);
+    const all = source.filter((h) => {
+      if (verifTab === 'REJECTED' && h.verificationStatus !== 'REJECTED') return false;
+      if (verifTab === 'PENDING' && (h.isVerified || h.verificationStatus === 'REJECTED')) return false;
+      if (filters.city && !h.city.toLowerCase().includes(filters.city.toLowerCase())) return false;
+      return true;
+    });
+    downloadCsv('admin-schools', all, [
       { header: 'Name', key: 'name' },
       { header: 'City', key: 'city' },
       { header: 'State', key: 'state' },

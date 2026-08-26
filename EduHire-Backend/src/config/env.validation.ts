@@ -38,6 +38,12 @@ export const envValidationSchema = Joi.object({
   // Defaults to the prod domain so a missing env value still produces valid links.
   PUBLIC_FRONTEND_URL: Joi.string().uri().default('https://schoolteacher.co.in'),
 
+  // First-admin bootstrap (see AppService.seedAdmin) — deliberately optional even in
+  // prod: a missing value just skips seeding (logged) rather than failing boot, so an
+  // operator can't get locked out of starting the server by forgetting this.
+  ADMIN_SEED_EMAIL: Joi.string().email().allow('').optional(),
+  ADMIN_SEED_PASSWORD: Joi.string().min(10).allow('').optional(),
+
   // MongoDB Atlas — required in prod; dev falls back to localhost
   MONGO_DB_USERNAME: prodRequiredString,
   MONGO_DB_PASSWORD: prodRequiredString,

@@ -5,7 +5,25 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuid } from 'uuid';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { SystemConfigService } from '../system-config/system-config.service';
+import { SystemHealthService } from '../system-health/system-health.service';
 import { MIME_ALLOWLIST, PresignDto, SIZE_LIMITS, type UploadKind } from './dto/presign.dto';
+
+const S3_HEALTH_KEY = 'AWS_S3';
+const S3_HEALTH_LABEL = 'File Storage (AWS S3)';
+
+// AWS error names/codes that mean "the credentials themselves are wrong/expired" —
+// distinct from a HeadObject 404 (NotFound), which just means a client lied about
+// having uploaded something and is not a system-health problem.
+const AWS_CREDENTIAL_ERROR_NAMES = new Set([
+  'SignatureDoesNotMatch',
+  'InvalidAccessKeyId',
+  'AccessDenied',
+  'ExpiredToken',
+  'InvalidClientTokenId',
+  'AuthFailure',
+  'CredentialsError',
+  'UnrecognizedClientException',
+]);
 
 @Injectable()
 export class UploadsService {
@@ -14,7 +32,13 @@ export class UploadsService {
   constructor(
     private config: ConfigService,
     private systemConfig: SystemConfigService,
+    private systemHealth: SystemHealthService,
   ) {}
+
+  private isAwsCredentialError(err: unknown): boolean {
+    const name = (err as { name?: string; Code?: string })?.name ?? (err as { Code?: string })?.Code;
+    return typeof name === 'string' && AWS_CREDENTIAL_ERROR_NAMES.has(name);
+  }
 
   // AWS creds are admin-editable via Config → API Keys (no redeploy) — same pattern
   // Razorpay already uses. Built fresh per-call (S3Client construction does no network
@@ -85,10 +109,16 @@ export class UploadsService {
     try {
       head = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
     } catch (err) {
-      this.logger.error(`HeadObject failed key=${key}`, err instanceof Error ? err.message : String(err));
+      if (this.isAwsCredentialError(err)) {
+        this.logger.error(`AWS credentials rejected (key=${key}): ${err instanceof Error ? err.message : String(err)}`);
+        this.systemHealth.reportDown(S3_HEALTH_KEY, S3_HEALTH_LABEL, err instanceof Error ? err.message : String(err)).catch(() => {});
+      } else {
+        this.logger.error(`HeadObject failed key=${key}`, err instanceof Error ? err.message : String(err));
+      }
       throw new NotFoundException('Upload not found in storage');
     }
 
+    this.systemHealth.reportOk(S3_HEALTH_KEY, S3_HEALTH_LABEL).catch(() => {});
     const contentType = head.ContentType ?? '';
     const contentLength = head.ContentLength ?? 0;
     this.logger.log(`HeadObject ok key=${key} contentType=${contentType} size=${contentLength}`);

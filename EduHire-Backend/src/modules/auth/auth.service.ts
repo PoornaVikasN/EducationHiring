@@ -127,7 +127,7 @@ export class AuthService {
       { $set: { codeHash, attempts: 0, expiresAt } },
       { upsert: true },
     );
-    await this.emailService.sendRegistrationOtpEmail(user.email!, dto.fullName, code).catch((err: unknown) => {
+    await this.emailService.sendRegistrationOtpEmail(user.email!, dto.fullName, code, dto.role).catch((err: unknown) => {
       this.logger.warn(`Registration OTP email failed for ${user._id.toString()}: ${String(err)}`);
     });
 
@@ -247,13 +247,15 @@ export class AuthService {
       { upsert: true },
     );
 
+    // Fetched once up front so both the email channel selection and the SMS step below share it.
+    const user = await this.userModel.findOne({ email, deletedAt: null }).lean().exec();
+
     // Send via email (primary)
-    await this.emailService.sendOtpEmail(email, code).catch((err: unknown) => {
+    await this.emailService.sendOtpEmail(email, code, user?.role).catch((err: unknown) => {
       this.logger.warn(`OTP email failed for ${redactEmail(email)}: ${String(err)}`);
     });
 
     // Send via SMS (secondary — if user has phone and MSG91 is configured)
-    const user = await this.userModel.findOne({ email, deletedAt: null }).lean().exec();
     if (user?.phone) {
       await this.dispatchSms(user.phone, code).catch((err: unknown) => {
         this.logger.warn(`OTP SMS failed for ${redactPhone(user.phone)}: ${String(err)}`);
@@ -366,13 +368,16 @@ export class AuthService {
     const keyHash = this.hashValue('reset:' + normalised);
     const codeHash = this.hashValue(code);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    if (this.config.get('NODE_ENV') !== 'production') {
+      this.logger.log(`[DEV] Password reset OTP for ${normalised}: ${code}`);
+    }
     await this.otpModel.findOneAndUpdate(
       { phoneHash: keyHash },
       { $set: { codeHash, attempts: 0, expiresAt } },
       { upsert: true },
     );
 
-    await this.emailService.sendPasswordResetOtpEmail(user.email, code).catch((err: unknown) => {
+    await this.emailService.sendPasswordResetOtpEmail(user.email, code, user.role).catch((err: unknown) => {
       this.logger.warn(`Password reset OTP email failed for ${user._id}: ${String(err)}`);
     });
 

@@ -16,6 +16,7 @@ const ACTION_COLORS: Record<string, string> = {
   SCHOOL_VERIFIED: 'bg-green-100 text-green-700',
   SCHOOL_REJECTED: 'bg-red-100 text-red-700',
   JOB_DISABLED: 'bg-orange-100 text-orange-700',
+  JOB_DELETED: 'bg-red-100 text-red-700',
   BULK_USER_IMPORT: 'bg-indigo-100 text-indigo-700',
   BULK_IMPORT_EMAILS_RESENT: 'bg-amber-100 text-amber-700',
   BULK_IMPORT_EMAILS_AUTO_RESENT: 'bg-amber-100 text-amber-700',
@@ -41,6 +42,7 @@ function formatChange(log: AuditLog): string {
   if (log.action === 'SCHOOL_VERIFIED') return `${before?.status ?? '?'} → Verified`;
   if (log.action === 'SCHOOL_REJECTED') return `${before?.status ?? '?'} → Rejected`;
   if (log.action === 'JOB_DISABLED') return `${before?.status ?? '?'} → Disabled`;
+  if (log.action === 'JOB_DELETED') return 'Deleted';
   if (log.action === 'BULK_USER_IMPORT') {
     return `${after?.successCount ?? 0}/${after?.totalRows ?? 0} rows, ${after?.emailsSent ?? 0}/${after?.emailsAttempted ?? 0} emails sent`;
   }

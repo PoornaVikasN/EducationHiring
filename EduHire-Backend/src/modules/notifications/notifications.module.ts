@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { SystemConfigModule } from '../system-config/system-config.module';
+import { SystemHealthModule } from '../system-health/system-health.module';
 import { EmailTemplatesModule } from '../email-templates/email-templates.module';
 import { School, SchoolSchema } from '../schools/schemas/school.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
@@ -17,6 +18,7 @@ import { WhatsAppService } from './whatsapp.service';
   imports: [
     ConfigModule,
     SystemConfigModule,
+    SystemHealthModule,
     EmailTemplatesModule,
     MongooseModule.forFeature([
       { name: Notification.name, schema: NotificationSchema },

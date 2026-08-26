@@ -3,6 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { SystemConfigService } from '../system-config/system-config.service';
+import { SystemHealthService } from '../system-health/system-health.service';
+
+const EMAIL_HEALTH_KEY = 'EMAIL_SENDING';
+const EMAIL_HEALTH_LABEL = 'Email Sending (Gmail)';
 
 // Gmail's SMTP relay throttles concurrent connections/re-authentications per account far
 // more aggressively than its per-day send count — building a brand-new transporter (fresh
@@ -27,6 +31,7 @@ export class EmailService {
     private config: ConfigService,
     private systemConfig: SystemConfigService,
     private emailTemplates: EmailTemplatesService,
+    private systemHealth: SystemHealthService,
   ) {}
 
   // Gmail creds are admin-editable via Config → API Keys (no redeploy) — same pattern
@@ -55,8 +60,9 @@ export class EmailService {
     return this.cachedTransporter;
   }
 
-  async sendRegistrationOtpEmail(to: string, name: string, otp: string): Promise<void> {
-    const db = await this.renderFromDb('REGISTRATION_OTP', { name, otp });
+  async sendRegistrationOtpEmail(to: string, name: string, otp: string, role: string = 'TEACHER'): Promise<void> {
+    const channel = role === 'RECRUITER' ? 'recruiterEmail' : 'seekerEmail';
+    const db = await this.renderFromDb('REGISTRATION_OTP', { name, otp }, channel);
     await this.send(to, db?.subject ?? 'Welcome to SchoolTeacher — verify your email', db?.html ?? `
       <p>Hi ${name},</p>
       <p>Welcome to <strong>SchoolTeacher</strong>! To activate your account, enter the verification code below:</p>
@@ -72,7 +78,8 @@ export class EmailService {
     const profileHint = role === 'RECRUITER'
       ? 'Set up your school profile to start posting jobs.'
       : 'Complete your profile to get noticed by top schools.';
-    const db = await this.renderFromDb('ONBOARDING', { name, profileHint });
+    const channel = role === 'RECRUITER' ? 'recruiterEmail' : 'seekerEmail';
+    const db = await this.renderFromDb('ONBOARDING', { name, profileHint }, channel);
     await this.send(to, db?.subject ?? '🎉 You\'re in! Next step: complete your profile', db?.html ?? `
       <p>Hi ${name},</p>
       <p>Your email is verified and your <strong>SchoolTeacher</strong> account is now active.</p>
@@ -82,8 +89,9 @@ export class EmailService {
     `);
   }
 
-  async sendOtpEmail(to: string, otp: string): Promise<void> {
-    const db = await this.renderFromDb('GENERIC_OTP', { otp });
+  async sendOtpEmail(to: string, otp: string, role: string = 'TEACHER'): Promise<void> {
+    const channel = role === 'RECRUITER' ? 'recruiterEmail' : 'seekerEmail';
+    const db = await this.renderFromDb('GENERIC_OTP', { otp }, channel);
     await this.send(to, db?.subject ?? 'Your SchoolTeacher OTP', db?.html ?? `
       <p>Your one-time password is:</p>
       <h2 style="letter-spacing:4px;font-family:monospace">${otp}</h2>
@@ -124,7 +132,7 @@ export class EmailService {
   }
 
   async sendPaymentConfirmationEmail(to: string, seekerName: string, jobTitle: string, schoolName: string): Promise<void> {
-    const db = await this.renderFromDb('PAYMENT_CONFIRMATION', { seekerName, jobTitle, hospitalName: schoolName });
+    const db = await this.renderFromDb('PAYMENT_CONFIRMATION', { seekerName, jobTitle, schoolName });
     await this.send(to, db?.subject ?? 'Payment confirmed — contact details unlocked', db?.html ?? `
       <p>Hi ${seekerName},</p>
       <p>Your payment has been confirmed for <strong>${jobTitle}</strong> at <strong>${schoolName}</strong>.</p>
@@ -236,8 +244,9 @@ export class EmailService {
     `);
   }
 
-  async sendPasswordResetOtpEmail(to: string, otp: string): Promise<void> {
-    const db = await this.renderFromDb('PASSWORD_RESET_OTP', { otp });
+  async sendPasswordResetOtpEmail(to: string, otp: string, role: string = 'TEACHER'): Promise<void> {
+    const channel = role === 'RECRUITER' ? 'recruiterEmail' : 'seekerEmail';
+    const db = await this.renderFromDb('PASSWORD_RESET_OTP', { otp }, channel);
     await this.send(to, db?.subject ?? 'Reset your SchoolTeacher password', db?.html ?? `
       <p>You requested a password reset. Use the code below to set a new password:</p>
       <div style="text-align:center;margin:24px 0">
@@ -289,6 +298,7 @@ export class EmailService {
           html,
         });
         this.logger.log(`Email sent → ${to} subject="${subject}"`);
+        this.systemHealth.reportOk(EMAIL_HEALTH_KEY, EMAIL_HEALTH_LABEL).catch(() => {});
         return;
       } catch (err: unknown) {
         if (this.isTransientSmtpError(err) && attempt < MAX_ATTEMPTS) {
@@ -298,6 +308,20 @@ export class EmailService {
           this.cachedTransporter = null;
           await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
           continue;
+        }
+        if (this.isAccountRestricted(err)) {
+          // This is not an SMTP send failure — it's Google rejecting the OAuth2 token
+          // exchange itself, before any message is even attempted. No retry, no pacing
+          // fix, no code change can send email while this is active — every single
+          // email in the app (OTPs, activation links, resends, the cron sweep) is dead
+          // until the account is unrestricted directly with Google. Logged loudly so it
+          // can't be mistaken for an ordinary per-recipient send failure buried in a scroll
+          // of normal logs.
+          this.logger.error(
+            `\n${'!'.repeat(70)}\nGMAIL ACCOUNT RESTRICTED BY GOOGLE — no email can send at all right now.\nThis affects every outgoing email (OTPs, activation links, resends, cron).\nFix this directly with Google — it is not a code bug.\nAttempted recipient: ${to}\nGoogle's error: ${String(err)}\n${'!'.repeat(70)}`,
+          );
+          this.systemHealth.reportDown(EMAIL_HEALTH_KEY, EMAIL_HEALTH_LABEL, String(err)).catch(() => {});
+          throw err;
         }
         this.logger.error(`Email send failed to ${to}: ${String(err)}`);
         throw err;
@@ -312,5 +336,14 @@ export class EmailService {
     if (typeof code === 'number') return code >= 400 && code < 500;
     const message = String((err as Error)?.message ?? err);
     return /\b4\d{2}[\s-]/.test(message);
+  }
+
+  // Distinguishes a genuine Google account-level restriction (OAuth2 token exchange
+  // itself rejected — "access_denied: Account Restricted") from an ordinary per-message
+  // SMTP failure. Live-confirmed 2026-08-20 as the actual cause of "OTP emails not
+  // arriving" during signup testing.
+  private isAccountRestricted(err: unknown): boolean {
+    const message = String((err as Error)?.message ?? err);
+    return /access_denied/i.test(message) && /restrict/i.test(message);
   }
 }

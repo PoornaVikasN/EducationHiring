@@ -25,7 +25,7 @@ const SEEDS: Array<{
     description: "Sends a one-time password to verify the user's email during registration.",
     subject: 'Welcome to School Teacher — verify your email',
     variables: ['name', 'otp'],
-    channels: { seekerEmail: true, seekerInApp: false, recruiterEmail: false, recruiterInApp: false },
+    channels: { seekerEmail: true, seekerInApp: false, recruiterEmail: true, recruiterInApp: false },
     body: shell({
       preheader: 'Your School Teacher verification code is ready — expires in 5 minutes.',
       badge: '🔐',
@@ -52,7 +52,7 @@ const SEEDS: Array<{
     description: 'Welcome email sent after account verification; content varies by role (teacher vs school).',
     subject: "🎉 You're in! Next step: complete your profile",
     variables: ['name', 'profileHint'],
-    channels: { seekerEmail: true, seekerInApp: false, recruiterEmail: false, recruiterInApp: false },
+    channels: { seekerEmail: true, seekerInApp: false, recruiterEmail: true, recruiterInApp: false },
     body: shell({
       preheader: 'Your account is live! Complete your profile to stand out to schools.',
       badge: '🎉',
@@ -79,7 +79,7 @@ const SEEDS: Array<{
     description: 'OTP for actions requiring identity confirmation other than signup.',
     subject: 'Your School Teacher OTP',
     variables: ['otp'],
-    channels: { seekerEmail: true, seekerInApp: false, recruiterEmail: false, recruiterInApp: false },
+    channels: { seekerEmail: true, seekerInApp: false, recruiterEmail: true, recruiterInApp: false },
     body: shell({
       preheader: 'Your School Teacher one-time code — expires in 5 minutes.',
       badge: '🔑',
@@ -202,7 +202,7 @@ const SEEDS: Array<{
     trigger: 'Payment success',
     description: 'Confirms payment and unlocks contact details for the relevant application.',
     subject: 'Payment confirmed — contact details unlocked',
-    variables: ['seekerName', 'jobTitle', 'hospitalName'],
+    variables: ['seekerName', 'jobTitle', 'schoolName'],
     channels: { seekerEmail: true, seekerInApp: true, recruiterEmail: false, recruiterInApp: false },
     body: shell({
       preheader: 'Payment confirmed! School contact details are now unlocked and ready for you.',
@@ -214,7 +214,7 @@ const SEEDS: Array<{
         hi('{{seekerName}}') +
         para('Your payment has been confirmed and the school\'s contact details are now <strong>unlocked</strong>. Head to your applications to see them and start the conversation.') +
         jobCard('{{jobTitle}}') +
-        infoCard('School', '{{hospitalName}}') +
+        infoCard('School', '{{schoolName}}') +
         ctaBtn('View Contact Details →', 'https://schoolteacher.in/applications') +
         smallNote('🧾 This email serves as your payment receipt. Keep it for your records.'),
     }),
@@ -262,7 +262,7 @@ const SEEDS: Array<{
     description: 'Delivers a one-time password to allow the user to reset their account password.',
     subject: 'Reset your School Teacher password',
     variables: ['otp'],
-    channels: { seekerEmail: true, seekerInApp: false, recruiterEmail: false, recruiterInApp: false },
+    channels: { seekerEmail: true, seekerInApp: false, recruiterEmail: true, recruiterInApp: false },
     body: shell({
       preheader: 'Your School Teacher password reset code — expires in 10 minutes.',
       badge: '🛡️',
@@ -287,7 +287,7 @@ const SEEDS: Array<{
     trigger: 'Application payment received',
     description: 'Notifies the recruiter when a shortlisted teacher pays the application fee — confirms genuine interest.',
     subject: 'A candidate confirmed interest — {{jobTitle}}',
-    variables: ['jobTitle'],
+    variables: ['jobTitle', 'fee'],
     channels: { seekerEmail: false, seekerInApp: false, recruiterEmail: true, recruiterInApp: true },
     body: shell({
       preheader: 'A shortlisted candidate just paid for {{jobTitle}} — their contact details are now available.',
@@ -309,7 +309,7 @@ const SEEDS: Array<{
     }),
     inAppSeekerTitle: null, inAppSeekerBody: null,
     inAppRecruiterTitle: 'An applicant has confirmed interest 💳',
-    inAppRecruiterBody: 'A shortlisted teacher paid the fee. Their contact details are now visible to you in Applicants.',
+    inAppRecruiterBody: 'A shortlisted teacher paid {{fee}}. Their contact details are now visible to you in Applicants.',
   },
 
   // ── 11. School Verified (Recruiter) ───────────────────────────────────────
@@ -351,7 +351,7 @@ const SEEDS: Array<{
     description: 'Receipt email sent to a school confirming its unlimited job-posting subscription activation, and expiry date.',
     subject: 'Subscription activated — School Teacher',
     variables: ['name', 'subscriptionBody', 'amountLine'],
-    channels: { seekerEmail: true, seekerInApp: true, recruiterEmail: true, recruiterInApp: true },
+    channels: { seekerEmail: false, seekerInApp: false, recruiterEmail: true, recruiterInApp: true },
     body: shell({
       preheader: 'Your School Teacher subscription is now active. Here is your payment confirmation.',
       badge: '🚀',
@@ -495,6 +495,8 @@ export class EmailTemplatesService implements OnModuleInit {
             $set: {
               body: seed.body,
               subject: seed.subject,
+              variables: seed.variables,
+              channels: seed.channels,
               inAppSeekerTitle: seed.inAppSeekerTitle,
               inAppSeekerBody: seed.inAppSeekerBody,
               inAppRecruiterTitle: seed.inAppRecruiterTitle,
@@ -514,6 +516,26 @@ export class EmailTemplatesService implements OnModuleInit {
 
   async findByKey(key: string): Promise<EmailTemplateDocument | null> {
     return this.model.findOne({ key }).lean().exec() as Promise<EmailTemplateDocument | null>;
+  }
+
+  // Renders an admin-editable in-app notification title/body for the given template + audience.
+  // Mirrors EmailService.renderFromDb's null-on-inactive/disabled-channel fallback pattern, so
+  // callers can fall back to a hardcoded string when the template is inactive, the relevant
+  // seekerInApp/recruiterInApp channel is off, or no in-app copy has been set for that audience.
+  async renderInApp(
+    key: string,
+    audience: 'seeker' | 'recruiter',
+    vars: Record<string, string>,
+  ): Promise<{ title: string; body: string } | null> {
+    const tpl = await this.findByKey(key);
+    if (!tpl || !tpl.isActive) return null;
+    const channel = audience === 'seeker' ? 'seekerInApp' : 'recruiterInApp';
+    if (!tpl.channels?.[channel]) return null;
+    const title = audience === 'seeker' ? tpl.inAppSeekerTitle : tpl.inAppRecruiterTitle;
+    const body = audience === 'seeker' ? tpl.inAppSeekerBody : tpl.inAppRecruiterBody;
+    if (!title || !body) return null;
+    const render = (s: string) => s.replace(/\{\{(\w+)\}\}/g, (_, k: string) => vars[k] ?? '');
+    return { title: render(title), body: render(body) };
   }
 
   async update(key: string, dto: UpdateEmailTemplateDto, adminId: string, adminEmail: string): Promise<EmailTemplateDocument> {

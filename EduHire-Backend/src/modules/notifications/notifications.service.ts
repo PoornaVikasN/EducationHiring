@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { Model, Types } from 'mongoose';
 import * as webpush from 'web-push';
 import { Role, NotificationKind } from '../../shared/enums';
+import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { School, SchoolDocument } from '../schools/schemas/school.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { SystemConfigService } from '../system-config/system-config.service';
@@ -26,6 +27,7 @@ export class NotificationsService {
     private configService: ConfigService,
     private whatsAppService: WhatsAppService,
     private systemConfigService: SystemConfigService,
+    private emailTemplates: EmailTemplatesService,
   ) {
     const publicKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
     const privateKey = this.configService.get<string>('VAPID_PRIVATE_KEY');
@@ -64,6 +66,24 @@ export class NotificationsService {
 
     // Browser push notification (Web Push / VAPID) — fire-and-forget
     this.sendWebPush(userId, title, body, link).catch(() => {});
+  }
+
+  // Prefers the admin-editable in-app copy for a template (respecting isActive and the
+  // seekerInApp/recruiterInApp channel toggle); falls back to the given hardcoded title/body
+  // when the template is inactive, that channel is off, or no in-app copy is set — so an
+  // unconfigured/disabled template degrades to today's behavior instead of going silent.
+  private async notifyFromTemplate(
+    userId: string,
+    kind: NotificationKind,
+    templateKey: string,
+    audience: 'seeker' | 'recruiter',
+    vars: Record<string, string>,
+    fallbackTitle: string,
+    fallbackBody: string,
+    link?: string,
+  ): Promise<void> {
+    const rendered = await this.emailTemplates.renderInApp(templateKey, audience, vars).catch(() => null);
+    await this.notify(userId, kind, rendered?.title ?? fallbackTitle, rendered?.body ?? fallbackBody, link);
   }
 
   private async sendWebPush(userId: string, title: string, body: string, link?: string | null): Promise<void> {
@@ -137,9 +157,12 @@ export class NotificationsService {
   async onApplicationNew(payload: { schoolId: string; seekerId: string; jobId: string; applicationId: string; jobTitle?: string }) {
     const recruiterId = await this.getRecruiterIdForSchool(payload.schoolId);
     if (recruiterId) {
-      await this.notify(
+      await this.notifyFromTemplate(
         recruiterId,
         NotificationKind.NEW_INTEREST,
+        'APPLICATION_RECEIVED',
+        'recruiter',
+        {},
         'New interest in your job posting',
         'A teacher has expressed interest. Review their profile in Applicants.',
         `/recruiter/applicants?job=${payload.jobId}`,
@@ -195,9 +218,12 @@ export class NotificationsService {
     jobTitle?: string;
   }) {
     // Notify seeker
-    await this.notify(
+    await this.notifyFromTemplate(
       payload.seekerId,
       NotificationKind.PAYMENT_SUCCESS,
+      'PAYMENT_CONFIRMATION',
+      'seeker',
+      {},
       'Payment successful!',
       'School contact details are now revealed. Check your applications.',
       '/applications',
@@ -215,9 +241,12 @@ export class NotificationsService {
         // inventing an amount (D29: no hardcoded pricing, ever, not even as a fallback).
       }
 
-      await this.notify(
+      await this.notifyFromTemplate(
         recruiterId,
         NotificationKind.APPLICANT_PAID,
+        'APPLICANT_PAID',
+        'recruiter',
+        { jobTitle: payload.jobTitle ?? 'the position', fee: feeLabel },
         'An applicant has confirmed interest 💳',
         `A shortlisted teacher paid ${feeLabel}. Their contact details are now visible to you in Applicants.`,
         `/recruiter/applicants?job=${payload.jobId}`,
@@ -244,9 +273,12 @@ export class NotificationsService {
 
   @OnEvent('application.won')
   async onApplicationWon(payload: { seekerId: string; jobId: string; applicationId: string; jobTitle?: string }) {
-    await this.notify(
+    await this.notifyFromTemplate(
       payload.seekerId,
       NotificationKind.APPLICATION_WON,
+      'APPLICATION_WON',
+      'seeker',
+      {},
       'Congratulations! You got the job! 🎊',
       'The school has confirmed your hire. Check your applications for details.',
       '/applications',
@@ -299,9 +331,12 @@ export class NotificationsService {
 
   @OnEvent('school.verified')
   async onSchoolVerified(payload: { schoolId: string; recruiterId: string }) {
-    await this.notify(
+    await this.notifyFromTemplate(
       payload.recruiterId,
       NotificationKind.SCHOOL_VERIFIED,
+      'SCHOOL_VERIFIED',
+      'recruiter',
+      {},
       'Your school is verified! ✅',
       'Admin has approved your school profile. You can now post jobs and view applicants.',
       '/recruiter/jobs',
@@ -353,6 +388,17 @@ export class NotificationsService {
       payload.expiresAt ?? new Date(),
       payload.amountPaise,
     ).catch(() => {});
+
+    await this.notifyFromTemplate(
+      school.adminUserId.toString(),
+      NotificationKind.SUB_RENEWED,
+      'SUBSCRIPTION_ACTIVATED',
+      'recruiter',
+      {},
+      'Subscription activated ✅',
+      'Your unlimited job-posting subscription is now active. Post as many jobs as you need until it expires.',
+      '/recruiter/subscription',
+    );
   }
 
   @OnEvent('job.activated')

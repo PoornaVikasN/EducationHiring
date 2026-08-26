@@ -302,9 +302,9 @@ export class AdminService {
       this.userModel.countDocuments({ role: Role.TEACHER, deletedAt: null }),
       this.userModel.countDocuments({ role: Role.RECRUITER, deletedAt: null }),
       this.schoolModel.countDocuments({ deletedAt: null }),
-      this.jobModel.countDocuments({ status: JobStatus.ACTIVE }),
+      this.jobModel.countDocuments({ status: JobStatus.ACTIVE, deletedAt: null }),
       this.schoolModel.countDocuments({ verificationStatus: VerificationStatus.PENDING, deletedAt: null }),
-      this.jobModel.countDocuments({ status: JobStatus.FILLED }),
+      this.jobModel.countDocuments({ status: JobStatus.FILLED, deletedAt: null }),
       this.paymentModel.aggregate([
         { $match: { status: PaymentStatus.PAID } },
         { $group: { _id: null, total: { $sum: '$amountPaise' } } },

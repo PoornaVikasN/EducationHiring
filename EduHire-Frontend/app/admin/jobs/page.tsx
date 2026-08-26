@@ -128,8 +128,20 @@ export default function AdminJobsPage() {
 
   const activeCount = activeFilterCount(filters);
 
-  const handleExport = () => {
-    downloadCsv('admin-jobs', data?.data ?? [], [
+  const handleExport = async () => {
+    const total = data?.meta.total ?? (data?.data.length ?? 0);
+    const all = total > (data?.data.length ?? 0)
+      ? (await jobsApi.adminList({
+          page: 1,
+          limit: total,
+          search: debouncedSearch || undefined,
+          status: filters.status === 'ALL' ? undefined : filters.status as JobStatus,
+          city: filters.city || undefined,
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+        })).data.data
+      : (data?.data ?? []);
+    downloadCsv('admin-jobs', all, [
       { header: 'Title', key: 'title' },
       { header: 'Status', key: (j) => STATUS_BADGE[j.status]?.label ?? j.status },
       { header: 'School', key: (j) => j.school?.name ?? '' },

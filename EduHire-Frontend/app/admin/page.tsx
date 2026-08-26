@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Briefcase, Building2, CheckCircle, ClipboardList, CreditCard, ShieldCheck, Trophy, TrendingUp, Users } from 'lucide-react';
+import { AlertTriangle, Briefcase, Building2, CheckCircle, ClipboardList, CreditCard, ShieldCheck, Trophy, TrendingUp, Users } from 'lucide-react';
 import Link from 'next/link';
 import { adminApi } from '../../lib/api/admin';
 import { jobsApi } from '../../lib/api/jobs';
@@ -97,6 +97,15 @@ export default function AdminDashboardPage() {
     queryFn: () => jobsApi.adminList({ page: 1, limit: 100 }).then((r) => r.data),
   });
 
+  // Polls so a credential going down (or recovering) shows up here without a manual
+  // reload — this is meant to be the first thing an admin sees when something breaks.
+  const { data: healthFlags } = useQuery({
+    queryKey: ['admin-system-health'],
+    queryFn: () => adminApi.getSystemHealth().then((r) => r.data),
+    refetchInterval: 30_000,
+  });
+  const downFlags = healthFlags?.filter((f) => f.status === 'down') ?? [];
+
   const { data: auditData } = useQuery({
     queryKey: ['admin-audit-dash'],
     queryFn: () => adminApi.listAuditLogs(1, 8).then((r) => r.data),
@@ -167,12 +176,40 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* System health alert — only rendered when something is actually down, so a
+          healthy system shows nothing extra here. */}
+      {downFlags.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+            <p className="text-sm font-bold text-red-700">
+              {downFlags.length === 1 ? '1 integration needs attention' : `${downFlags.length} integrations need attention`}
+            </p>
+          </div>
+          <div className="space-y-2.5">
+            {downFlags.map((f) => (
+              <div key={f.key} className="bg-white border border-red-200 rounded-xl p-3.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-sm font-semibold text-text-primary">{f.label}</p>
+                  <span className="text-xs font-medium text-red-600">
+                    Down {f.downSince ? `since ${timeAgo(f.downSince)}` : ''}
+                  </span>
+                </div>
+                {f.lastError && (
+                  <p className="text-xs text-text-muted mt-1.5 font-mono break-all">{f.lastError}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Stats — 3×3 grid (9 cards) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {[
           { label: 'Total Users', value: stats?.totalUsers, icon: Users, bg: 'bg-blue-100', iconColor: 'text-blue-600', href: '/admin/users' },
           { label: 'Teachers', value: stats?.totalSeekers, icon: Users, bg: 'bg-sky-100', iconColor: 'text-sky-600', href: '/admin/users' },
-          { label: 'Schools', value: stats?.totalRecruiters, icon: Users, bg: 'bg-indigo-100', iconColor: 'text-indigo-600', href: '/admin/users' },
+          { label: 'School Accounts', value: stats?.totalRecruiters, icon: Users, bg: 'bg-indigo-100', iconColor: 'text-indigo-600', href: '/admin/users' },
           { label: 'Active Jobs', value: stats?.activeJobs, icon: Briefcase, bg: 'bg-green-100', iconColor: 'text-green-600', href: '/admin/jobs' },
           { label: 'Positions Filled', value: stats?.filledJobs, icon: Trophy, bg: 'bg-purple-100', iconColor: 'text-purple-600', href: '/admin/jobs' },
           { label: 'Pending School Verify', value: stats?.pendingSchools, icon: CheckCircle, bg: 'bg-amber-100', iconColor: 'text-amber-600', href: '/admin/schools' },

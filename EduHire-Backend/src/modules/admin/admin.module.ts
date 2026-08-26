@@ -10,6 +10,7 @@ import { AuditModule } from '../audit/audit.module';
 import { EmailTemplatesModule } from '../email-templates/email-templates.module';
 import { LegalContentModule } from '../legal-content/legal-content.module';
 import { SystemConfigModule } from '../system-config/system-config.module';
+import { SystemHealthModule } from '../system-health/system-health.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
@@ -24,6 +25,7 @@ import { AdminService } from './admin.service';
       { name: Subscription.name, schema: SubscriptionSchema },
     ]),
     SystemConfigModule,
+    SystemHealthModule,
     AuditModule,
     EmailTemplatesModule,
     LegalContentModule,

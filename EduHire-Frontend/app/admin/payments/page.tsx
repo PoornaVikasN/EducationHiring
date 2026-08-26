@@ -99,8 +99,18 @@ export default function AdminPaymentsPage() {
 
   const activeCount = activeFilterCount(filters);
 
-  const handleExport = () => {
-    downloadCsv('admin-payments', data?.data ?? [], [
+  const handleExport = async () => {
+    const total = data?.meta.total ?? (data?.data.length ?? 0);
+    const all = total > (data?.data.length ?? 0)
+      ? (await adminApi.listAdminPayments(
+          1, total,
+          filters.kind === 'ALL' ? undefined : filters.kind,
+          filters.status === 'ALL' ? undefined : filters.status,
+          filters.dateFrom || undefined,
+          filters.dateTo || undefined,
+        )).data.data
+      : (data?.data ?? []);
+    downloadCsv('admin-payments', all, [
       { header: 'User', key: (p) => p.user?.fullName ?? p.user?.email ?? '' },
       { header: 'Email', key: (p) => p.user?.email ?? '' },
       { header: 'Kind', key: (p) => KIND_LABEL[p.kind as PaymentKind] ?? p.kind },

@@ -1,6 +1,6 @@
 'use client';
 
-import { Send } from 'lucide-react';
+import { ArrowLeft, Send } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { applicationsApi, type Application } from '../../../lib/api/applications';
@@ -114,7 +114,7 @@ export default function SchoolChatPage() {
   return (
     <div className="flex h-[calc(100vh-7rem)] border border-border-default rounded-2xl overflow-hidden bg-bg-card">
       {/* Conversation list */}
-      <div className="w-72 shrink-0 border-r border-border-default flex flex-col">
+      <div className={`w-full md:w-72 shrink-0 border-r border-border-default flex-col ${selected ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-border-default">
           <h2 className="text-sm font-bold text-text-primary">Messages</h2>
           <p className="text-xs text-text-muted mt-0.5">Teachers who confirmed interest</p>
@@ -149,18 +149,27 @@ export default function SchoolChatPage() {
       </div>
 
       {/* Chat area */}
-      <div className="flex-1 flex flex-col">
+      <div className={`flex-1 flex-col ${selected ? 'flex' : 'hidden md:flex'}`}>
         {!selected ? (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-sm text-text-muted">Select a conversation to start chatting</p>
           </div>
         ) : (
           <>
-            <div className="px-5 py-3 border-b border-border-default">
-              <p className="text-sm font-bold text-text-primary">
-                {(selected as any).seeker?.seekerProfile?.fullName ?? (selected as any).seeker?.email ?? 'Teacher'}
-              </p>
-              <p className="text-xs text-text-muted">{(selected as any).job?.title}</p>
+            <div className="px-5 py-3 border-b border-border-default flex items-center gap-2">
+              <button
+                onClick={() => { setSelected(null); selectedRef.current = null; }}
+                className="md:hidden -ml-1 p-1 text-text-muted hover:text-text-primary"
+                aria-label="Back to conversations"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <div>
+                <p className="text-sm font-bold text-text-primary">
+                  {(selected as any).seeker?.seekerProfile?.fullName ?? (selected as any).seeker?.email ?? 'Teacher'}
+                </p>
+                <p className="text-xs text-text-muted">{(selected as any).job?.title}</p>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">

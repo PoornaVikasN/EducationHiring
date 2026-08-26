@@ -11,6 +11,7 @@ import { UpdateEmailTemplateDto } from '../email-templates/dto/update-email-temp
 import { LegalContentService } from '../legal-content/legal-content.service';
 import { UpdateLegalPageDto } from '../legal-content/dto/update-legal-page.dto';
 import { SystemConfigService } from '../system-config/system-config.service';
+import { SystemHealthService } from '../system-health/system-health.service';
 import { AdminService } from './admin.service';
 import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 
@@ -59,7 +60,13 @@ export class AdminController {
     private readonly auditService: AuditService,
     private readonly emailTemplatesService: EmailTemplatesService,
     private readonly legalContentService: LegalContentService,
+    private readonly systemHealthService: SystemHealthService,
   ) {}
+
+  @Get('system-health')
+  getSystemHealth() {
+    return this.systemHealthService.getAll();
+  }
 
   @Get('stats')
   stats() {
