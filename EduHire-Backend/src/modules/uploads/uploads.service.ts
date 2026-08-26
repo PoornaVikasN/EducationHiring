@@ -80,7 +80,20 @@ export class UploadsService {
       ContentLength: dto.size,
     });
 
-    const url = await getSignedUrl(s3, command, { expiresIn: 300 }); // 5 min
+    // Without forcing content-type into SignedHeaders, the SDK only signs
+    // content-length+host — a client could keep this same presigned URL but PUT
+    // with a *different* Content-Type (e.g. text/html) and S3 stores that instead,
+    // completely bypassing the MIME_ALLOWLIST check just done above. Now the bucket
+    // publicly serves objects (see the public-read bucket policy), that would let
+    // any authenticated user host arbitrary attacker-controlled HTML at a public
+    // URL under our bucket. Binding Content-Type into the signature means any PUT
+    // with a different header simply fails signature verification.
+    // (unhoistableHeaders only affects x-amz-* headers moving to the query string —
+    // content-type isn't one, so it has to be forced in via signableHeaders instead.)
+    const url = await getSignedUrl(s3, command, {
+      expiresIn: 300, // 5 min
+      signableHeaders: new Set(['content-type']),
+    });
 
     return {
       uploadUrl: url,
