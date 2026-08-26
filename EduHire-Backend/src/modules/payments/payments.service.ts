@@ -11,6 +11,7 @@ import { Model, Types } from 'mongoose';
 import Razorpay from 'razorpay';
 import {
   ApplicationState,
+  JobStatus,
   PaymentKind,
   PaymentStatus,
   SubscriptionStatus,
@@ -270,6 +271,8 @@ export class PaymentsService {
         return this.systemConfig.getPricePaise('RECRUITER_MONTHLY_PAISE');
       case PaymentKind.APPLICATION:
         return this.systemConfig.getPricePaise('APPLICATION_FEE_PAISE');
+      case PaymentKind.BOOST:
+        return this.systemConfig.getPricePaise('BOOST_PAISE');
       default:
         throw new BadRequestException('Unknown or unsupported payment kind');
     }
@@ -288,6 +291,24 @@ export class PaymentsService {
       if (!app) throw new BadRequestException('Application not found or not in SHORTLISTED state');
       if (app.paymentDueBy && app.paymentDueBy < new Date()) {
         throw new BadRequestException('Payment window has expired');
+      }
+    }
+
+    if (kind === PaymentKind.BOOST) {
+      // Without this, any recruiter could pass any jobId (not just their own,
+      // not even necessarily EXPIRED) and — once BOOST_PAISE is configured —
+      // pay to re-activate it, since resolveAmount() never re-checks ownership.
+      const job = await this.jobModel.findOne({ _id: entityId, deletedAt: null }).lean().exec();
+      if (!job) throw new BadRequestException('Job not found');
+      const school = await this.schoolModel
+        .findOne({ adminUserId: new Types.ObjectId(currentUser.sub), deletedAt: null })
+        .lean()
+        .exec();
+      if (!school || job.schoolId.toString() !== (school._id as Types.ObjectId).toString()) {
+        throw new BadRequestException('Not authorised to boost this job');
+      }
+      if (job.status !== JobStatus.EXPIRED) {
+        throw new BadRequestException('Only an expired job can be boosted');
       }
     }
   }
