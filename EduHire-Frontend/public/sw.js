@@ -1,7 +1,7 @@
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
-  let payload = { title: 'RxJobs4U', body: 'You have a new notification', link: '/' };
+  let payload = { title: 'School Teacher', body: 'You have a new notification', link: '/' };
   try {
     payload = event.data.json();
   } catch {

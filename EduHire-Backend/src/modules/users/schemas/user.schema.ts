@@ -119,10 +119,10 @@ export class User {
   @Prop({ type: String, enum: Role, required: true, index: true })
   role!: Role;
 
-  @Prop({ type: String, unique: true, sparse: true, lowercase: true, trim: true })
+  @Prop({ type: String, lowercase: true, trim: true })
   email?: string;
 
-  @Prop({ type: String, unique: true, sparse: true, trim: true })
+  @Prop({ type: String, trim: true })
   phone?: string;
 
   @Prop({ type: String, default: null })

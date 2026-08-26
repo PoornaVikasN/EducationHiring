@@ -44,28 +44,30 @@ function ApplicantCard({ app, onShortlist, onWon, onClose }: {
     <>
       <div className="bg-bg-card border border-border-default rounded-2xl overflow-hidden">
         <div
-          className="flex items-center gap-4 p-4 cursor-pointer hover:bg-bg-page transition-colors"
+          className="flex items-center flex-wrap gap-x-4 gap-y-2 p-4 cursor-pointer hover:bg-bg-page transition-colors"
           onClick={() => setExpanded((p) => !p)}
         >
           <div className="w-9 h-9 rounded-xl bg-brand-primary-light flex items-center justify-center text-brand-primary font-bold shrink-0">
             {name[0].toUpperCase()}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-[140px]">
             <p className="text-sm font-semibold text-text-primary">{name}</p>
             <p className="text-xs text-text-muted">
               {seeker?.headline ? `${seeker.headline} · ` : ''}Applied {new Date(app.createdAt).toLocaleDateString('en-IN')}
             </p>
           </div>
-          <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${badge.cls}`}>{badge.label}</span>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-xs shrink-0"
-            onClick={(e) => { e.stopPropagation(); setProfileOpen(true); }}
-          >
-            <User className="w-3.5 h-3.5 mr-1" /> Profile
-          </Button>
-          {expanded ? <ChevronUp className="w-4 h-4 text-text-muted shrink-0" /> : <ChevronDown className="w-4 h-4 text-text-muted shrink-0" />}
+          <div className="flex items-center gap-2 justify-end w-full sm:w-auto">
+            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${badge.cls}`}>{badge.label}</span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs shrink-0"
+              onClick={(e) => { e.stopPropagation(); setProfileOpen(true); }}
+            >
+              <User className="w-3.5 h-3.5 mr-1" /> Profile
+            </Button>
+            {expanded ? <ChevronUp className="w-4 h-4 text-text-muted shrink-0" /> : <ChevronDown className="w-4 h-4 text-text-muted shrink-0" />}
+          </div>
         </div>
 
         {expanded && (
