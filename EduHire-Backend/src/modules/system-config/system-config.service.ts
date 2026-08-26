@@ -53,7 +53,7 @@ const SETTING_SEEDS: SettingSeed[] = [
     key: 'FREE_TIER_JOB_LIMIT',
     label: 'Free Tier Job Post Limit',
     description:
-      'Number of active job posts a school may create per calendar month without an active subscription, while SCHOOL_PAID_ENABLED is on.',
+      'Number of job posts a school may create per calendar month without an active subscription, while SCHOOL_PAID_ENABLED is on. This counts every job CREATED that month, not how many are currently active — disabling, filling, or letting an earlier post expire does not free up a slot until next month.',
     valueNumber: 2,
     minValue: 0,
     displayKind: 'number',
