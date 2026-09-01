@@ -88,6 +88,17 @@ export interface AdminStats {
   openDisputes: number;
 }
 
+export interface AdminActivityStats {
+  from: string;
+  to: string;
+  newTeachers: number;
+  newSchools: number;
+  newSignupsTotal: number;
+  jobsPosted: number;
+  applicationsReceived: number;
+  revenueCollectedPaise: number;
+}
+
 export interface AuditLog {
   _id: string;
   adminEmail: string | null;
@@ -275,11 +286,14 @@ export const adminApi = {
   stats: () =>
     apiClient.get<AdminStats>('/admin/stats'),
 
+  getDashboardActivity: (from?: string, to?: string) =>
+    apiClient.get<AdminActivityStats>('/admin/stats/activity', { params: { from, to } }),
+
   createUser: (data: CreateAdminUserPayload) =>
     apiClient.post<{ message: string }>('/admin/users', data),
 
-  listUsers: (page = 1, limit = 20, search?: string, role?: string, isActive?: boolean, city?: string, joinedFrom?: string, joinedTo?: string, includeDeleted?: boolean) =>
-    apiClient.get<PaginatedAdminUsers>('/admin/users', { params: { page, limit, search, role, isActive, city, joinedFrom, joinedTo, includeDeleted } }),
+  listUsers: (page = 1, limit = 20, search?: string, role?: string, isActive?: boolean, city?: string, joinedFrom?: string, joinedTo?: string, includeDeleted?: boolean, subjects?: string[]) =>
+    apiClient.get<PaginatedAdminUsers>('/admin/users', { params: { page, limit, search, role, isActive, city, joinedFrom, joinedTo, includeDeleted, subjects } }),
 
   suspendUser: (id: string) =>
     apiClient.patch(`/admin/users/${id}/suspend`),

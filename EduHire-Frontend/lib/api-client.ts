@@ -27,6 +27,14 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
   timeout: 15_000,
   withCredentials: true, // send refresh cookie on every request
+  // Axios's default array serialization repeats the key WITH brackets (subjects[]=A&subjects[]=B),
+  // which only NestJS's @Query('key') binding picks up under Express's 'extended' (qs-based)
+  // query parser. Express 5 changed its default to 'simple' (Node's built-in querystring
+  // module), which has no bracket support — a bracketed key just becomes its own literal
+  // property name, so @Query('subjects') silently reads as undefined. `indexes: null` serializes
+  // as plain repeated keys (subjects=A&subjects=B) instead, which querystring correctly
+  // aggregates into an array (or a single string for one value — callers already handle both).
+  paramsSerializer: { indexes: null },
 });
 
 // Attach access token

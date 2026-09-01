@@ -1,10 +1,12 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Briefcase, Building2, CheckCircle, ClipboardList, CreditCard, ShieldCheck, Trophy, TrendingUp, Users } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, Briefcase, Building2, CheckCircle, ClipboardList, CreditCard, GraduationCap, ShieldCheck, Trophy, TrendingUp, UserPlus, Users } from 'lucide-react';
 import Link from 'next/link';
 import { adminApi } from '../../lib/api/admin';
 import { jobsApi } from '../../lib/api/jobs';
+import { DatePicker } from '../../common-components/ui/date-picker';
 import { useAuth } from '@/lib/auth-context';
 
 // ── Donut Chart ───────────────────────────────────────────────────────────────
@@ -91,6 +93,18 @@ export default function AdminDashboardPage() {
     queryKey: ['admin-stats'],
     queryFn: () => adminApi.stats().then((r) => r.data),
   });
+
+  // Independent from the snapshot stats above — changing the range only ever re-fires
+  // this smaller query, not the 9 always-current tiles.
+  const [activityRange, setActivityRange] = useState('');
+  const [activityFrom = '', activityTo = ''] = activityRange ? activityRange.split(' - ') : [];
+  const { data: activity, isLoading: activityLoading } = useQuery({
+    queryKey: ['admin-stats-activity', activityFrom, activityTo],
+    queryFn: () => adminApi.getDashboardActivity(activityFrom || undefined, activityTo || undefined).then((r) => r.data),
+  });
+  const revenueCollected = activity?.revenueCollectedPaise
+    ? `₹${(activity.revenueCollectedPaise / 100).toLocaleString('en-IN')}`
+    : '₹0';
 
   const { data: jobs, isLoading: jobsLoading } = useQuery({
     queryKey: ['admin-jobs-dash'],
@@ -227,6 +241,44 @@ export default function AdminDashboardPage() {
             <p className="text-xs text-text-muted mt-0.5">{label}</p>
           </Link>
         ))}
+      </div>
+
+      {/* Activity — date-range-scoped counts, independent of the always-current stats above */}
+      <div className="bg-bg-card border border-border-default rounded-2xl p-5 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-text-primary">Activity</h2>
+            <p className="text-xs text-text-muted mt-0.5">What happened in a given period — defaults to the last 30 days.</p>
+          </div>
+          <div className="w-full sm:w-80">
+            <DatePicker
+              mode="range"
+              value={activityRange}
+              onSelectionChange={setActivityRange}
+              inputPlaceholder="Last 30 days"
+              inputClassName="h-9 text-sm"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {[
+            { label: 'New Teachers', value: activity?.newTeachers, icon: UserPlus, bg: 'bg-sky-100', iconColor: 'text-sky-600', href: '/admin/users' },
+            { label: 'New Schools', value: activity?.newSchools, icon: GraduationCap, bg: 'bg-indigo-100', iconColor: 'text-indigo-600', href: '/admin/users' },
+            { label: 'Jobs Posted', value: activity?.jobsPosted, icon: Briefcase, bg: 'bg-green-100', iconColor: 'text-green-600', href: '/admin/jobs' },
+            { label: 'Applications Received', value: activity?.applicationsReceived, icon: ClipboardList, bg: 'bg-purple-100', iconColor: 'text-purple-600', href: '/admin/jobs' },
+            { label: 'Revenue Collected', value: revenueCollected, icon: CreditCard, bg: 'bg-emerald-100', iconColor: 'text-emerald-600', href: '/admin/payments' },
+          ].map(({ label, value, icon: Icon, bg, iconColor, href }) => (
+            <Link key={label} href={href} className="border border-border-default rounded-2xl p-4 hover:border-brand-primary hover:shadow-md transition-all duration-200">
+              <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3`}>
+                <Icon className={`w-4.5 h-4.5 ${iconColor}`} />
+              </div>
+              {activityLoading && label !== 'Revenue Collected'
+                ? <div className="h-7 w-14 bg-slate-100 rounded animate-pulse mb-1" />
+                : <p className="text-2xl font-bold text-text-primary">{value ?? '—'}</p>}
+              <p className="text-xs text-text-muted mt-0.5">{label}</p>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Charts row */}

@@ -73,6 +73,11 @@ export class AdminController {
     return this.adminService.getDashboardStats();
   }
 
+  @Get('stats/activity')
+  getDashboardActivity(@Query('from') from?: string, @Query('to') to?: string) {
+    return this.adminService.getDashboardActivity(from, to);
+  }
+
   @Post('users')
   @HttpCode(HttpStatus.CREATED)
   createUser(@Body() dto: CreateAdminUserDto, @CurrentUser() user: { sub: string; email: string }) {
@@ -90,8 +95,11 @@ export class AdminController {
     @Query('joinedFrom') joinedFrom?: string,
     @Query('joinedTo') joinedTo?: string,
     @Query('includeDeleted') includeDeleted?: string,
+    @Query('subjects') subjects?: string | string[],
   ) {
     const isActiveBool = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
+    // A single selected value arrives as a plain string, not a 1-element array.
+    const subjectsArr = subjects === undefined ? undefined : Array.isArray(subjects) ? subjects : [subjects];
     return this.adminService.listUsers(
       Number(page) || 1,
       Number(limit) || 20,
@@ -102,6 +110,7 @@ export class AdminController {
       joinedFrom,
       joinedTo,
       includeDeleted === 'true',
+      subjectsArr,
     );
   }
 

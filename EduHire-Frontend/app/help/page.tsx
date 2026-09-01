@@ -96,7 +96,7 @@ function buildFaqSections(appFee: string, subMo: string) {
         },
         {
           q: "I'm not receiving email notifications. What should I do?",
-          a: 'Check your spam folder first. Add noreply@schoolteacher.in to your contacts. You can also toggle notification preferences in Settings.',
+          a: 'Check your spam folder first. Add noreply@schoolteacher.co.in to your contacts. You can also toggle notification preferences in Settings.',
         },
         {
           q: 'How do I contact support?',

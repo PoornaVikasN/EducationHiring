@@ -284,7 +284,7 @@ export class EmailService {
       this.logger.warn(`Email skipped (no GMAIL_REFRESH_TOKEN) — to: ${to}, subject: ${subject}`);
       return;
     }
-    const senderEmail = (await this.systemConfig.getSecret('GMAIL_USER')) ?? 'noreply@schoolteacher.in';
+    const senderEmail = (await this.systemConfig.getSecret('GMAIL_USER')) ?? 'noreply@schoolteacher.co.in';
     const senderName = this.config.get<string>('SMTP_SENDER_NAME', 'SchoolTeacher');
 
     const MAX_ATTEMPTS = 3;

@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Building2,
   CheckCircle,
-  Globe,
   GraduationCap,
   MapPin,
   MessageSquare,
@@ -28,7 +27,7 @@ const TESTIMONIALS = [
   { quote: "The intro video feature is a game changer. We assessed 4 Telugu medium teachers before even scheduling interviews.", name: "Sunitha Varma", role: "HR Head", school: "Secunderabad ICSE School", initials: "SV", color: '#7c3aed' },
   { quote: "Transferred from Vijayawada to Hyderabad and found a Primary role near Kondapur in 8 days. Location radius filter is perfect.", name: "Arjun Rao", role: "Primary Teacher", school: "Hyderabad", initials: "AR", color: '#3949ab' },
   { quote: "Being completely free for teachers is huge. I applied to 15 schools across Telangana without spending a rupee.", name: "Padmavathi Reddy", role: "Correspondent", school: "Nellore English Medium", initials: "PR", color: '#0891b2' },
-  { quote: "The international section connected me with a CBSE school in Dubai. Now teaching in UAE thanks to SchoolTeacher.", name: "Annapurna Krishna", role: "PGT Science", school: "Dubai (ex-Hyderabad)", initials: "AK", color: '#7c3aed' },
+  { quote: "Switched from tuition classes to a full-time PGT Physics role in Whitefield within two weeks — the in-app chat let me clear all my doubts with the school directly before accepting.", name: "Kiran Kumar", role: "PGT Physics", school: "Bengaluru CBSE School", initials: "KK", color: '#7c3aed' },
 ];
 
 // ── Steps data ────────────────────────────────────────────────────────────────
@@ -310,7 +309,7 @@ export default function LandingPage() {
                 <MapPin className="w-5 h-5" style={{ color: '#f59e0b' }} />
               </div>
               <h3 className="font-bold text-sm mb-1.5" style={{ color: '#0f172a' }}>Location-smart matching</h3>
-              <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>Filter by city, distance radius, or state and country. Find exactly what&apos;s near you.</p>
+              <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>Filter by city, distance radius, or state. Find exactly what&apos;s near you.</p>
             </div>
 
             <div className="will-reveal-scale reveal-delay-2 rounded-3xl p-6 sm:p-7"
@@ -515,68 +514,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── INTERNATIONAL ────────────────────────────────────────────────────── */}
-      <section className="py-14 sm:py-16 md:py-20 px-4 sm:px-6" style={{ background: '#0d1b2a', borderTop: '1px solid rgba(121,134,203,0.15)' }}>
-        <div className="max-w-5xl mx-auto will-reveal">
-          <div className="flex flex-col lg:flex-row items-start gap-8 sm:gap-10 lg:gap-12">
-            <div className="flex-1">
-              <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold mb-5"
-                style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                <Globe className="w-3.5 h-3.5" />
-                Global Teachers Hiring Platform (for free)
-              </div>
-              <h2 className="font-black mb-4 text-white" style={{ fontSize: 'clamp(1.6rem, 5vw, 2.6rem)', lineHeight: 1.2 }}>
-                Teaching opportunities beyond India.
-              </h2>
-              <p className="text-sm sm:text-base mb-6 sm:mb-8 max-w-lg" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                Teachers from across India have been enquiring about opportunities in Europe, South East Asia, and beyond.
-                Register your interest and we&apos;ll reach out when matching roles go live.
-              </p>
-              <Link href="/register?role=TEACHER"
-                className="inline-flex items-center gap-2 font-bold px-7 py-3 rounded-xl text-sm"
-                style={{ background: '#ffffff', color: '#1a237e', boxShadow: '0 4px 20px rgba(0,0,0,0.30)' }}>
-                Register Interest — Free
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-
-            <div className="flex-shrink-0 w-full lg:w-auto">
-              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                Where teachers are heading
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5" style={{ minWidth: 0 }}>
-                {[
-                  { code: 'FI', country: 'Finland' },
-                  { code: 'SG', country: 'Singapore' },
-                  { code: 'MY', country: 'Malaysia' },
-                  { code: 'US', country: 'USA' },
-                  { code: 'UK', country: 'United Kingdom' },
-                  { code: 'DE', country: 'Germany' },
-                  { code: 'SE', country: 'Sweden' },
-                  { code: 'AU', country: 'Australia' },
-                  { code: 'FR', country: 'France' },
-                  { code: 'NL', country: 'Netherlands' },
-                  { code: 'CH', country: 'Switzerland' },
-                  { code: 'IE', country: 'Ireland' },
-                ].map(({ code, country }) => (
-                  <div key={country} className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all hover:-translate-y-0.5 duration-150"
-                    style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.16)' }}>
-                    <span className="flex items-center justify-center flex-shrink-0 rounded-md text-[11px] font-black"
-                      style={{ width: 30, height: 22, background: 'rgba(245,158,11,0.18)', color: '#fbbf24', letterSpacing: '0.02em' }}>
-                      {code}
-                    </span>
-                    <p className="text-sm font-semibold text-white truncate">{country}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs mt-3" style={{ color: 'rgba(255,255,255,0.30)' }}>
-                Based on teacher enquiries received.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── TESTIMONIALS — OPPOSITE-DIRECTION MARQUEE ────────────────────────── */}
       <section className="py-14 sm:py-16 md:py-24 overflow-hidden" style={{ background: '#f8fafc', borderTop: '1px solid #e8edf5' }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
@@ -769,7 +706,7 @@ export default function LandingPage() {
                 <span className="text-xl font-black text-white">Teacher</span>
               </Link>
               <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>
-                Global teacher hiring platform. Free for teachers, always.
+                India's school hiring platform. Free for teachers, always.
               </p>
             </div>
             <div>
@@ -827,7 +764,6 @@ export default function LandingPage() {
               style={{ color: 'rgba(255,255,255,0.80)', textDecoration: 'none' }}>
               Made with ♡ by B-COGNITRIX
             </a>
-            <p className="text-xs font-medium" style={{ color: '#94a3b8' }}>Global Teachers Hiring Platform (for free)</p>
           </div>
         </div>
       </footer>

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AuditService } from '../audit/audit.service';
@@ -64,7 +65,7 @@ const SEEDS: Array<{
         para('Great news — your email is verified and your <strong>School Teacher</strong> account is now fully active.') +
         greenCard('Your Next Step', '{{profileHint}}') +
         para('It only takes a few minutes and makes a big difference in getting noticed by top schools.', '24px') +
-        ctaBtn('Complete My Profile →', 'https://schoolteacher.in/profile') +
+        ctaBtn('Complete My Profile →', 'https://schoolteacher.co.in/profile') +
         tip('💡 <strong>Pro tip:</strong> Profiles with a photo and complete details get significantly more attention from schools.'),
     }),
     inAppSeekerTitle: null, inAppSeekerBody: null,
@@ -117,7 +118,7 @@ const SEEDS: Array<{
         para('Exciting news — you have been <strong>shortlisted</strong> for the position below. Pay a small fee to unlock the school\'s contact details and proceed to the interview stage.') +
         jobCard('{{jobTitle}}') +
         feeCard('{{fee}}', '{{deadline}}') +
-        ctaBtn('View & Pay Now →', 'https://schoolteacher.in/applications') +
+        ctaBtn('View & Pay Now →', 'https://schoolteacher.co.in/applications') +
         stepsBlock('What happens after you pay', [
           { title: 'School details unlocked', body: 'You\'ll see the school\'s name, phone number, and email address instantly.' },
           { title: 'Reach out directly', body: 'Contact the school to schedule your interview at a convenient time.' },
@@ -154,7 +155,7 @@ const SEEDS: Array<{
           { title: 'Prepare well', body: 'Review the role requirements and prepare your questions for the school.' },
           { title: 'Start your new journey', body: 'Congratulations again — you absolutely deserve this opportunity!' },
         ]) +
-        ctaBtn('View My Applications →', 'https://schoolteacher.in/applications') +
+        ctaBtn('View My Applications →', 'https://schoolteacher.co.in/applications') +
         tip('🎉 <strong>Well done!</strong> Keep your profile updated on School Teacher for even more opportunities in the future.'),
     }),
     inAppSeekerTitle: 'Congratulations! You got the job! 🎊',
@@ -215,7 +216,7 @@ const SEEDS: Array<{
         para('Your payment has been confirmed and the school\'s contact details are now <strong>unlocked</strong>. Head to your applications to see them and start the conversation.') +
         jobCard('{{jobTitle}}') +
         infoCard('School', '{{schoolName}}') +
-        ctaBtn('View Contact Details →', 'https://schoolteacher.in/applications') +
+        ctaBtn('View Contact Details →', 'https://schoolteacher.co.in/applications') +
         smallNote('🧾 This email serves as your payment receipt. Keep it for your records.'),
     }),
     inAppSeekerTitle: 'Payment successful! 💳',
@@ -246,7 +247,7 @@ const SEEDS: Array<{
         jobCard('{{jobTitle}}') +
         '{{reason}}' +
         para('Don\'t be discouraged — the right opportunity is out there waiting for you. New teaching jobs are posted on School Teacher every week.', '24px') +
-        ctaBtn('Browse More Jobs →', 'https://schoolteacher.in/jobs') +
+        ctaBtn('Browse More Jobs →', 'https://schoolteacher.co.in/jobs') +
         tip('💡 <strong>Keep going:</strong> Top teachers apply to multiple roles. Update your profile and keep exploring.'),
     }),
     inAppSeekerTitle: 'Application closed',
@@ -304,7 +305,7 @@ const SEEDS: Array<{
           { title: 'Reach out directly', body: 'Call or message them using their unlocked phone number and email address.' },
           { title: 'Schedule an interview', body: 'Move quickly — great teaching talent is in high demand.' },
         ]) +
-        ctaBtn('View Applicants →', 'https://schoolteacher.in/recruiter/applicants') +
+        ctaBtn('View Applicants →', 'https://schoolteacher.co.in/recruiter/applicants') +
         tip('💡 <strong>Pro tip:</strong> Candidates who pay are serious and motivated. Reaching out within 24 hours significantly improves your hire rate.'),
     }),
     inAppSeekerTitle: null, inAppSeekerBody: null,
@@ -335,7 +336,7 @@ const SEEDS: Array<{
           { icon: '👥', text: '<strong>Browse teacher profiles</strong> — discover and shortlist the right candidates faster.' },
           { icon: '📈', text: '<strong>Manage applicants</strong> — track applications through shortlisting, payment, and hire.' },
         ]) +
-        ctaBtn('Post Your First Job →', 'https://schoolteacher.in/recruiter/jobs/new') +
+        ctaBtn('Post Your First Job →', 'https://schoolteacher.co.in/recruiter/jobs/new') +
         tip('🚀 <strong>Get started:</strong> The first job post is the hardest — after that, it only takes a few minutes. Your next great hire is waiting!'),
     }),
     inAppSeekerTitle: null, inAppSeekerBody: null,
@@ -390,7 +391,7 @@ const SEEDS: Array<{
         greenCard('Dispute', '{{subject}}') +
         greenCard('Admin Note', '{{adminNote}}') +
         para('Thank you for bringing this to our attention. We\'re committed to maintaining a fair and transparent platform for all our users.', '24px') +
-        ctaBtn('View My Disputes →', 'https://schoolteacher.in/disputes') +
+        ctaBtn('View My Disputes →', 'https://schoolteacher.co.in/disputes') +
         tip('💡 <strong>Questions?</strong> If you have any follow-up concerns, you can raise a new dispute or contact our support team.'),
     }),
     inAppSeekerTitle: 'Dispute resolved ✅',
@@ -448,7 +449,7 @@ const SEEDS: Array<{
         infoCard('Dispute', '{{subject}}') +
         infoCard('Admin Note', '{{adminNote}}') +
         para('If you believe this decision was made in error or you have additional information to share, you are welcome to raise a new dispute with supporting details.', '24px') +
-        ctaBtn('View My Disputes →', 'https://schoolteacher.in/disputes') +
+        ctaBtn('View My Disputes →', 'https://schoolteacher.co.in/disputes') +
         tip('💡 <strong>Need help?</strong> Contact our support team if you\'d like to discuss this decision further.'),
     }),
     inAppSeekerTitle: 'Dispute update received',
@@ -465,15 +466,24 @@ export class EmailTemplatesService implements OnModuleInit {
   constructor(
     @InjectModel(EmailTemplate.name) private readonly model: Model<EmailTemplateDocument>,
     private readonly auditService: AuditService,
+    private readonly configService: ConfigService,
   ) {}
 
   async onModuleInit() {
+    // SEEDS is a module-scope literal (evaluated before ConfigModule.forRoot() runs, so it can't
+    // safely read process.env itself) — its ctaBtn() URLs are hardcoded to the default production
+    // domain. Substitute the real configured PUBLIC_FRONTEND_URL here, after full Nest bootstrap,
+    // so a future domain change (or a non-default value in a staging env) doesn't require another
+    // manual source edit like the schoolteacher.in/.co.in mixup this was fixing.
+    const publicUrl = this.configService.get<string>('PUBLIC_FRONTEND_URL', 'https://schoolteacher.co.in');
     let seededCount = 0;
     for (const seed of SEEDS) {
+      const body = seed.body.replaceAll('https://schoolteacher.co.in', publicUrl);
       const exists = await this.model.findOne({ key: seed.key }).lean().exec();
       if (!exists) {
         await this.model.create({
           ...seed,
+          body,
           isSystem: true,
           isActive: true,
           updatedByAdminId: null,
@@ -493,7 +503,7 @@ export class EmailTemplatesService implements OnModuleInit {
           { key: seed.key },
           {
             $set: {
-              body: seed.body,
+              body,
               subject: seed.subject,
               variables: seed.variables,
               channels: seed.channels,

@@ -43,6 +43,7 @@ export class AdminService {
     joinedFrom?: string,
     joinedTo?: string,
     includeDeleted = false,
+    subjects?: string[],
   ) {
     const skip = (page - 1) * limit;
     const match: Record<string, unknown> = includeDeleted ? {} : { deletedAt: null };
@@ -56,6 +57,9 @@ export class AdminService {
     if (role) match['role'] = role;
     if (isActive !== undefined) match['isActive'] = isActive;
     if (city) match['seekerProfile.city'] = { $regex: new RegExp(city, 'i') };
+    // "Teaches at least one of the selected subjects" — only teachers have this field, so
+    // this naturally matches zero school/admin docs without needing a role guard here.
+    if (subjects && subjects.length > 0) match['seekerProfile.expertise'] = { $in: subjects };
 
     if (joinedFrom || joinedTo) {
       const range: Record<string, Date> = {};
@@ -339,6 +343,41 @@ export class AdminService {
       monthlyRevenuePaise,
       suspendedUsers,
       openDisputes,
+    };
+  }
+
+  // Separate from getDashboardStats() deliberately: those are current-state snapshots
+  // (total users right now, jobs currently active, etc.) that don't have a meaningful
+  // "as of a past date" reading — this covers only genuinely period-scoped counts (things
+  // that happened within a window), driven by an admin-selectable date range.
+  async getDashboardActivity(from?: string, to?: string) {
+    const now = new Date();
+    const defaultFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const rangeFrom = from ? new Date(from) : defaultFrom;
+    // End-of-day inclusive, so a range ending "today" doesn't drop today's own records.
+    const rangeTo = to ? new Date(`${to}T23:59:59.999Z`) : now;
+    const createdInRange = { $gte: rangeFrom, $lte: rangeTo };
+
+    const [newTeachers, newSchools, jobsPosted, applicationsReceived, revenue] = await Promise.all([
+      this.userModel.countDocuments({ role: Role.TEACHER, deletedAt: null, createdAt: createdInRange }),
+      this.userModel.countDocuments({ role: Role.RECRUITER, deletedAt: null, createdAt: createdInRange }),
+      this.jobModel.countDocuments({ deletedAt: null, createdAt: createdInRange }),
+      this.appModel.countDocuments({ deletedAt: null, createdAt: createdInRange }),
+      this.paymentModel.aggregate([
+        { $match: { status: PaymentStatus.PAID, createdAt: createdInRange } },
+        { $group: { _id: null, total: { $sum: '$amountPaise' } } },
+      ]),
+    ]);
+
+    return {
+      from: rangeFrom.toISOString(),
+      to: rangeTo.toISOString(),
+      newTeachers,
+      newSchools,
+      newSignupsTotal: newTeachers + newSchools,
+      jobsPosted,
+      applicationsReceived,
+      revenueCollectedPaise: revenue[0]?.total ?? 0,
     };
   }
 }

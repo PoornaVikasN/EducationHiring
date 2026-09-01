@@ -17,10 +17,14 @@ import { Input } from '../../../common-components/ui/input';
 import { Label } from '../../../common-components/ui/label';
 import { DatePicker } from '../../../common-components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../common-components/ui/select';
+import { ExpertiseSelector } from '../../../common-components/ui/expertise-selector';
 import { useToast } from '../../../hooks/use-toast';
 import { useDebouncedValue } from '../../../hooks/use-debounced-value';
-import { Role, UserStatus } from '../../../lib/shared/enums';
+import { Role, Subject, UserStatus } from '../../../lib/shared/enums';
 import { downloadCsv } from '../../../lib/utils/export-csv';
+import { enumLabel } from '../../../lib/utils/enum-options';
+
+const SUBJECT_OPTIONS = Object.values(Subject);
 
 function roleLabel(role: string) {
   if (role === 'TEACHER') return 'Teacher';
@@ -109,14 +113,16 @@ interface Filters {
   city: string;
   joinedFrom: string;
   joinedTo: string;
+  subjects: Subject[];
 }
 
-const DEFAULT_FILTERS: Filters = { status: 'ALL', city: '', joinedFrom: '', joinedTo: '' };
+const DEFAULT_FILTERS: Filters = { status: 'ALL', city: '', joinedFrom: '', joinedTo: '', subjects: [] };
 
 function activeFilterCount(f: Filters) {
   let count = 0;
   if (f.status !== 'ALL') count++;
   if (f.city) count++;
+  if (f.subjects.length > 0) count++;
   if (f.joinedFrom || f.joinedTo) count++;
   return count;
 }
@@ -139,6 +145,11 @@ function UsersContent() {
 
   const isActiveParam = filters.status === 'ACTIVE' ? true : filters.status === 'SUSPENDED' ? false : undefined;
   const roleParam = userTab === 'ALL' ? undefined : userTab;
+  // Only teachers have seekerProfile.expertise — a subjects filter is meaningless on the
+  // Schools/Admins tabs, so it's dropped there even if a prior selection is still in state.
+  const subjectsParam = (userTab === 'ALL' || userTab === 'TEACHER') && filters.subjects.length
+    ? filters.subjects
+    : undefined;
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users', userTab, page, debouncedSearch, filters, showDeleted],
@@ -151,6 +162,7 @@ function UsersContent() {
       filters.joinedFrom || undefined,
       filters.joinedTo || undefined,
       showDeleted,
+      subjectsParam,
     ).then((r) => r.data),
   });
 
@@ -201,6 +213,7 @@ function UsersContent() {
           filters.joinedFrom || undefined,
           filters.joinedTo || undefined,
           showDeleted,
+          subjectsParam,
         )).data.data
       : rows;
     downloadCsv('admin-users', all, [
@@ -358,6 +371,19 @@ function UsersContent() {
                 inputClassName="h-9 text-sm"
               />
             </div>
+            {(userTab === 'ALL' || userTab === 'TEACHER') && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Subjects (Teachers only)</Label>
+                <ExpertiseSelector
+                  options={SUBJECT_OPTIONS}
+                  formatLabel={enumLabel}
+                  value={draft.subjects}
+                  onValueChange={(v) => setDraft((p) => ({ ...p, subjects: v as Subject[] }))}
+                  searchPlaceholder="Search subjects…"
+                  placeholder="Filter by subjects taught"
+                />
+              </div>
+            )}
           </div>
           <div className="flex gap-2 mt-4">
             <Button variant="outline" size="sm" onClick={clearFilter} className="flex-1">Clear</Button>
