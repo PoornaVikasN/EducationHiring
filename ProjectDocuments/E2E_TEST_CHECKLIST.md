@@ -72,7 +72,7 @@ Log in as Teacher for this whole section.
 - [ ] Skills (comma-separated), Bio — save correctly
 - [ ] WhatsApp number "Verify" flow — enter a number, click Verify, OTP flow completes (or fails gracefully if WhatsApp isn't configured in this env)
 - [ ] Resume upload (PDF) — file picker, upload progress, success state shows "Resume uploaded ✓" with a Replace button
-- [ ] Intro Video upload (MP4/MOV, max 10MB) — same check
+- [ ] Intro Video upload (MP4/MOV, max 5MB) — same check
 - [ ] "Save Profile" button — disabled when nothing changed, enabled after an edit, shows "Saving…" during submit, success toast after
 - [ ] **Reload the page after saving — every field should show the saved values, not reset to blank** (this exact class of bug was found and fixed multiple times this project — D47, D50, D55 — so it's worth being paranoid here)
 

@@ -328,6 +328,10 @@ export class JobsService {
     const match: Record<string, unknown> = { deletedAt: null };
     if (query.status) match['status'] = query.status;
     if (query.city) match['city'] = { $regex: new RegExp(query.city, 'i') };
+    if (query.subjects?.length) match['specializations'] = { $in: query.subjects };
+    // Range overlap: a job asking 3–6 yrs matches a 5–10 yr filter. Open-ended bounds are skipped.
+    if (query.experienceTo !== undefined) match['experienceMin'] = { $lte: query.experienceTo };
+    if (query.experienceFrom !== undefined) match['experienceMax'] = { $gte: query.experienceFrom };
     if (query.dateFrom || query.dateTo) {
       const dateRange: Record<string, Date> = {};
       if (query.dateFrom) dateRange['$gte'] = new Date(query.dateFrom);

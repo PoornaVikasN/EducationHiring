@@ -49,6 +49,11 @@ export interface JobsQuery {
   expertise?: string;
   dateFrom?: string;
   dateTo?: string;
+  /** Admin > Jobs: job lists at least one of these subjects. */
+  subjects?: Subject[];
+  /** Admin > Jobs: matches jobs whose required-experience range overlaps [from, to]. */
+  experienceFrom?: number;
+  experienceTo?: number;
 }
 
 export interface PaginatedJobs {

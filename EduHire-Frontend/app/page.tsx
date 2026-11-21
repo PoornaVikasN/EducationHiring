@@ -328,8 +328,7 @@ export default function LandingPage() {
                 style={{ background: 'rgba(5,150,105,0.12)' }}>
                 <CheckCircle className="w-5 h-5" style={{ color: '#059669' }} />
               </div>
-              <h3 className="font-bold text-sm mb-1.5" style={{ color: '#0f172a' }}>48h avg. shortlist</h3>
-              <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>Most schools respond within 2 working days of receiving an application.</p>
+              <p className="text-sm font-medium leading-relaxed" style={{ color: '#0f172a' }}>Most schools respond within a week of receiving an application.</p>
             </div>
           </div>
         </div>
@@ -342,7 +341,7 @@ export default function LandingPage() {
           <div className="text-center mb-8 sm:mb-10 will-reveal">
             <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#3949ab' }}>How it works</p>
             <h2 className="font-black mb-3" style={{ fontSize: 'clamp(1.6rem, 5.5vw, 2.8rem)', color: '#0f172a', lineHeight: 1.15 }}>
-              Two journeys. One platform.
+              Your career development starts here.
             </h2>
             <p className="text-sm sm:text-base max-w-md mx-auto" style={{ color: '#64748b' }}>
               Whether you&apos;re looking for a role or filling one — it&apos;s built for both.
@@ -435,7 +434,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 md:gap-4">
             {[
               { stat: '₹0', label: 'Free for teachers', accent: '#f59e0b' },
-              { stat: '48h', label: 'Avg. shortlist response', accent: '#7986cb' },
+              { stat: '1 week', label: 'Avg. shortlist response', accent: '#7986cb' },
               { stat: '100%', label: 'Verified school listings', accent: '#7986cb' },
               { stat: '2+', label: 'Post Vacancies for free', accent: '#f59e0b' },
             ].map(({ stat, label, accent }, idx) => (
@@ -671,7 +670,7 @@ export default function LandingPage() {
           </div>
 
           <h2 className="font-black mb-5" style={{ fontSize: 'clamp(1.9rem, 7vw, 3.5rem)', color: '#0f172a', lineHeight: 1.1 }}>
-            Your next chapter<br />starts here.
+            One click away<br />for solution.
           </h2>
 
           <p className="text-sm sm:text-base mb-8 sm:mb-10 max-w-xl mx-auto" style={{ color: '#64748b' }}>

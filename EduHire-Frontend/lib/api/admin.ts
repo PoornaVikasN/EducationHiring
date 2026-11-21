@@ -133,6 +133,23 @@ export interface PaginatedAdminUsers {
   meta: { page: number; limit: number; total: number; totalPages: number };
 }
 
+export interface AdminUsersQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: string;
+  isActive?: boolean;
+  city?: string;
+  joinedFrom?: string;
+  joinedTo?: string;
+  includeDeleted?: boolean;
+  /** Teaches at least one of these (teachers only). */
+  subjects?: string[];
+  /** Years of experience window (teachers only); either bound may be omitted. */
+  experienceFrom?: number;
+  experienceTo?: number;
+}
+
 export interface PaginatedAdminSchools {
   data: AdminSchool[];
   meta: { page: number; limit: number; total: number; totalPages: number };
@@ -292,8 +309,8 @@ export const adminApi = {
   createUser: (data: CreateAdminUserPayload) =>
     apiClient.post<{ message: string }>('/admin/users', data),
 
-  listUsers: (page = 1, limit = 20, search?: string, role?: string, isActive?: boolean, city?: string, joinedFrom?: string, joinedTo?: string, includeDeleted?: boolean, subjects?: string[]) =>
-    apiClient.get<PaginatedAdminUsers>('/admin/users', { params: { page, limit, search, role, isActive, city, joinedFrom, joinedTo, includeDeleted, subjects } }),
+  listUsers: ({ page = 1, limit = 20, ...filters }: AdminUsersQuery = {}) =>
+    apiClient.get<PaginatedAdminUsers>('/admin/users', { params: { page, limit, ...filters } }),
 
   suspendUser: (id: string) =>
     apiClient.patch(`/admin/users/${id}/suspend`),

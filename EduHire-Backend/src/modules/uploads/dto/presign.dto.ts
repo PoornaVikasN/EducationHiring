@@ -25,7 +25,7 @@ const SIZE_LIMITS: Record<UploadKind, number> = {
   [UploadKind.CERTIFICATE]: 5 * 1024 * 1024,
   [UploadKind.DOCUMENT]: 5 * 1024 * 1024,
   [UploadKind.SCHOOL_PHOTO]: 5 * 1024 * 1024,
-  [UploadKind.INTRO_VIDEO]: 10 * 1024 * 1024,
+  [UploadKind.INTRO_VIDEO]: 5 * 1024 * 1024,
 };
 
 export { MIME_ALLOWLIST, SIZE_LIMITS };
@@ -39,7 +39,7 @@ export class PresignDto {
 
   @IsInt()
   @Min(1)
-  @Max(10 * 1024 * 1024) // global ceiling; per-kind limits enforced in uploads.service
+  @Max(5 * 1024 * 1024) // global ceiling; per-kind limits enforced in uploads.service
   @Type(() => Number)
   size!: number;
 }

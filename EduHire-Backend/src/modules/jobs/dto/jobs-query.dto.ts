@@ -1,6 +1,6 @@
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { Type } from 'class-transformer';
-import { JobStatus } from '../../../shared/enums';
+import { Transform, Type } from 'class-transformer';
+import { JobStatus, Subject } from '../../../shared/enums';
 
 export class JobsQueryDto {
   @IsOptional()
@@ -47,4 +47,27 @@ export class JobsQueryDto {
   @IsOptional()
   @IsString()
   dateTo?: string;
+
+  // Admin > Jobs filters. A job matches when it lists at least one of the subjects.
+  // A single selected value arrives as a plain string (Express 5 query parser), so wrap it.
+  @IsOptional()
+  @Transform(({ value }) => (value === undefined || value === '' ? undefined : Array.isArray(value) ? value : [value]))
+  @IsEnum(Subject, { each: true })
+  subjects?: Subject[];
+
+  // Years-of-experience window the admin is looking for; matches jobs whose
+  // [experienceMin, experienceMax] range overlaps it.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(50)
+  @Type(() => Number)
+  experienceFrom?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(50)
+  @Type(() => Number)
+  experienceTo?: number;
 }

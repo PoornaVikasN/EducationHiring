@@ -96,10 +96,18 @@ export class AdminController {
     @Query('joinedTo') joinedTo?: string,
     @Query('includeDeleted') includeDeleted?: string,
     @Query('subjects') subjects?: string | string[],
+    @Query('experienceFrom') experienceFrom?: string,
+    @Query('experienceTo') experienceTo?: string,
   ) {
     const isActiveBool = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
     // A single selected value arrives as a plain string, not a 1-element array.
     const subjectsArr = subjects === undefined ? undefined : Array.isArray(subjects) ? subjects : [subjects];
+    // Blank/garbage bounds are ignored rather than 400ing the whole list.
+    const toYears = (v?: string): number | undefined => {
+      if (v === undefined || v.trim() === '') return undefined;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    };
     return this.adminService.listUsers(
       Number(page) || 1,
       Number(limit) || 20,
@@ -111,6 +119,8 @@ export class AdminController {
       joinedTo,
       includeDeleted === 'true',
       subjectsArr,
+      toYears(experienceFrom),
+      toYears(experienceTo),
     );
   }
 

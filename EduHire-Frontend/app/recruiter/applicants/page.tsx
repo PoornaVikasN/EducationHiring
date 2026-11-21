@@ -1,8 +1,8 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Briefcase, CheckCircle, ChevronDown, ChevronUp, User, Users, XCircle } from 'lucide-react';
-import { Suspense, useEffect, useState } from 'react';
+import { Briefcase, CheckCircle, ChevronDown, ChevronUp, Filter, User, Users, XCircle } from 'lucide-react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { applicationsApi, type Application } from '../../../lib/api/applications';
@@ -11,10 +11,57 @@ import { Button } from '../../../common-components/ui/button';
 import { ConfirmDialog } from '../../../common-components/ui/confirm-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../common-components/ui/dialog';
 import { SeekerProfileView } from '../../../common-components/seeker-profile-view';
+import { ExperienceRangeFilter, isExperienceRangeInvalid, parseYears } from '../../../common-components/experience-range-filter';
+import { LocationAutocomplete } from '../../../common-components/location-autocomplete';
+import { ExpertiseSelector } from '../../../common-components/ui/expertise-selector';
+import { Label } from '../../../common-components/ui/label';
 import { useToast } from '../../../hooks/use-toast';
 import { usePublicSettings } from '../../../hooks/use-public-settings';
 import { usePublicPricing, formatRupees } from '../../../hooks/use-public-pricing';
-import { ApplicationState } from '../../../lib/shared/enums';
+import { ApplicationState, Subject } from '../../../lib/shared/enums';
+import { enumLabel } from '../../../lib/utils/enum-options';
+
+const SUBJECT_OPTIONS = Object.values(Subject);
+
+interface ApplicantFilters {
+  subjects: Subject[];
+  experienceFrom: string;
+  experienceTo: string;
+  city: string;
+}
+
+const DEFAULT_APPLICANT_FILTERS: ApplicantFilters = { subjects: [], experienceFrom: '', experienceTo: '', city: '' };
+
+function applicantFilterCount(f: ApplicantFilters) {
+  let n = 0;
+  if (f.subjects.length > 0) n++;
+  if (f.experienceFrom || f.experienceTo) n++;
+  if (f.city) n++;
+  return n;
+}
+
+// Client-side: jobApplicants() already returns expertise / experienceYears / city for every
+// applicant and the list isn't paginated, so no backend round-trip is needed. An applicant whose
+// profile lacks a field is excluded while the filter on that field is active.
+function matchesApplicantFilters(app: Application, f: ApplicantFilters): boolean {
+  const p = app.seeker?.seekerProfile;
+  if (f.subjects.length > 0 && !p?.expertise?.some((s) => f.subjects.includes(s))) return false;
+
+  const from = parseYears(f.experienceFrom);
+  const to = parseYears(f.experienceTo);
+  if (from !== undefined || to !== undefined) {
+    const years = p?.experienceYears;
+    if (years == null) return false;
+    if (from !== undefined && years < from) return false;
+    if (to !== undefined && years > to) return false;
+  }
+
+  if (f.city) {
+    const city = p?.city?.toLowerCase() ?? '';
+    if (!city.includes(f.city.trim().toLowerCase())) return false;
+  }
+  return true;
+}
 
 const STATE_BADGE: Record<ApplicationState, { label: string; cls: string }> = {
   [ApplicationState.INTERESTED]: { label: 'Interested', cls: 'bg-blue-100 text-blue-700' },
@@ -140,6 +187,10 @@ function ApplicantsContent() {
   const preselectedJobId = searchParams.get('jobId') ?? undefined;
   const [selectedJobId, setSelectedJobId] = useState<string | undefined>(preselectedJobId);
   const [declineTarget, setDeclineTarget] = useState<Application | null>(null);
+  // Filters persist while switching between jobs (a school usually wants "Maths, 3+ yrs" everywhere).
+  const [filters, setFilters] = useState<ApplicantFilters>(DEFAULT_APPLICANT_FILTERS);
+  const [draft, setDraft] = useState<ApplicantFilters>(DEFAULT_APPLICANT_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const { data: jobs } = useQuery({
     queryKey: ['recruiter-jobs-list'],
@@ -159,6 +210,16 @@ function ApplicantsContent() {
   });
 
   const selectedJob = jobs?.data.find((j) => j._id === selectedJobId);
+
+  const filterCount = applicantFilterCount(filters);
+  const filteredApplicants = useMemo(
+    () => (applicants ?? []).filter((a) => matchesApplicantFilters(a, filters)),
+    [applicants, filters],
+  );
+
+  const openFilter = () => { setDraft({ ...filters }); setFilterOpen(true); };
+  const applyFilter = () => { setFilters(draft); setFilterOpen(false); };
+  const clearFilter = () => { setDraft(DEFAULT_APPLICANT_FILTERS); setFilters(DEFAULT_APPLICANT_FILTERS); setFilterOpen(false); };
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ['job-applicants', selectedJobId] });
@@ -238,24 +299,44 @@ function ApplicantsContent() {
         ) : (
           <div>
             <div className="flex items-center gap-3 mb-3 flex-wrap">
-              <p className="text-sm text-text-muted"><span className="font-semibold text-text-primary">{applicants.length}</span> applicants for &ldquo;{selectedJob?.title}&rdquo;</p>
+              <p className="text-sm text-text-muted">
+                <span className="font-semibold text-text-primary">
+                  {filterCount > 0 ? `${filteredApplicants.length} of ${applicants.length}` : applicants.length}
+                </span> applicants for &ldquo;{selectedJob?.title}&rdquo;
+              </p>
               {selectedJob?.openPositions != null && (
                 <span className="text-xs px-2.5 py-1 rounded-full bg-brand-primary-light text-brand-primary font-medium">
                   {Math.max(0, (selectedJob.openPositions) - (selectedJob.filledPositions ?? 0))} of {selectedJob.openPositions} position{selectedJob.openPositions !== 1 ? 's' : ''} remaining
                 </span>
               )}
+              <Button variant="outline" size="sm" onClick={openFilter} className="relative ml-auto">
+                <Filter className="w-3.5 h-3.5 mr-1" /> Filters
+                {filterCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-brand-primary text-white text-[10px] flex items-center justify-center">
+                    {filterCount}
+                  </span>
+                )}
+              </Button>
             </div>
-            <div className="space-y-3">
-              {applicants.map((app) => (
-                <ApplicantCard
-                  key={app._id}
-                  app={app}
-                  onShortlist={(a) => shortlistMutation.mutate(a)}
-                  onWon={(a) => wonMutation.mutate(a)}
-                  onClose={(a) => setDeclineTarget(a)}
-                />
-              ))}
-            </div>
+            {filteredApplicants.length === 0 ? (
+              <div className="bg-bg-card border border-border-default rounded-2xl p-10 text-center">
+                <Filter className="w-8 h-8 text-text-muted mx-auto mb-3 opacity-40" />
+                <p className="text-sm text-text-muted mb-3">No applicants match your filters.</p>
+                <Button variant="outline" size="sm" onClick={clearFilter}>Clear filters</Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredApplicants.map((app) => (
+                  <ApplicantCard
+                    key={app._id}
+                    app={app}
+                    onShortlist={(a) => shortlistMutation.mutate(a)}
+                    onWon={(a) => wonMutation.mutate(a)}
+                    onClose={(a) => setDeclineTarget(a)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )
       ) : (
@@ -264,6 +345,47 @@ function ApplicantsContent() {
           <p className="text-sm text-text-muted">Select a job above to view its applicants.</p>
         </div>
       )}
+
+      {/* Filter modal */}
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Filter Applicants</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Subjects</Label>
+              <ExpertiseSelector
+                options={SUBJECT_OPTIONS}
+                formatLabel={enumLabel}
+                value={draft.subjects}
+                onValueChange={(v) => setDraft((p) => ({ ...p, subjects: v as Subject[] }))}
+                searchPlaceholder="Search subjects…"
+                placeholder="Filter by subjects taught"
+              />
+            </div>
+            <ExperienceRangeFilter
+              from={draft.experienceFrom}
+              to={draft.experienceTo}
+              onChange={({ from, to }) => setDraft((p) => ({ ...p, experienceFrom: from, experienceTo: to }))}
+            />
+            <div className="space-y-1.5">
+              <Label className="text-xs">Location</Label>
+              <LocationAutocomplete
+                defaultValue={draft.city}
+                placeholder="e.g. Hyderabad"
+                onSelect={({ city }) => setDraft((p) => ({ ...p, city }))}
+                onClear={() => setDraft((p) => ({ ...p, city: '' }))}
+                inputClassName="h-9 text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" size="sm" onClick={clearFilter} className="flex-1">Clear</Button>
+            <Button size="sm" onClick={applyFilter} disabled={isExperienceRangeInvalid(draft.experienceFrom, draft.experienceTo)} className="flex-1">Apply</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={!!declineTarget}

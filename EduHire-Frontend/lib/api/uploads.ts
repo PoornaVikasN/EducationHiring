@@ -31,7 +31,7 @@ const SIZE_LIMITS_BYTES: Record<UploadKind, number> = {
   [UploadKind.CERTIFICATE]:    5 * 1024 * 1024,
   [UploadKind.DOCUMENT]:       5 * 1024 * 1024,
   [UploadKind.SCHOOL_PHOTO]: 5 * 1024 * 1024,
-  [UploadKind.INTRO_VIDEO]:    10 * 1024 * 1024,
+  [UploadKind.INTRO_VIDEO]:    5 * 1024 * 1024,
 };
 
 const KIND_DISPLAY: Record<UploadKind, string> = {

@@ -13,31 +13,39 @@ import { ConfirmDialog } from '../../../common-components/ui/confirm-dialog';
 import { DatePicker } from '../../../common-components/ui/date-picker';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../common-components/ui/dialog';
 import { Input } from '../../../common-components/ui/input';
+import { ExpertiseSelector } from '../../../common-components/ui/expertise-selector';
+import { ExperienceRangeFilter, isExperienceRangeInvalid, parseYears } from '../../../common-components/experience-range-filter';
 import { enumLabel } from '../../../lib/utils/enum-options';
 import { Label } from '../../../common-components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../common-components/ui/select';
 import { useToast } from '../../../hooks/use-toast';
 import { useDebouncedValue } from '../../../hooks/use-debounced-value';
-import { JobStatus } from '../../../lib/shared/enums';
+import { JobStatus, Subject } from '../../../lib/shared/enums';
 import { JOB_STATUS_BADGE } from '../../../lib/shared/constants';
 import { downloadCsv } from '../../../lib/utils/export-csv';
 
 const STATUS_BADGE = JOB_STATUS_BADGE;
+const SUBJECT_OPTIONS = Object.values(Subject);
 
 interface Filters {
   status: string;
   city: string;
   dateFrom: string;
   dateTo: string;
+  subjects: Subject[];
+  experienceFrom: string;
+  experienceTo: string;
 }
 
-const DEFAULT_FILTERS: Filters = { status: 'ALL', city: '', dateFrom: '', dateTo: '' };
+const DEFAULT_FILTERS: Filters = { status: 'ALL', city: '', dateFrom: '', dateTo: '', subjects: [], experienceFrom: '', experienceTo: '' };
 
 function activeFilterCount(f: Filters) {
   let n = 0;
   if (f.status !== 'ALL') n++;
   if (f.city) n++;
   if (f.dateFrom || f.dateTo) n++;
+  if (f.subjects.length > 0) n++;
+  if (f.experienceFrom || f.experienceTo) n++;
   return n;
 }
 
@@ -98,17 +106,23 @@ export default function AdminJobsPage() {
   const [detailJob, setDetailJob] = useState<Job | null>(null);
   const debouncedSearch = useDebouncedValue(search, 400);
 
+  // One params builder for the table query AND the CSV export so they can't drift apart.
+  const buildListParams = (pg: number, limit: number) => ({
+    page: pg,
+    limit,
+    search: debouncedSearch || undefined,
+    status: filters.status === 'ALL' ? undefined : filters.status as JobStatus,
+    city: filters.city || undefined,
+    dateFrom: filters.dateFrom || undefined,
+    dateTo: filters.dateTo || undefined,
+    subjects: filters.subjects.length ? filters.subjects : undefined,
+    experienceFrom: parseYears(filters.experienceFrom),
+    experienceTo: parseYears(filters.experienceTo),
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ['admin-jobs', page, debouncedSearch, filters],
-    queryFn: () => jobsApi.adminList({
-      page,
-      limit: 10,
-      search: debouncedSearch || undefined,
-      status: filters.status === 'ALL' ? undefined : filters.status as JobStatus,
-      city: filters.city || undefined,
-      dateFrom: filters.dateFrom || undefined,
-      dateTo: filters.dateTo || undefined,
-    }).then((r) => r.data),
+    queryFn: () => jobsApi.adminList(buildListParams(page, 10)).then((r) => r.data),
   });
 
   const disableMutation = useMutation({
@@ -131,15 +145,7 @@ export default function AdminJobsPage() {
   const handleExport = async () => {
     const total = data?.meta.total ?? (data?.data.length ?? 0);
     const all = total > (data?.data.length ?? 0)
-      ? (await jobsApi.adminList({
-          page: 1,
-          limit: total,
-          search: debouncedSearch || undefined,
-          status: filters.status === 'ALL' ? undefined : filters.status as JobStatus,
-          city: filters.city || undefined,
-          dateFrom: filters.dateFrom || undefined,
-          dateTo: filters.dateTo || undefined,
-        })).data.data
+      ? (await jobsApi.adminList(buildListParams(1, total))).data.data
       : (data?.data ?? []);
     downloadCsv('admin-jobs', all, [
       { header: 'Title', key: 'title' },
@@ -269,10 +275,27 @@ export default function AdminJobsPage() {
                 inputClassName="h-9 text-sm"
               />
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Subjects</Label>
+              <ExpertiseSelector
+                options={SUBJECT_OPTIONS}
+                formatLabel={enumLabel}
+                value={draft.subjects}
+                onValueChange={(v) => setDraft((p) => ({ ...p, subjects: v as Subject[] }))}
+                searchPlaceholder="Search subjects…"
+                placeholder="Filter by subjects the job needs"
+              />
+            </div>
+            <ExperienceRangeFilter
+              label="Experience required (years)"
+              from={draft.experienceFrom}
+              to={draft.experienceTo}
+              onChange={({ from, to }) => setDraft((p) => ({ ...p, experienceFrom: from, experienceTo: to }))}
+            />
           </div>
           <div className="flex gap-2 mt-4">
             <Button variant="outline" className="flex-1" onClick={clearFilter}>Clear</Button>
-            <Button className="flex-1" onClick={applyFilter}>Apply</Button>
+            <Button className="flex-1" onClick={applyFilter} disabled={isExperienceRangeInvalid(draft.experienceFrom, draft.experienceTo)}>Apply</Button>
           </div>
         </DialogContent>
       </Dialog>

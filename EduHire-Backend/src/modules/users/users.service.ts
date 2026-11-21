@@ -70,7 +70,17 @@ export class UsersService {
       }
     }
     if (dto.introVideoUrl) {
-      await this.uploads.verifyUploadKey(dto.introVideoUrl, UploadKind.INTRO_VIDEO);
+      // The profile form re-sends the stored URL on every save. Only verify a NEW/changed
+      // video: a teacher who uploaded one under the old 10 MB cap must not have every later
+      // profile save rejected now that the intro-video limit is 5 MB.
+      const stored = await this.userModel
+        .findOne({ _id: currentUser.sub, deletedAt: null })
+        .select('seekerProfile.introVideoUrl')
+        .lean()
+        .exec();
+      if (stored?.seekerProfile?.introVideoUrl !== dto.introVideoUrl) {
+        await this.uploads.verifyUploadKey(dto.introVideoUrl, UploadKind.INTRO_VIDEO);
+      }
     }
 
     const update: Record<string, unknown> = {};

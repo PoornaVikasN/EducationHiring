@@ -18,6 +18,7 @@ import { Label } from '../../../common-components/ui/label';
 import { DatePicker } from '../../../common-components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../common-components/ui/select';
 import { ExpertiseSelector } from '../../../common-components/ui/expertise-selector';
+import { ExperienceRangeFilter, isExperienceRangeInvalid, parseYears } from '../../../common-components/experience-range-filter';
 import { useToast } from '../../../hooks/use-toast';
 import { useDebouncedValue } from '../../../hooks/use-debounced-value';
 import { Role, Subject, UserStatus } from '../../../lib/shared/enums';
@@ -114,15 +115,18 @@ interface Filters {
   joinedFrom: string;
   joinedTo: string;
   subjects: Subject[];
+  experienceFrom: string;
+  experienceTo: string;
 }
 
-const DEFAULT_FILTERS: Filters = { status: 'ALL', city: '', joinedFrom: '', joinedTo: '', subjects: [] };
+const DEFAULT_FILTERS: Filters = { status: 'ALL', city: '', joinedFrom: '', joinedTo: '', subjects: [], experienceFrom: '', experienceTo: '' };
 
 function activeFilterCount(f: Filters) {
   let count = 0;
   if (f.status !== 'ALL') count++;
   if (f.city) count++;
   if (f.subjects.length > 0) count++;
+  if (f.experienceFrom || f.experienceTo) count++;
   if (f.joinedFrom || f.joinedTo) count++;
   return count;
 }
@@ -147,23 +151,33 @@ function UsersContent() {
   const roleParam = userTab === 'ALL' ? undefined : userTab;
   // Only teachers have seekerProfile.expertise — a subjects filter is meaningless on the
   // Schools/Admins tabs, so it's dropped there even if a prior selection is still in state.
-  const subjectsParam = (userTab === 'ALL' || userTab === 'TEACHER') && filters.subjects.length
+  const isTeacherScope = userTab === 'ALL' || userTab === 'TEACHER';
+  const subjectsParam = isTeacherScope && filters.subjects.length
     ? filters.subjects
     : undefined;
+  // Same reasoning for experience: only teachers carry experienceYears.
+  const experienceFromParam = isTeacherScope ? parseYears(filters.experienceFrom) : undefined;
+  const experienceToParam = isTeacherScope ? parseYears(filters.experienceTo) : undefined;
+
+  // One params builder for the table query AND the CSV export so they can't drift apart.
+  const buildListParams = (pg: number, limit: number) => ({
+    page: pg,
+    limit,
+    search: debouncedSearch || undefined,
+    role: roleParam,
+    isActive: isActiveParam,
+    city: filters.city || undefined,
+    joinedFrom: filters.joinedFrom || undefined,
+    joinedTo: filters.joinedTo || undefined,
+    includeDeleted: showDeleted,
+    subjects: subjectsParam,
+    experienceFrom: experienceFromParam,
+    experienceTo: experienceToParam,
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users', userTab, page, debouncedSearch, filters, showDeleted],
-    queryFn: () => adminApi.listUsers(
-      page, 10,
-      debouncedSearch || undefined,
-      roleParam,
-      isActiveParam,
-      filters.city || undefined,
-      filters.joinedFrom || undefined,
-      filters.joinedTo || undefined,
-      showDeleted,
-      subjectsParam,
-    ).then((r) => r.data),
+    queryFn: () => adminApi.listUsers(buildListParams(page, 10)).then((r) => r.data),
   });
 
   const rows = data?.data ?? [];
@@ -204,17 +218,7 @@ function UsersContent() {
   const handleExport = async () => {
     const total = data?.meta.total ?? rows.length;
     const all = total > rows.length
-      ? (await adminApi.listUsers(
-          1, total,
-          debouncedSearch || undefined,
-          roleParam,
-          isActiveParam,
-          filters.city || undefined,
-          filters.joinedFrom || undefined,
-          filters.joinedTo || undefined,
-          showDeleted,
-          subjectsParam,
-        )).data.data
+      ? (await adminApi.listUsers(buildListParams(1, total))).data.data
       : rows;
     downloadCsv('admin-users', all, [
       { header: 'Name', key: (u) => u.seekerProfile?.fullName ?? u.recruiterProfile?.fullName ?? '' },
@@ -384,10 +388,18 @@ function UsersContent() {
                 />
               </div>
             )}
+            {(userTab === 'ALL' || userTab === 'TEACHER') && (
+              <ExperienceRangeFilter
+                label="Experience in years (Teachers only)"
+                from={draft.experienceFrom}
+                to={draft.experienceTo}
+                onChange={({ from, to }) => setDraft((p) => ({ ...p, experienceFrom: from, experienceTo: to }))}
+              />
+            )}
           </div>
           <div className="flex gap-2 mt-4">
             <Button variant="outline" size="sm" onClick={clearFilter} className="flex-1">Clear</Button>
-            <Button size="sm" onClick={applyFilter} className="flex-1">Apply</Button>
+            <Button size="sm" onClick={applyFilter} disabled={isExperienceRangeInvalid(draft.experienceFrom, draft.experienceTo)} className="flex-1">Apply</Button>
           </div>
         </DialogContent>
       </Dialog>

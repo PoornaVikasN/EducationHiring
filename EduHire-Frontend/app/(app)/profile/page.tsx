@@ -651,7 +651,7 @@ export default function SeekerProfilePage() {
             </div>
           ) : (
             <Button type="button" variant="outline" className="w-full" onClick={() => videoRef.current?.click()} disabled={uploadingVideo}>
-              {uploadingVideo ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Uploading…</> : <><Video className="w-4 h-4 mr-2" />Upload Intro Video (max 10MB)</>}
+              {uploadingVideo ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Uploading…</> : <><Video className="w-4 h-4 mr-2" />Upload Intro Video (max 5MB)</>}
             </Button>
           )}
         </div>

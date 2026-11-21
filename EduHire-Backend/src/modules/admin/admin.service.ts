@@ -44,6 +44,8 @@ export class AdminService {
     joinedTo?: string,
     includeDeleted = false,
     subjects?: string[],
+    experienceFrom?: number,
+    experienceTo?: number,
   ) {
     const skip = (page - 1) * limit;
     const match: Record<string, unknown> = includeDeleted ? {} : { deletedAt: null };
@@ -60,6 +62,14 @@ export class AdminService {
     // "Teaches at least one of the selected subjects" — only teachers have this field, so
     // this naturally matches zero school/admin docs without needing a role guard here.
     if (subjects && subjects.length > 0) match['seekerProfile.expertise'] = { $in: subjects };
+    // Years of experience (teachers only). Only the bounds actually provided are applied; a teacher
+    // with no experience recorded (null) is excluded while a bound is set.
+    if (experienceFrom !== undefined || experienceTo !== undefined) {
+      const years: Record<string, number> = {};
+      if (experienceFrom !== undefined) years['$gte'] = experienceFrom;
+      if (experienceTo !== undefined) years['$lte'] = experienceTo;
+      match['seekerProfile.experienceYears'] = years;
+    }
 
     if (joinedFrom || joinedTo) {
       const range: Record<string, Date> = {};
