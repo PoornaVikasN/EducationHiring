@@ -640,7 +640,7 @@ export default function SeekerProfilePage() {
         {/* ── Intro Video ─────────────────────────────────────────────── */}
         <div className="bg-bg-card border border-border-default rounded-2xl p-6 space-y-4">
           <h2 className="text-sm font-semibold text-text-primary border-b border-border-default pb-3">Intro Video</h2>
-          <p className="text-xs text-text-muted -mt-2">Record a short clip introducing yourself. Max 10MB, MP4 or MOV.</p>
+          <p className="text-xs text-text-muted -mt-2">Record a short clip introducing yourself. Max 5MB, MP4 or MOV.</p>
           <input ref={videoRef} type="file" accept="video/mp4,video/quicktime" className="hidden" onChange={handleVideoUpload} />
           {videoUrl ? (
             <div className="flex items-center justify-between bg-brand-primary-light border border-brand-primary/20 rounded-xl px-4 py-3">
